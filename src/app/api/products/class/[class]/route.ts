@@ -3,10 +3,11 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Define a simple interface for the product type
-interface ProductWithClass {
+// Define a simple interface for the transformed product
+interface TransformedProduct {
   id: string;
   productClass: string;
+  basePrice: number;
   defaultLength?: number;
   defaultWidth?: number;
   [key: string]: any; // Allow other properties
@@ -40,17 +41,24 @@ export async function GET(
       },
     });
     
-    // Map default dimensions into the response for wide format products
-    const productsWithDefaults = products.map((product: ProductWithClass) => {
+    // Transform products for client-side use
+    const productsWithDefaults = products.map((product: any): TransformedProduct => {
+      // Convert Decimal to number for client-side use
+      const basePrice = product.basePrice ? Number(product.basePrice) : 0;
+      
       // If it's a wide format product, add default dimensions
       if (product.productClass === 'WIDE_FORMAT') {
         return {
           ...product,
-          defaultLength: product.defaultLength || 1, // Use existing or default to 1m length
-          defaultWidth: product.defaultWidth || 1,  // Use existing or default to 1m width
+          basePrice,
+          defaultLength: product.defaultLength ?? 1, // Use existing or default to 1m length
+          defaultWidth: product.defaultWidth ?? 1,  // Use existing or default to 1m width
         };
       }
-      return product;
+      return {
+        ...product,
+        basePrice
+      };
     });
     
     return NextResponse.json(productsWithDefaults);

@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 interface ProductBase {
   id: string;
   productClass: string;
+  basePrice: any; // Could be Decimal from Prisma
   [key: string]: any; // Allow other properties
 }
 
@@ -14,6 +15,17 @@ interface ProductBase {
 interface ProductWithDefaults {
   id: string;
   productClass: string;
+  basePrice: number; // Converted to number
+  defaultLength?: number;
+  defaultWidth?: number;
+  [key: string]: any; // Allow other properties
+}
+
+// Define a simple interface for the transformed product
+interface TransformedProduct {
+  id: string;
+  productClass: string;
+  basePrice: number;
   defaultLength?: number;
   defaultWidth?: number;
   [key: string]: any; // Allow other properties
@@ -52,16 +64,23 @@ export async function GET(request: NextRequest) {
       },
     });
     
-    // Add default dimensions for wide format products
-    const productsWithDefaults = products.map((product: ProductBase): ProductWithDefaults => {
+    // Transform products for client-side use
+    const productsWithDefaults = products.map((product: any): TransformedProduct => {
+      // Convert Decimal to number for client-side use
+      const basePrice = product.basePrice ? Number(product.basePrice) : 0;
+      
       if (product.productClass === 'WIDE_FORMAT') {
         return {
           ...product,
-          defaultLength: product.defaultLength || 1, // Use existing or default to 1m
-          defaultWidth: product.defaultWidth || 1,  // Use existing or default to 1m
+          basePrice,
+          defaultLength: product.defaultLength ?? 1, // Use existing or default to 1m
+          defaultWidth: product.defaultWidth ?? 1,  // Use existing or default to 1m
         };
       }
-      return product;
+      return {
+        ...product,
+        basePrice
+      };
     });
     
     return NextResponse.json(productsWithDefaults);
