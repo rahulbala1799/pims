@@ -336,7 +336,7 @@ export default function NewMobileInvoicePage() {
       // Prepare the request body
       const invoiceData = {
         customerId: formData.customerId,
-        items: formData.items.map(item => ({
+        invoiceItems: formData.items.map(item => ({
           productId: item.productId,
           description: item.description,
           quantity: item.quantity,
@@ -345,12 +345,14 @@ export default function NewMobileInvoicePage() {
           width: item.width,
           area: item.area
         })),
-        taxRate: formData.taxRate,
+        taxRate: formData.taxRate / 100, // Convert from percentage to decimal
         issueDate: formData.issueDate,
         dueDate: formData.dueDate,
         status: formData.status,
         notes: formData.notes
       };
+      
+      console.log('Submitting invoice data:', invoiceData);
       
       // Send the request
       const response = await fetch('/api/invoices', {
@@ -367,6 +369,7 @@ export default function NewMobileInvoicePage() {
       }
       
       const result = await response.json();
+      console.log('Invoice created successfully:', result);
       
       // Redirect to the invoice list page on success
       router.push('/admin/mobile-invoices');

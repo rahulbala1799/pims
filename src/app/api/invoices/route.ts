@@ -10,6 +10,10 @@ interface InvoiceItem {
   quantity: number;
   unitPrice: number;
   totalPrice?: number;
+  // Add dimension fields for wide format products
+  length?: number;
+  width?: number;
+  area?: number;
 }
 
 interface InvoiceRequest {
@@ -45,6 +49,10 @@ export async function GET(request: NextRequest) {
             quantity: true,
             unitPrice: true,
             totalPrice: true,
+            // Include dimension fields in response
+            length: true,
+            width: true,
+            area: true,
           },
         },
       },
@@ -66,6 +74,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as InvoiceRequest;
+    
+    // Log the received data for debugging
+    console.log('Received invoice data:', JSON.stringify(body, null, 2));
     
     // Validate required fields
     if (!body.customerId) {
@@ -145,7 +156,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Calculate tax and total
-    const taxRate = body.taxRate || 0.2; // Default to 20% if not provided
+    const taxRate = body.taxRate ?? 0.2; // Default to 20% if not provided
     const taxAmount = parseFloat((subtotal * taxRate).toFixed(2));
     const totalAmount = parseFloat((subtotal + taxAmount).toFixed(2));
     
@@ -169,6 +180,10 @@ export async function POST(request: NextRequest) {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice!,
+            // Include dimension fields for wide format products
+            length: item.length ?? null,
+            width: item.width ?? null,
+            area: item.area ?? null,
           })),
         },
       },
