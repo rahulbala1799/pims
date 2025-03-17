@@ -52,6 +52,12 @@ export default function AdminDashboard() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
                 <DashboardCard 
+                  title="Products" 
+                  count="0" 
+                  description="Manage product catalog"
+                  link="/admin/products"
+                />
+                <DashboardCard 
                   title="Jobs" 
                   count="0" 
                   description="Manage printing jobs"
