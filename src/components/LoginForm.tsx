@@ -37,7 +37,7 @@ export default function LoginForm({ userType }: LoginFormProps) {
       } else {
         setError('Invalid email or password');
       }
-    } catch (err) {
+    } catch (_) {
       setError('An error occurred during login. Please try again.');
     } finally {
       setIsLoading(false);
