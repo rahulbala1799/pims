@@ -58,6 +58,26 @@ export default function NewMobileInvoicePage() {
   const [productClass, setProductClass] = useState<string | null>(null);
   const [productLoading, setProductLoading] = useState(false);
   
+  // New state for product creation
+  const [showNewProductForm, setShowNewProductForm] = useState(false);
+  const [newProduct, setNewProduct] = useState<{
+    name: string;
+    sku: string;
+    productClass: string;
+    basePrice: number;
+    unit: string;
+    defaultLength?: number;
+    defaultWidth?: number;
+  }>({
+    name: '',
+    sku: '',
+    productClass: 'PACKAGING',
+    basePrice: 0,
+    unit: 'each'
+  });
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
+  
   // Form state with updated date types
   const [formData, setFormData] = useState<InvoiceFormData>({
     customerId: '',
@@ -382,6 +402,89 @@ export default function NewMobileInvoicePage() {
     }
   };
 
+  // Handle creating a new product
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProduct(true);
+    setProductError(null);
+    
+    try {
+      // Validate the product data
+      if (!newProduct.name.trim()) {
+        throw new Error('Product name is required');
+      }
+      
+      if (!newProduct.sku.trim()) {
+        throw new Error('SKU is required');
+      }
+      
+      if (newProduct.basePrice <= 0) {
+        throw new Error('Base price must be greater than 0');
+      }
+      
+      // Add dimensions validation for WIDE_FORMAT products
+      if (newProduct.productClass === 'WIDE_FORMAT') {
+        if (!newProduct.defaultLength || newProduct.defaultLength <= 0) {
+          throw new Error('Default length is required for wide format products');
+        }
+        
+        if (!newProduct.defaultWidth || newProduct.defaultWidth <= 0) {
+          throw new Error('Default width is required for wide format products');
+        }
+      }
+      
+      // Send the request to create the product
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProduct),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create product');
+      }
+      
+      const createdProduct = await response.json();
+      console.log('Product created successfully:', createdProduct);
+      
+      // Add the new product to the products list
+      setProducts([...products, createdProduct]);
+      
+      // Select the newly created product
+      handleSelectProduct(createdProduct);
+      
+      // Reset the form and close it
+      setNewProduct({
+        name: '',
+        sku: '',
+        productClass: 'PACKAGING',
+        basePrice: 0,
+        unit: 'each'
+      });
+      setShowNewProductForm(false);
+      
+      // Refresh products list
+      const endpoint = productClass 
+        ? `/api/products/class/${productClass}` 
+        : '/api/products';
+        
+      const refreshResponse = await fetch(endpoint);
+      if (refreshResponse.ok) {
+        const refreshedProducts = await refreshResponse.json();
+        setProducts(refreshedProducts);
+      }
+      
+    } catch (err) {
+      console.error('Error creating product:', err);
+      setProductError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   return (
     <div className="pb-24">
       {/* Mobile header with progress indicator */}
@@ -472,7 +575,7 @@ export default function NewMobileInvoicePage() {
           </div>
         )}
 
-        {/* Step 2: Add Products */}
+        {/* Step 2: Add Products with new "Add Product" button */}
         {formStep === 2 && (
           <div>
             <h2 className="text-lg font-semibold mb-2">Add Products</h2>
@@ -575,15 +678,29 @@ export default function NewMobileInvoicePage() {
               </nav>
             </div>
             
-            {/* Product search */}
+            {/* Product search with Add New Product button */}
             <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={productSearchQuery}
-                onChange={(e) => setProductSearchQuery(e.target.value)}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
+              <div className="flex space-x-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={productSearchQuery}
+                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewProductForm(true)}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New
+                </button>
+              </div>
             </div>
             
             {/* Product list */}
@@ -596,6 +713,15 @@ export default function NewMobileInvoicePage() {
                 {filteredProducts.length === 0 ? (
                   <div className="text-center py-4">
                     <p className="text-gray-500">No products found</p>
+                    <button
+                      onClick={() => setShowNewProductForm(true)}
+                      className="mt-2 text-indigo-600 inline-flex items-center text-sm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add new product
+                    </button>
                   </div>
                 ) : (
                   filteredProducts.map(product => (
@@ -1005,6 +1131,169 @@ export default function NewMobileInvoicePage() {
           )}
         </button>
       </div>
+
+      {/* New Product Form Modal */}
+      {showNewProductForm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Add New Product</h3>
+                <button 
+                  onClick={() => setShowNewProductForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-4">
+              {productError && (
+                <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded text-sm">
+                  <p>{productError}</p>
+                </div>
+              )}
+              
+              <form onSubmit={handleCreateProduct} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    SKU *
+                  </label>
+                  <input
+                    type="text"
+                    value={newProduct.sku}
+                    onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Product Class *
+                  </label>
+                  <select
+                    value={newProduct.productClass}
+                    onChange={(e) => setNewProduct({...newProduct, productClass: e.target.value})}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="PACKAGING">Packaging</option>
+                    <option value="WIDE_FORMAT">Wide Format</option>
+                    <option value="LEAFLETS">Leaflets</option>
+                    <option value="FINISHED">Finished</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Base Price (£) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newProduct.basePrice}
+                    onChange={(e) => setNewProduct({...newProduct, basePrice: parseFloat(e.target.value)})}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unit *
+                  </label>
+                  <select
+                    value={newProduct.unit}
+                    onChange={(e) => setNewProduct({...newProduct, unit: e.target.value})}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  >
+                    <option value="each">Each</option>
+                    <option value="box">Box</option>
+                    <option value="roll">Roll</option>
+                    <option value="sqm">Square Meter</option>
+                    <option value="sheet">Sheet</option>
+                  </select>
+                </div>
+                
+                {/* Conditionally show dimensions fields for WIDE_FORMAT products */}
+                {newProduct.productClass === 'WIDE_FORMAT' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Default Length (m) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newProduct.defaultLength || ''}
+                        onChange={(e) => setNewProduct({...newProduct, defaultLength: parseFloat(e.target.value) || undefined})}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Default Width (m) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={newProduct.defaultWidth || ''}
+                        onChange={(e) => setNewProduct({...newProduct, defaultWidth: parseFloat(e.target.value) || undefined})}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-end space-x-2 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewProductForm(false)}
+                    className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingProduct}
+                    className={`px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                      savingProduct ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'
+                    }`}
+                  >
+                    {savingProduct ? (
+                      <>
+                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Product'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
