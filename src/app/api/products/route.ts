@@ -1,44 +1,70 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Define a type for the raw product from the database
+interface ProductBase {
+  id: string;
+  productClass: string;
+  [key: string]: any; // Allow other properties
+}
+
+// Define a simple interface for the product type with defaults
+interface ProductWithDefaults {
+  id: string;
+  productClass: string;
+  defaultLength?: number;
+  defaultWidth?: number;
+  [key: string]: any; // Allow other properties
+}
+
 // GET /api/products - Get all products
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    // Get search and filter params
     const { searchParams } = new URL(request.url);
-    const classFilter = searchParams.get('class');
-    const activeOnly = searchParams.get('active') === 'true';
+    const searchTerm = searchParams.get('search') || '';
+    const activeOnly = searchParams.get('active') !== 'false'; // Default to true
     
-    // Build filter object
-    const filter: any = {};
+    // Build where clause for the query
+    const where: any = {};
     
-    if (classFilter) {
-      filter.productClass = classFilter;
-    }
-    
+    // Add active filter if specified
     if (activeOnly) {
-      filter.isActive = true;
+      where.active = true;
     }
     
+    // Add search term if provided
+    if (searchTerm) {
+      where.OR = [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { sku: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } }
+      ];
+    }
+    
+    // Fetch products
     const products = await prisma.product.findMany({
-      where: filter,
-      include: {
-        productVariants: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      where,
       orderBy: {
         name: 'asc',
       },
     });
     
-    return NextResponse.json(products);
+    // Add default dimensions for wide format products
+    const productsWithDefaults = products.map((product: ProductBase): ProductWithDefaults => {
+      if (product.productClass === 'WIDE_FORMAT') {
+        return {
+          ...product,
+          defaultLength: 1, // Default 1m length
+          defaultWidth: 1,  // Default 1m width
+        };
+      }
+      return product;
+    });
+    
+    return NextResponse.json(productsWithDefaults);
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

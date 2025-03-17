@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "InvoiceItem" ADD COLUMN     "area" DOUBLE PRECISION,
+ADD COLUMN     "length" DOUBLE PRECISION,
+ADD COLUMN     "width" DOUBLE PRECISION;

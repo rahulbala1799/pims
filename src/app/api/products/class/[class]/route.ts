@@ -1,64 +1,61 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Valid product classes
-const PRODUCT_CLASSES = ['PACKAGING', 'WIDE_FORMAT', 'LEAFLETS', 'FINISHED'];
+// Define a simple interface for the product type
+interface ProductWithClass {
+  id: string;
+  productClass: string;
+  [key: string]: any; // Allow other properties
+}
 
 // GET /api/products/class/[class] - Get products by class
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { class: string } }
 ) {
   try {
-    const classParam = params.class.toUpperCase();
+    const productClass = params.class;
     
     // Validate that the class is valid
-    if (!PRODUCT_CLASSES.includes(classParam)) {
+    const validClasses = ['PACKAGING', 'WIDE_FORMAT', 'LEAFLETS', 'FINISHED'];
+    if (!validClasses.includes(productClass)) {
       return NextResponse.json(
-        { 
-          error: 'Invalid product class',
-          validClasses: PRODUCT_CLASSES
-        },
+        { error: `Invalid product class: ${productClass}` },
         { status: 400 }
       );
     }
     
-    const { searchParams } = new URL(request.url);
-    const activeOnly = searchParams.get('active') === 'true';
-    
-    // Build filter object
-    const filter: any = {
-      productClass: classParam,
-    };
-    
-    if (activeOnly) {
-      filter.isActive = true;
-    }
-    
+    // Fetch products filtered by the specified class
     const products = await prisma.product.findMany({
-      where: filter,
-      include: {
-        productVariants: true,
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+      where: {
+        productClass: productClass as any, // Cast to enum type in Prisma
+        active: true, // Only return active products
       },
       orderBy: {
         name: 'asc',
       },
     });
     
-    return NextResponse.json(products);
+    // Map default dimensions into the response for wide format products
+    const productsWithDefaults = products.map((product: ProductWithClass) => {
+      // If it's a wide format product, add default dimensions
+      if (product.productClass === 'WIDE_FORMAT') {
+        return {
+          ...product,
+          defaultLength: 1, // Default 1m length
+          defaultWidth: 1,  // Default 1m width
+        };
+      }
+      return product;
+    });
+    
+    return NextResponse.json(productsWithDefaults);
   } catch (error) {
     console.error('Error fetching products by class:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch products' },
+      { error: 'Failed to fetch products by class' },
       { status: 500 }
     );
   } finally {
