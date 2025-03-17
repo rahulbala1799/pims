@@ -18,9 +18,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const invoiceId = params.id;
+    
     const invoice = await prisma.invoice.findUnique({
       where: {
-        id: params.id,
+        id: invoiceId,
       },
       include: {
         customer: {
@@ -29,7 +31,6 @@ export async function GET(
             name: true,
             email: true,
             phone: true,
-            address: true,
           },
         },
         invoiceItems: {
@@ -54,7 +55,25 @@ export async function GET(
       );
     }
     
-    return NextResponse.json(invoice);
+    // Convert Decimal fields to number
+    const serializedInvoice = {
+      ...invoice,
+      subtotal: Number(invoice.subtotal),
+      taxRate: Number(invoice.taxRate),
+      taxAmount: Number(invoice.taxAmount),
+      totalAmount: Number(invoice.totalAmount),
+      invoiceItems: invoice.invoiceItems.map(item => ({
+        ...item,
+        unitPrice: Number(item.unitPrice),
+        totalPrice: Number(item.totalPrice),
+        // If lengths/widths/areas exist, convert them from Decimal to number
+        ...(item.length !== null ? { length: Number(item.length) } : {}),
+        ...(item.width !== null ? { width: Number(item.width) } : {}),
+        ...(item.area !== null ? { area: Number(item.area) } : {}),
+      })),
+    };
+    
+    return NextResponse.json(serializedInvoice);
   } catch (error) {
     console.error('Error fetching invoice:', error);
     return NextResponse.json(
@@ -66,18 +85,22 @@ export async function GET(
   }
 }
 
-// PUT /api/invoices/[id] - Update a invoice
+// PUT /api/invoices/[id] - Update an invoice
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json() as InvoiceUpdateRequest;
+    const invoiceId = params.id;
+    const body = await request.json();
     
     // Check if invoice exists
     const existingInvoice = await prisma.invoice.findUnique({
       where: {
-        id: params.id,
+        id: invoiceId,
+      },
+      include: {
+        invoiceItems: true,
       },
     });
     
@@ -91,6 +114,10 @@ export async function PUT(
     // Prepare update data
     const updateData: any = {};
     
+    if (body.status) {
+      updateData.status = body.status;
+    }
+    
     if (body.issueDate) {
       updateData.issueDate = new Date(body.issueDate);
     }
@@ -99,26 +126,24 @@ export async function PUT(
       updateData.dueDate = new Date(body.dueDate);
     }
     
-    if (body.status) {
-      updateData.status = body.status;
-    }
-    
-    if (body.taxRate !== undefined) {
-      updateData.taxRate = body.taxRate;
-      
-      // Recalculate tax amount and total amount if tax rate changes
-      updateData.taxAmount = parseFloat((existingInvoice.subtotal.toNumber() * body.taxRate).toFixed(2));
-      updateData.totalAmount = parseFloat((existingInvoice.subtotal.toNumber() + updateData.taxAmount).toFixed(2));
-    }
-    
     if (body.notes !== undefined) {
       updateData.notes = body.notes;
     }
     
-    // Update invoice
+    // Handle tax rate updates and recalculate totals
+    if (body.taxRate !== undefined) {
+      updateData.taxRate = body.taxRate;
+      
+      // Recalculate tax amount and total amount
+      const subtotal = Number(existingInvoice.subtotal);
+      updateData.taxAmount = subtotal * body.taxRate;
+      updateData.totalAmount = subtotal + updateData.taxAmount;
+    }
+    
+    // Update the invoice
     const updatedInvoice = await prisma.invoice.update({
       where: {
-        id: params.id,
+        id: invoiceId,
       },
       data: updateData,
       include: {
@@ -133,7 +158,24 @@ export async function PUT(
       },
     });
     
-    return NextResponse.json(updatedInvoice);
+    // Convert Decimal fields to number for the response
+    const serializedInvoice = {
+      ...updatedInvoice,
+      subtotal: Number(updatedInvoice.subtotal),
+      taxRate: Number(updatedInvoice.taxRate),
+      taxAmount: Number(updatedInvoice.taxAmount),
+      totalAmount: Number(updatedInvoice.totalAmount),
+      invoiceItems: updatedInvoice.invoiceItems.map(item => ({
+        ...item,
+        unitPrice: Number(item.unitPrice),
+        totalPrice: Number(item.totalPrice),
+        ...(item.length !== null ? { length: Number(item.length) } : {}),
+        ...(item.width !== null ? { width: Number(item.width) } : {}),
+        ...(item.area !== null ? { area: Number(item.area) } : {}),
+      })),
+    };
+    
+    return NextResponse.json(serializedInvoice);
   } catch (error) {
     console.error('Error updating invoice:', error);
     return NextResponse.json(
@@ -151,38 +193,40 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const invoiceId = params.id;
+    
     // Check if invoice exists
-    const invoice = await prisma.invoice.findUnique({
+    const existingInvoice = await prisma.invoice.findUnique({
       where: {
-        id: params.id,
-      },
-      include: {
-        invoiceItems: true,
+        id: invoiceId,
       },
     });
     
-    if (!invoice) {
+    if (!existingInvoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
       );
     }
     
-    // Delete invoice items first to avoid foreign key constraint issues
+    // Delete invoice items first (to avoid foreign key constraint issues)
     await prisma.invoiceItem.deleteMany({
       where: {
-        invoiceId: params.id,
+        invoiceId,
       },
     });
     
-    // Delete invoice
+    // Delete the invoice
     await prisma.invoice.delete({
       where: {
-        id: params.id,
+        id: invoiceId,
       },
     });
     
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { message: 'Invoice deleted successfully' },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Error deleting invoice:', error);
     return NextResponse.json(
