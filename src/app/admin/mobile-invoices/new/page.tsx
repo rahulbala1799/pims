@@ -385,24 +385,24 @@ export default function NewMobileInvoicePage() {
   return (
     <div className="pb-24">
       {/* Mobile header with progress indicator */}
-      <div className="fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200">
-        <div className="px-4 py-2 flex items-center">
-          <button onClick={goBack} className="text-indigo-600 mr-2">
+      <div className="fixed top-0 left-0 right-0 z-10 bg-indigo-600 text-white shadow-md">
+        <div className="px-4 py-3 flex items-center">
+          <button onClick={goBack} className="text-white mr-3">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
               <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path>
             </svg>
           </button>
           <h1 className="text-lg font-bold">New Invoice</h1>
           <div className="ml-auto flex">
-            <span className="text-xs bg-gray-200 rounded-full px-2 py-1">
+            <span className="text-xs bg-indigo-500 bg-opacity-30 rounded-full px-2 py-1 text-white">
               Step {formStep} of 4
             </span>
           </div>
         </div>
         {/* Progress bar */}
-        <div className="h-1 bg-gray-200 w-full">
+        <div className="h-1 bg-indigo-500 bg-opacity-30 w-full">
           <div 
-            className="h-full bg-indigo-600" 
+            className="h-full bg-white" 
             style={{ width: `${(formStep / 4) * 100}%` }}
           ></div>
         </div>
@@ -948,18 +948,18 @@ export default function NewMobileInvoicePage() {
       </div>
 
       {/* Fixed bottom action buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between shadow-lg">
         {formStep > 1 ? (
           <button
             onClick={() => setFormStep(formStep - 1)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            className="w-5/12 py-2.5 border border-gray-300 text-gray-700 bg-white font-medium rounded-lg text-center hover:bg-gray-50 transition-colors"
           >
             Back
           </button>
         ) : (
           <Link
             href="/admin/mobile-invoices"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            className="w-5/12 py-2.5 border border-gray-300 text-gray-700 bg-white font-medium rounded-lg text-center hover:bg-gray-50 transition-colors"
           >
             Cancel
           </Link>
@@ -987,15 +987,15 @@ export default function NewMobileInvoicePage() {
             }
           }}
           disabled={isSubmitting}
-          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+          className={`w-6/12 py-2.5 text-white font-medium rounded-lg text-center transition-colors ${
             isSubmitting 
-              ? 'bg-indigo-400 cursor-not-allowed' 
+              ? 'bg-indigo-400' 
               : 'bg-indigo-600 hover:bg-indigo-700'
           }`}
         >
           {isSubmitting ? (
             <>
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2 inline-block"></div>
               Processing...
             </>
           ) : formStep === 4 ? (

@@ -4,12 +4,25 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Define types for the request body
+interface InvoiceItemUpdate {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  length?: number;
+  width?: number;
+  area?: number;
+  productId?: string;
+}
+
 interface InvoiceUpdateRequest {
   issueDate?: string;
   dueDate?: string;
   status?: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
   taxRate?: number;
   notes?: string;
+  invoiceItems?: InvoiceItemUpdate[];
 }
 
 // GET /api/invoices/[id] - Get a specific invoice
@@ -138,6 +151,43 @@ export async function PUT(
       const subtotal = Number(existingInvoice.subtotal);
       updateData.taxAmount = subtotal * body.taxRate;
       updateData.totalAmount = subtotal + updateData.taxAmount;
+    }
+    
+    // Handle invoice items updates if provided
+    if (body.invoiceItems && Array.isArray(body.invoiceItems)) {
+      // Update each invoice item
+      await Promise.all(
+        body.invoiceItems.map(async (item: InvoiceItemUpdate) => {
+          return prisma.invoiceItem.update({
+            where: { id: item.id },
+            data: {
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
+              length: item.length,
+              width: item.width,
+              area: item.area,
+              productId: item.productId
+            }
+          });
+        })
+      );
+      
+      // Recalculate invoice subtotal
+      const updatedItems = await prisma.invoiceItem.findMany({
+        where: { invoiceId: invoiceId }
+      });
+      
+      const newSubtotal = updatedItems.reduce(
+        (sum, item) => sum + Number(item.totalPrice), 
+        0
+      );
+      
+      // Update invoice with new subtotal and recalculated tax
+      updateData.subtotal = newSubtotal;
+      updateData.taxAmount = newSubtotal * (updateData.taxRate || Number(existingInvoice.taxRate));
+      updateData.totalAmount = newSubtotal + updateData.taxAmount;
     }
     
     // Update the invoice
