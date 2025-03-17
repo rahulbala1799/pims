@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Define the styles for the PDF
 const styles = StyleSheet.create({
@@ -315,8 +315,10 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
   try {
     console.log('Generating PDF with invoice data:', invoice);
     
-    // Create new document
+    // Create new document with autotable plugin
     const doc = new jsPDF();
+    // Add autotable functionality to jsPDF instance
+    autoTable(doc, {}); // Initialize the plugin
     
     // Add company info
     doc.setFontSize(24);
@@ -411,8 +413,8 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
       }
     });
     
-    // Add invoice items table
-    (doc as any).autoTable({
+    // Add invoice items table - use the proper autoTable syntax
+    autoTable(doc, {
       startY: 85,
       head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
       body: tableData,
@@ -437,6 +439,7 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
       }
     });
     
+    // Get the final position using proper docs
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     
     // Handle different invoice data structures for amounts
