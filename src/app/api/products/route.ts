@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     
     // Add active filter if specified
     if (activeOnly) {
-      where.active = true;
+      where.isActive = true;
     }
     
     // Add search term if provided
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
       if (product.productClass === 'WIDE_FORMAT') {
         return {
           ...product,
-          defaultLength: 1, // Default 1m length
-          defaultWidth: 1,  // Default 1m width
+          defaultLength: product.defaultLength || 1, // Use existing or default to 1m
+          defaultWidth: product.defaultWidth || 1,  // Use existing or default to 1m
         };
       }
       return product;

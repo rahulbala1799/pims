@@ -7,6 +7,8 @@ const prisma = new PrismaClient();
 interface ProductWithClass {
   id: string;
   productClass: string;
+  defaultLength?: number;
+  defaultWidth?: number;
   [key: string]: any; // Allow other properties
 }
 
@@ -31,7 +33,7 @@ export async function GET(
     const products = await prisma.product.findMany({
       where: {
         productClass: productClass as any, // Cast to enum type in Prisma
-        active: true, // Only return active products
+        isActive: true, // Only return active products
       },
       orderBy: {
         name: 'asc',
@@ -44,8 +46,8 @@ export async function GET(
       if (product.productClass === 'WIDE_FORMAT') {
         return {
           ...product,
-          defaultLength: 1, // Default 1m length
-          defaultWidth: 1,  // Default 1m width
+          defaultLength: product.defaultLength || 1, // Use existing or default to 1m length
+          defaultWidth: product.defaultWidth || 1,  // Use existing or default to 1m width
         };
       }
       return product;

@@ -145,12 +145,17 @@ export default function NewMobileInvoicePage() {
             ? `/api/products/class/${productClass}` 
             : '/api/products';
             
+          console.log(`Fetching products from: ${endpoint}`);
           const response = await fetch(endpoint);
+          
           if (!response.ok) {
-            throw new Error('Failed to fetch products');
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Error fetching products:', response.status, errorData);
+            throw new Error(`Failed to fetch products: ${response.statusText}`);
           }
           
           const data = await response.json();
+          console.log(`Received ${data.length} products:`, data.slice(0, 2)); // Log first two products as sample
           setProducts(data);
         } catch (error) {
           console.error('Error fetching products:', error);
