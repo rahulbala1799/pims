@@ -21,23 +21,40 @@ export default function LoginForm({ userType }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      // In a real app, you would call an API route to authenticate
-      // For now, we'll simulate authentication
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, hardcode some credentials
+      // First try the API route
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password, userType }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Authentication failed');
+        }
+
+        // Redirect to the appropriate dashboard
+        window.location.href = data.redirectUrl;
+        return;
+      } catch (apiError) {
+        console.error('API login failed, falling back to hardcoded credentials:', apiError);
+        // Fall back to hardcoded credentials if API fails
+      }
+
+      // Fallback to hardcoded credentials
       if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
-        // Redirect to admin dashboard using window.location for a full page reload
         window.location.href = '/admin/dashboard';
       } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
-        // Redirect to employee dashboard using window.location for a full page reload
         window.location.href = '/employee/dashboard';
       } else {
         setError('Invalid email or password');
       }
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       setError('An error occurred during login. Please try again.');
     } finally {
       setIsLoading(false);
