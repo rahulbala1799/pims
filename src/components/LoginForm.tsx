@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface LoginFormProps {
@@ -9,7 +8,6 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ userType }: LoginFormProps) {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,36 +19,19 @@ export default function LoginForm({ userType }: LoginFormProps) {
     setIsLoading(true);
 
     try {
-      // First try the API route
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email, password, userType }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Authentication failed');
-        }
-
-        // Redirect to the appropriate dashboard
-        window.location.href = data.redirectUrl;
-        return;
-      } catch (apiError) {
-        console.error('API login failed, falling back to hardcoded credentials:', apiError);
-        // Fall back to hardcoded credentials if API fails
-      }
-
-      // Fallback to hardcoded credentials
+      console.log(`Attempting to log in as ${userType} with email: ${email}`);
+      
+      // Simple hardcoded authentication
       if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
+        console.log('Admin login successful');
+        // Use direct navigation
         window.location.href = '/admin/dashboard';
       } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
+        console.log('Employee login successful');
+        // Use direct navigation
         window.location.href = '/employee/dashboard';
       } else {
+        console.error('Authentication failed');
         setError('Invalid email or password');
       }
     } catch (error) {
