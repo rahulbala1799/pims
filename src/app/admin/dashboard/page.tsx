@@ -9,6 +9,7 @@ interface DashboardStats {
   jobs: number;
   customers: number;
   employees: number;
+  invoices: number;
 }
 
 export default function AdminDashboard() {
@@ -18,7 +19,8 @@ export default function AdminDashboard() {
     products: 0,
     jobs: 0,
     customers: 0,
-    employees: 0
+    employees: 0,
+    invoices: 0
   });
 
   useEffect(() => {
@@ -34,12 +36,17 @@ export default function AdminDashboard() {
         const customerResponse = await fetch('/api/customers');
         const customers = await customerResponse.json();
         
+        // Fetch invoice count
+        const invoiceResponse = await fetch('/api/invoices');
+        const invoices = await invoiceResponse.json();
+        
         // In a real app, you would fetch other stats too
-        // For now, we'll update the products and customers count
+        // For now, we'll update the products, customers, and invoices count
         setStats(prev => ({
           ...prev,
           products: products.length,
-          customers: customers.length
+          customers: customers.length,
+          invoices: invoices.length || 0
         }));
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -113,6 +120,24 @@ export default function AdminDashboard() {
                   description="Manage customer accounts and orders"
                   link="/admin/customers"
                   icon={<CustomerIcon />}
+                />
+              </div>
+              
+              <h3 className="text-xl font-semibold mb-4 mt-8">Invoicing</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DashboardCard 
+                  title="Invoices" 
+                  count={stats.invoices.toString()} 
+                  description="Create and manage desktop-optimized invoices"
+                  link="/admin/invoices"
+                  icon={<InvoiceIcon />}
+                />
+                <DashboardCard 
+                  title="Mobile Invoices" 
+                  count={stats.invoices.toString()} 
+                  description="Mobile-friendly invoice creation and management"
+                  link="/admin/mobile-invoices"
+                  icon={<MobileInvoiceIcon />}
                 />
               </div>
               
@@ -249,6 +274,22 @@ function SettingsIcon() {
     <svg className="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function InvoiceIcon() {
+  return (
+    <svg className="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function MobileInvoiceIcon() {
+  return (
+    <svg className="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
     </svg>
   );
 } 
