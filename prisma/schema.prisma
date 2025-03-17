@@ -24,6 +24,7 @@ model User {
   jobs           Job[]            @relation("AssignedTo")
   createdJobs    Job[]            @relation("CreatedBy")
   progressUpdates ProgressUpdate[]
+  createdProducts Product[]        @relation("ProductCreatedBy")
 }
 
 enum Role {
@@ -40,6 +41,7 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   jobs      Job[]
+  invoices  Invoice[]
 }
 
 model Job {
@@ -58,6 +60,8 @@ model Job {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   progressUpdates ProgressUpdate[]
+  jobProducts     JobProduct[]
+  jobCostings     JobCosting[]
 }
 
 enum JobStatus {
@@ -83,4 +87,131 @@ model ProgressUpdate {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Product Models
+
+enum ProductClass {
+  PACKAGING
+  WIDE_FORMAT
+  LEAFLETS
+  FINISHED
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  name              String
+  sku               String        @unique
+  description       String?
+  productClass      ProductClass
+  basePrice         Decimal       @db.Decimal(10, 2)
+  unit              String        // e.g., "per item", "per square meter", etc.
+  dimensions        String?       // Format: "width x height x depth" in mm
+  weight            Float?        // in grams
+  material          String?
+  finishOptions     String[]
+  minOrderQuantity  Int           @default(1)
+  leadTime          Int?          // in days
+  isActive          Boolean       @default(true)
+  createdById       String
+  createdBy         User          @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  jobProducts       JobProduct[]
+  invoiceItems      InvoiceItem[]
+  productVariants   ProductVariant[]
+  
+  // Class-specific fields
+  // Packaging specific
+  packagingType     String?       // e.g., "box", "bag", "envelope"
+  
+  // Wide Format specific
+  printResolution   String?       // e.g., "720dpi", "1440dpi"
+  
+  // Leaflets specific
+  paperWeight       Int?          // in gsm
+  foldType          String?       // e.g., "tri-fold", "z-fold"
+  
+  // Finished specific
+  bindingType       String?       // e.g., "perfect bound", "saddle stitch"
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  name        String
+  description String?
+  priceAdjustment Decimal @db.Decimal(10, 2) // Amount to add/subtract from base price
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JobProduct {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JobCosting {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id])
+  materialCost    Decimal  @db.Decimal(10, 2)
+  laborCost       Decimal  @db.Decimal(10, 2)
+  overheadCost    Decimal  @db.Decimal(10, 2)
+  totalCost       Decimal  @db.Decimal(10, 2)
+  profitMargin    Decimal  @db.Decimal(5, 2) // Percentage
+  estimatedProfit Decimal  @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  issueDate     DateTime
+  dueDate       DateTime
+  status        InvoiceStatus @default(PENDING)
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxRate       Decimal       @db.Decimal(5, 2)
+  taxAmount     Decimal       @db.Decimal(10, 2)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  invoiceItems  InvoiceItem[]
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
