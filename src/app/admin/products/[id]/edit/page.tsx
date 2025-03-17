@@ -101,6 +101,29 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     fetchProduct();
   }, [params.id]);
   
+  // Auto-calculate base price for Wide Format products
+  useEffect(() => {
+    if (selectedClass === 'WIDE_FORMAT' && 
+        formData.defaultLength && 
+        formData.defaultWidth && 
+        formData.costPerSqMeter) {
+      
+      const length = parseFloat(formData.defaultLength);
+      const width = parseFloat(formData.defaultWidth);
+      const costPerSqMeter = parseFloat(formData.costPerSqMeter);
+      
+      if (length > 0 && width > 0 && costPerSqMeter > 0) {
+        const area = length * width;
+        const calculatedPrice = (area * costPerSqMeter).toFixed(2);
+        
+        setFormData(prev => ({
+          ...prev,
+          basePrice: calculatedPrice
+        }));
+      }
+    }
+  }, [selectedClass, formData.defaultLength, formData.defaultWidth, formData.costPerSqMeter]);
+  
   // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;

@@ -99,6 +99,9 @@ export default function NewProductPage() {
         leadTime: formData.leadTime ? parseInt(formData.leadTime) : undefined,
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         paperWeight: formData.paperWeight ? parseInt(formData.paperWeight) : undefined,
+        defaultLength: formData.defaultLength ? parseFloat(formData.defaultLength) : undefined,
+        defaultWidth: formData.defaultWidth ? parseFloat(formData.defaultWidth) : undefined,
+        costPerSqMeter: formData.costPerSqMeter ? parseFloat(formData.costPerSqMeter) : undefined,
         finishOptions: formData.finishOptions ? formData.finishOptions.split(',').map(item => item.trim()) : [],
         // Use the admin user ID (this would normally come from authentication)
         createdById: 'cm8d89fah000025bsnuwztyyq', // This should be replaced with the actual admin ID
