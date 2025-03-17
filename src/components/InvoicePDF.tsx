@@ -165,14 +165,14 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>PrintPack MIS</Text>
+            <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
           <View style={styles.companyInfo}>
-            <Text>PrintPack MIS Ltd</Text>
-            <Text>123 Print Street</Text>
-            <Text>London, W1 2BT</Text>
+            <Text>PrintNPack Ltd</Text>
+            <Text>Unit 14 Ashbourne Business Centre</Text>
+            <Text>Ashbourne A84KV57</Text>
             <Text>Tel: 020 7123 4567</Text>
-            <Text>Email: info@printpackmis.com</Text>
+            <Text>Email: info@printnpack.com</Text>
             <Text>VAT Reg: GB123456789</Text>
           </View>
         </View>
@@ -281,7 +281,7 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Footer */}
         <View style={styles.footer}>
           <Text>Thank you for your business! Payment is due within 30 days of issue.</Text>
-          <Text>Please make all cheques payable to PrintPack MIS Ltd or pay by bank transfer using the invoice number as reference.</Text>
+          <Text>Please make all cheques payable to PrintNPack Ltd or pay by bank transfer using the invoice number as reference.</Text>
           <Text>Bank: National Bank | Sort Code: 01-02-03 | Account Number: 12345678</Text>
         </View>
       </Page>
@@ -323,16 +323,16 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Add company info
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('PrintPack MIS', 14, 22);
+    doc.text('PrintNPack Ltd', 14, 22);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text([
-      'PrintPack MIS Ltd',
-      '123 Print Street',
-      'London, W1 2BT',
+      'PrintNPack Ltd',
+      'Unit 14 Ashbourne Business Centre',
+      'Ashbourne A84KV57',
       'Tel: 020 7123 4567',
-      'Email: info@printpackmis.com',
+      'Email: info@printnpack.com',
       'VAT Reg: GB123456789'
     ], 195, 22, { align: 'right' });
     
@@ -434,7 +434,7 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
         doc.setTextColor(100);
         const pageHeight = doc.internal.pageSize.height;
         doc.text('Thank you for your business! Payment is due within 30 days of issue.', 105, pageHeight - 20, { align: 'center' });
-        doc.text('Please make all cheques payable to PrintPack MIS Ltd or pay by bank transfer using the invoice number as reference.', 105, pageHeight - 15, { align: 'center' });
+        doc.text('Please make all cheques payable to PrintNPack Ltd or pay by bank transfer using the invoice number as reference.', 105, pageHeight - 15, { align: 'center' });
         doc.text('Bank: National Bank | Sort Code: 01-02-03 | Account Number: 12345678', 105, pageHeight - 10, { align: 'center' });
       }
     });
