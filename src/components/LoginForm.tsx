@@ -29,11 +29,11 @@ export default function LoginForm({ userType }: LoginFormProps) {
       
       // For demo purposes, hardcode some credentials
       if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
-        // Redirect to admin dashboard
-        router.push('/admin/dashboard');
+        // Redirect to admin dashboard using window.location for a full page reload
+        window.location.href = '/admin/dashboard';
       } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
-        // Redirect to employee dashboard
-        router.push('/employee/dashboard');
+        // Redirect to employee dashboard using window.location for a full page reload
+        window.location.href = '/employee/dashboard';
       } else {
         setError('Invalid email or password');
       }
