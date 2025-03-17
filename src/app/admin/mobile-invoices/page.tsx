@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Customer {
   id: string;
   name: string;
-  email: string;
 }
 
 interface InvoiceItem {
@@ -26,6 +26,7 @@ interface Invoice {
   dueDate: string;
   status: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
   subtotal: number;
+  taxRate: number;
   taxAmount: number;
   totalAmount: number;
   invoiceItems: InvoiceItem[];
@@ -33,6 +34,7 @@ interface Invoice {
 }
 
 export default function MobileInvoicesPage() {
+  const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +50,24 @@ export default function MobileInvoicesPage() {
         }
         
         const data = await response.json();
-        console.log('Invoices loaded:', data.length);
-        setInvoices(data);
+        console.log('Invoices loaded:', data);
+        
+        // Process invoices to ensure all numeric values are numbers
+        const processedInvoices = data.map((invoice: any) => ({
+          ...invoice,
+          subtotal: typeof invoice.subtotal === 'number' ? invoice.subtotal : Number(invoice.subtotal),
+          taxRate: typeof invoice.taxRate === 'number' ? invoice.taxRate : Number(invoice.taxRate),
+          taxAmount: typeof invoice.taxAmount === 'number' ? invoice.taxAmount : Number(invoice.taxAmount),
+          totalAmount: typeof invoice.totalAmount === 'number' ? invoice.totalAmount : Number(invoice.totalAmount),
+          invoiceItems: invoice.invoiceItems ? invoice.invoiceItems.map((item: any) => ({
+            ...item,
+            quantity: typeof item.quantity === 'number' ? item.quantity : Number(item.quantity),
+            unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : Number(item.unitPrice),
+            totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : Number(item.totalPrice)
+          })) : []
+        }));
+        
+        setInvoices(processedInvoices);
       } catch (err) {
         console.error('Error fetching invoices:', err);
         setError(err instanceof Error ? err.message : 'Failed to load invoices');
@@ -61,7 +79,12 @@ export default function MobileInvoicesPage() {
     fetchInvoices();
   }, []);
 
-  // Function to get status badge classes
+  // Safely format a number
+  const formatNumber = (value: any, decimals = 2) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return isNaN(num) ? '0.00' : num.toFixed(decimals);
+  };
+
   const getStatusClasses = (status: string) => {
     switch (status) {
       case 'PAID':
@@ -75,115 +98,89 @@ export default function MobileInvoicesPage() {
     }
   };
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
 
   return (
-    <div className="px-4 py-6">
-      {/* Simplified breadcrumb for mobile */}
-      <div className="flex items-center mb-4">
-        <Link href="/admin/dashboard" className="text-indigo-600">
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd"></path>
-          </svg>
-        </Link>
-        <h1 className="text-lg font-bold ml-2">Mobile Invoices</h1>
-      </div>
-      
-      <p className="text-sm text-gray-600 mb-6">
-        Create and manage invoices on mobile devices.
-      </p>
-      
-      <div className="mb-6">
-        <Link
-          href="/admin/mobile-invoices/new"
-          className="w-full flex justify-center items-center py-3 px-4 rounded-md bg-indigo-600 text-white font-medium shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <svg
-            className="mr-2 h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+    <div>
+      {/* Mobile header */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-white border-b border-gray-200">
+        <div className="px-4 py-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold">Mobile Invoices</h1>
+          <button
+            onClick={() => router.push('/admin/mobile-invoices/new')}
+            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
           >
-            <path
-              fillRule="evenodd"
-              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Create Invoice
-        </Link>
+            <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            New
+          </button>
+        </div>
       </div>
-      
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : error ? (
-        <div className="text-center py-12 text-red-500">
-          <p>{error}</p>
-        </div>
-      ) : invoices.length === 0 ? (
-        <div className="mt-8 flex flex-col items-center justify-center text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Create your first mobile invoice</p>
-          <div className="mt-4">
-            <Link
-              href="/admin/mobile-invoices/new"
-              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
-            >
-              Create Now
-            </Link>
+
+      <div className="mt-16 px-4 py-4">
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {invoices.map(invoice => (
-            <Link href={`/admin/mobile-invoices/${invoice.id}`} key={invoice.id}>
-              <div className="block border rounded-lg overflow-hidden hover:bg-gray-50 transition">
-                <div className="bg-gray-50 p-3 border-b">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-gray-900">{invoice.invoiceNumber}</span>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-500">{error}</p>
+            <button
+              onClick={() => router.refresh()}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Retry
+            </button>
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="text-center py-12">
+            <h2 className="text-lg font-medium text-gray-900">No invoices yet</h2>
+            <p className="mt-1 text-sm text-gray-500">Get started by creating a new invoice.</p>
+            <button
+              onClick={() => router.push('/admin/mobile-invoices/new')}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              New Invoice
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {invoices.map((invoice) => (
+              <Link 
+                key={invoice.id} 
+                href={`/admin/mobile-invoices/${invoice.id}`}
+                className="block"
+              >
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h2 className="text-lg font-medium text-gray-900">{invoice.invoiceNumber}</h2>
+                      <p className="text-sm text-gray-500">{invoice.customer?.name || 'Unknown customer'}</p>
+                    </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${getStatusClasses(invoice.status)}`}>
                       {invoice.status}
                     </span>
                   </div>
-                </div>
-                <div className="p-3">
-                  <div className="text-sm text-gray-700 mb-2">
-                    <span className="font-medium">Customer:</span> {invoice.customer.name}
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <div>
-                      <div><span className="text-gray-500">Date:</span> {formatDate(invoice.issueDate)}</div>
-                      <div><span className="text-gray-500">Due:</span> {formatDate(invoice.dueDate)}</div>
+                  <div className="flex justify-between mt-2">
+                    <div className="text-sm text-gray-500">
+                      {formatDate(invoice.issueDate)} - {formatDate(invoice.dueDate)}
                     </div>
-                    <div className="text-right">
-                      <div><span className="text-gray-500">Items:</span> {invoice.invoiceItems.length}</div>
-                      <div className="font-medium">£{invoice.totalAmount.toFixed(2)}</div>
+                    <div className="text-lg font-bold">
+                      £{formatNumber(invoice.totalAmount)}
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

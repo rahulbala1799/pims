@@ -62,7 +62,26 @@ export default function InvoiceDetailPage() {
         
         const data = await response.json();
         console.log('Invoice loaded:', data);
-        setInvoice(data);
+        
+        // Ensure all numeric fields are actually numbers
+        const processedInvoice = {
+          ...data,
+          subtotal: typeof data.subtotal === 'number' ? data.subtotal : Number(data.subtotal),
+          taxRate: typeof data.taxRate === 'number' ? data.taxRate : Number(data.taxRate),
+          taxAmount: typeof data.taxAmount === 'number' ? data.taxAmount : Number(data.taxAmount),
+          totalAmount: typeof data.totalAmount === 'number' ? data.totalAmount : Number(data.totalAmount),
+          invoiceItems: data.invoiceItems.map((item: any) => ({
+            ...item,
+            quantity: typeof item.quantity === 'number' ? item.quantity : Number(item.quantity),
+            unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : Number(item.unitPrice),
+            totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : Number(item.totalPrice),
+            ...(item.length !== undefined ? { length: typeof item.length === 'number' ? item.length : Number(item.length) } : {}),
+            ...(item.width !== undefined ? { width: typeof item.width === 'number' ? item.width : Number(item.width) } : {}),
+            ...(item.area !== undefined ? { area: typeof item.area === 'number' ? item.area : Number(item.area) } : {}),
+          }))
+        };
+        
+        setInvoice(processedInvoice);
       } catch (err) {
         console.error('Error fetching invoice:', err);
         setError(err instanceof Error ? err.message : 'Failed to load invoice');
@@ -91,6 +110,12 @@ export default function InvoiceDetailPage() {
   // Format date for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+  
+  // Safely format a number
+  const formatNumber = (value: any, decimals = 2) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
 
   if (loading) {
@@ -174,8 +199,8 @@ export default function InvoiceDetailPage() {
           <div>
             <h2 className="text-lg font-semibold mb-2">Customer</h2>
             <div className="bg-white border border-gray-200 rounded-md p-4">
-              <div className="font-medium">{invoice.customer.name}</div>
-              <div className="text-sm text-gray-500">{invoice.customer.email}</div>
+              <div className="font-medium">{invoice.customer?.name || 'Unknown customer'}</div>
+              <div className="text-sm text-gray-500">{invoice.customer?.email || ''}</div>
             </div>
           </div>
 
@@ -187,19 +212,19 @@ export default function InvoiceDetailPage() {
                 <div key={index} className="bg-white border border-gray-200 rounded-md p-4">
                   <div className="font-medium mb-1">{item.description}</div>
                   <div className="text-sm text-gray-500 mb-2">
-                    {item.quantity} × £{item.unitPrice.toFixed(2)}
-                    {item.area && ` (${item.area} m²)`}
+                    {item.quantity} × £{formatNumber(item.unitPrice)}
+                    {item.area && ` (${formatNumber(item.area)} m²)`}
                   </div>
                   
                   {/* Show dimensions if available */}
                   {(item.length || item.width) && (
                     <div className="text-xs text-gray-500 mb-2">
-                      Dimensions: {item.length ? `${item.length}m` : '--'} × {item.width ? `${item.width}m` : '--'}
+                      Dimensions: {item.length ? `${formatNumber(item.length)}m` : '--'} × {item.width ? `${formatNumber(item.width)}m` : '--'}
                     </div>
                   )}
                   
                   <div className="flex justify-end">
-                    <span className="font-medium">£{item.totalPrice.toFixed(2)}</span>
+                    <span className="font-medium">£{formatNumber(item.totalPrice)}</span>
                   </div>
                 </div>
               ))}
@@ -213,15 +238,15 @@ export default function InvoiceDetailPage() {
               <div className="space-y-2 mb-3">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>£{invoice.subtotal.toFixed(2)}</span>
+                  <span>£{formatNumber(invoice.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax ({(invoice.taxRate * 100).toFixed(0)}%):</span>
-                  <span>£{invoice.taxAmount.toFixed(2)}</span>
+                  <span>Tax ({formatNumber(invoice.taxRate * 100, 0)}%):</span>
+                  <span>£{formatNumber(invoice.taxAmount)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-2 border-t">
                   <span>Total:</span>
-                  <span>£{invoice.totalAmount.toFixed(2)}</span>
+                  <span>£{formatNumber(invoice.totalAmount)}</span>
                 </div>
               </div>
             </div>
