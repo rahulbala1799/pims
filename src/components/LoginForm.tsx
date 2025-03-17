@@ -14,13 +14,17 @@ export default function LoginForm({ userType }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    setApiStatus('loading');
 
     try {
+      console.log(`Attempting to log in as ${userType} with email: ${email}`);
+      
       // First try the API route
       try {
         const response = await fetch('/api/auth/login', {
@@ -32,30 +36,42 @@ export default function LoginForm({ userType }: LoginFormProps) {
         });
 
         const data = await response.json();
+        console.log('API response status:', response.status);
 
         if (!response.ok) {
+          console.error('API error:', data.error);
+          setApiStatus('error');
           throw new Error(data.error || 'Authentication failed');
         }
 
+        console.log('Login successful, redirecting to:', data.redirectUrl);
+        setApiStatus('success');
+        
         // Redirect to the appropriate dashboard
         window.location.href = data.redirectUrl;
         return;
       } catch (apiError) {
         console.error('API login failed, falling back to hardcoded credentials:', apiError);
+        setApiStatus('error');
         // Fall back to hardcoded credentials if API fails
       }
 
       // Fallback to hardcoded credentials
+      console.log('Using fallback authentication');
       if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
+        console.log('Fallback admin login successful');
         window.location.href = '/admin/dashboard';
       } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
+        console.log('Fallback employee login successful');
         window.location.href = '/employee/dashboard';
       } else {
+        console.error('Fallback authentication failed');
         setError('Invalid email or password');
       }
     } catch (error) {
       console.error('Login error:', error);
       setError('An error occurred during login. Please try again.');
+      setApiStatus('error');
     } finally {
       setIsLoading(false);
     }
@@ -85,6 +101,21 @@ export default function LoginForm({ userType }: LoginFormProps) {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {apiStatus === 'error' && !error && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">API connection failed. Using fallback authentication.</p>
               </div>
             </div>
           </div>
