@@ -312,134 +312,173 @@ export const InvoicePDFDownloadButton = ({ invoice, customer, fileName = 'invoic
 
 // Function to directly generate and download PDF using jsPDF
 export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invoice.pdf') => {
-  const doc = new jsPDF();
-  
-  // Add company info
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PrintPack MIS', 14, 22);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text([
-    'PrintPack MIS Ltd',
-    '123 Print Street',
-    'London, W1 2BT',
-    'Tel: 020 7123 4567',
-    'Email: info@printpackmis.com',
-    'VAT Reg: GB123456789'
-  ], 195, 22, { align: 'right' });
-  
-  // Add invoice title
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('INVOICE', 14, 45);
-  doc.setLineWidth(0.5);
-  doc.line(14, 48, 195, 48);
-  
-  // Add customer info
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Bill To:', 14, 60);
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const customerInfo = [
-    customer.name,
-    customer.email,
-    customer.phone || '',
-    customer.address || ''
-  ].filter(line => line.trim() !== '');
-  
-  doc.text(customerInfo, 14, 65);
-  
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-  
-  // Add invoice info
-  doc.setFontSize(10);
-  doc.text([
-    `Invoice #: ${invoice.invoiceNumber}`,
-    `Invoice Date: ${formatDate(invoice.issueDate)}`,
-    `Due Date: ${formatDate(invoice.dueDate)}`,
-    `Status: ${invoice.status}`
-  ], 195, 60, { align: 'right' });
-  
-  // Ensure we have items to map over (handle both items and invoiceItems properties)
-  const invoiceItems = invoice.items || invoice.invoiceItems || [];
-  
-  // Add invoice items table
-  (doc as any).autoTable({
-    startY: 85,
-    head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
-    body: invoiceItems.map((item: any) => [
-      item.description,
-      item.quantity,
-      item.length && item.width
-        ? `${item.length.toFixed(2)}m × ${item.width.toFixed(2)}m = ${item.area?.toFixed(2)}m²`
-        : '-',
-      `£${item.unitPrice.toFixed(2)}`,
-      `£${item.totalPrice.toFixed(2)}`
-    ]),
-    theme: 'grid',
-    headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
-    columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 50, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 30, halign: 'right' }
-    },
-    margin: { left: 14, right: 14 },
-    didDrawPage: function(data: any) {
-      // Footer
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      const pageHeight = doc.internal.pageSize.height;
-      doc.text('Thank you for your business! Payment is due within 30 days of issue.', 105, pageHeight - 20, { align: 'center' });
-      doc.text('Please make all cheques payable to PrintPack MIS Ltd or pay by bank transfer using the invoice number as reference.', 105, pageHeight - 15, { align: 'center' });
-      doc.text('Bank: National Bank | Sort Code: 01-02-03 | Account Number: 12345678', 105, pageHeight - 10, { align: 'center' });
-    }
-  });
-  
-  const finalY = (doc as any).lastAutoTable.finalY + 10;
-  
-  // Add totals
-  doc.setFontSize(10);
-  doc.text('Subtotal:', 150, finalY);
-  doc.text(`£${invoice.subtotalAmount.toFixed(2)}`, 195, finalY, { align: 'right' });
-  
-  doc.text(`Tax (${(invoice.taxRate * 100).toFixed(0)}%):`, 150, finalY + 6);
-  doc.text(`£${invoice.taxAmount.toFixed(2)}`, 195, finalY + 6, { align: 'right' });
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Total:', 150, finalY + 14);
-  doc.text(`£${invoice.totalAmount.toFixed(2)}`, 195, finalY + 14, { align: 'right' });
-  
-  // Add line
-  doc.setLineWidth(0.5);
-  doc.line(150, finalY + 8, 195, finalY + 8);
-  
-  // Add notes if any
-  if (invoice.notes) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notes:', 14, finalY + 25);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+  try {
+    console.log('Generating PDF with invoice data:', invoice);
     
-    const splitNotes = doc.splitTextToSize(invoice.notes, 180);
-    doc.text(splitNotes, 14, finalY + 30);
+    // Create new document
+    const doc = new jsPDF();
+    
+    // Add company info
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PrintPack MIS', 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text([
+      'PrintPack MIS Ltd',
+      '123 Print Street',
+      'London, W1 2BT',
+      'Tel: 020 7123 4567',
+      'Email: info@printpackmis.com',
+      'VAT Reg: GB123456789'
+    ], 195, 22, { align: 'right' });
+    
+    // Add invoice title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE', 14, 45);
+    doc.setLineWidth(0.5);
+    doc.line(14, 48, 195, 48);
+    
+    // Add customer info
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bill To:', 14, 60);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const customerInfo = [
+      customer?.name || 'Customer',
+      customer?.email || '',
+      customer?.phone || '',
+      customer?.address || ''
+    ].filter(line => line.trim() !== '');
+    
+    doc.text(customerInfo, 14, 65);
+    
+    // Format date safely
+    const formatDate = (dateString: string) => {
+      try {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+      } catch (e) {
+        console.error('Error formatting date:', e);
+        return 'Invalid Date';
+      }
+    };
+    
+    // Add invoice info with fallbacks
+    doc.setFontSize(10);
+    doc.text([
+      `Invoice #: ${invoice.invoiceNumber || 'N/A'}`,
+      `Invoice Date: ${formatDate(invoice.issueDate)}`,
+      `Due Date: ${formatDate(invoice.dueDate)}`,
+      `Status: ${invoice.status || 'N/A'}`
+    ], 195, 60, { align: 'right' });
+    
+    // Ensure we have items to map over (handle different data structures)
+    const invoiceItems = invoice.items || invoice.invoiceItems || [];
+    console.log('Invoice items for PDF:', invoiceItems);
+    
+    // Safe formatter functions
+    const safeToFixed = (num: any, decimals = 2) => {
+      if (num === undefined || num === null) return '0.00';
+      const parsedNum = parseFloat(num);
+      return isNaN(parsedNum) ? '0.00' : parsedNum.toFixed(decimals);
+    };
+    
+    // Prepare table data with error handling
+    const tableData = invoiceItems.map((item: any) => {
+      try {
+        return [
+          item.description || 'No description',
+          item.quantity || 0,
+          item.length && item.width
+            ? `${safeToFixed(item.length)}m × ${safeToFixed(item.width)}m = ${safeToFixed(item.area)}m²`
+            : '-',
+          `£${safeToFixed(item.unitPrice)}`,
+          `£${safeToFixed(item.totalPrice)}`
+        ];
+      } catch (e) {
+        console.error('Error processing invoice item:', e, item);
+        return ['Error processing item', '', '', '', ''];
+      }
+    });
+    
+    // Add invoice items table
+    (doc as any).autoTable({
+      startY: 85,
+      head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 20, halign: 'center' },
+        2: { cellWidth: 50, halign: 'center' },
+        3: { cellWidth: 30, halign: 'right' },
+        4: { cellWidth: 30, halign: 'right' }
+      },
+      margin: { left: 14, right: 14 },
+      didDrawPage: function(data: any) {
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        const pageHeight = doc.internal.pageSize.height;
+        doc.text('Thank you for your business! Payment is due within 30 days of issue.', 105, pageHeight - 20, { align: 'center' });
+        doc.text('Please make all cheques payable to PrintPack MIS Ltd or pay by bank transfer using the invoice number as reference.', 105, pageHeight - 15, { align: 'center' });
+        doc.text('Bank: National Bank | Sort Code: 01-02-03 | Account Number: 12345678', 105, pageHeight - 10, { align: 'center' });
+      }
+    });
+    
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Handle different invoice data structures for amounts
+    const subtotal = invoice.subtotalAmount || invoice.subtotal || 0;
+    const taxRate = invoice.taxRate || 0;
+    const taxAmount = invoice.taxAmount || 0;
+    const totalAmount = invoice.totalAmount || invoice.total || 0;
+    
+    // Add totals
+    doc.setFontSize(10);
+    doc.text('Subtotal:', 150, finalY);
+    doc.text(`£${safeToFixed(subtotal)}`, 195, finalY, { align: 'right' });
+    
+    doc.text(`Tax (${(taxRate * 100).toFixed(0)}%):`, 150, finalY + 6);
+    doc.text(`£${safeToFixed(taxAmount)}`, 195, finalY + 6, { align: 'right' });
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total:', 150, finalY + 14);
+    doc.text(`£${safeToFixed(totalAmount)}`, 195, finalY + 14, { align: 'right' });
+    
+    // Add line
+    doc.setLineWidth(0.5);
+    doc.line(150, finalY + 8, 195, finalY + 8);
+    
+    // Add notes if any
+    if (invoice.notes) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notes:', 14, finalY + 25);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      
+      const splitNotes = doc.splitTextToSize(invoice.notes.toString(), 180);
+      doc.text(splitNotes, 14, finalY + 30);
+    }
+    
+    // Save the PDF
+    doc.save(fileName);
+    console.log('PDF generated successfully');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF. Please check the console for details.');
   }
-  
-  // Save the PDF
-  doc.save(fileName);
 };
 
 export default InvoicePDFDocument; 

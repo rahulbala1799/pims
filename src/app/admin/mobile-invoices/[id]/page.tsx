@@ -144,9 +144,28 @@ export default function MobileInvoiceDetailPage() {
 
   // Handle PDF generation
   const handleDownloadPDF = () => {
-    if (invoice) {
+    if (!invoice) {
+      alert('Invoice data is not available. Please try again later.');
+      return;
+    }
+    
+    try {
+      console.log('Preparing invoice for PDF generation:', invoice);
+      
+      // Normalize the data structure to match what the PDF generator expects
+      const normalizedInvoice = {
+        ...invoice,
+        // Ensure consistent property names
+        items: invoice.invoiceItems || [],
+        subtotalAmount: invoice.subtotal || 0,
+        // Other properties already match
+      };
+      
       const fileName = `invoice-${invoice.invoiceNumber}.pdf`;
-      generateInvoicePDF(invoice, invoice.customer, fileName);
+      generateInvoicePDF(normalizedInvoice, invoice.customer, fileName);
+    } catch (error) {
+      console.error('Error preparing invoice data for PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     }
   };
 
