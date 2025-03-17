@@ -28,7 +28,7 @@ export default function LoginForm({ userType }: LoginFormProps) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // For demo purposes, hardcode some credentials
-      if (userType === 'admin' && email === 'admin@example.com' && password === 'admin123') {
+      if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
         // Redirect to admin dashboard
         router.push('/admin/dashboard');
       } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
