@@ -1,0 +1,4 @@
+DATABASE_URL=postgresql://postgres:AVFXPqIutJWcjSvPoLHpMKSrTdpFPwii@${RAILWAY_PRIVATE_DOMAIN}:5432/railway
+NEXTAUTH_SECRET=c2VjdXJlcmFuZG9tc3RyaW5nZm9ybmV4dGF1dGhzZWNyZXRrZXk=
+NEXTAUTH_URL=https://pims-production.up.railway.app
+NODE_ENV=production 
