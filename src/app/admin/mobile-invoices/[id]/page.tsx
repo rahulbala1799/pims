@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { generateInvoicePDF } from '@/components/InvoicePDF';
 
 interface Customer {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
 }
 
 interface InvoiceItem {
@@ -24,7 +26,6 @@ interface InvoiceItem {
 interface Invoice {
   id: string;
   invoiceNumber: string;
-  customerId: string;
   customer: Customer;
   issueDate: string;
   dueDate: string;
@@ -38,7 +39,7 @@ interface Invoice {
   createdAt: string;
 }
 
-export default function InvoiceDetailPage() {
+export default function MobileInvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -102,6 +103,8 @@ export default function InvoiceDetailPage() {
         return 'bg-yellow-100 text-yellow-800';
       case 'OVERDUE':
         return 'bg-red-100 text-red-800';
+      case 'CANCELLED':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -116,6 +119,35 @@ export default function InvoiceDetailPage() {
   const formatNumber = (value: any, decimals = 2) => {
     const num = typeof value === 'number' ? value : Number(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete invoice: ${response.statusText}`);
+      }
+      
+      router.push('/admin/mobile-invoices');
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    }
+  };
+
+  // Handle PDF generation
+  const handleDownloadPDF = () => {
+    if (invoice) {
+      const fileName = `invoice-${invoice.invoiceNumber}.pdf`;
+      generateInvoicePDF(invoice, invoice.customer, fileName);
+    }
   };
 
   if (loading) {
@@ -201,6 +233,9 @@ export default function InvoiceDetailPage() {
             <div className="bg-white border border-gray-200 rounded-md p-4">
               <div className="font-medium">{invoice.customer?.name || 'Unknown customer'}</div>
               <div className="text-sm text-gray-500">{invoice.customer?.email || ''}</div>
+              {invoice.customer?.phone && (
+                <div className="text-sm text-gray-500">{invoice.customer?.phone}</div>
+              )}
             </div>
           </div>
 
@@ -265,19 +300,20 @@ export default function InvoiceDetailPage() {
       </div>
 
       {/* Fixed bottom actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between">
-        <Link 
-          href="/admin/mobile-invoices"
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-        >
-          Back
-        </Link>
-        
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex justify-between space-x-2">
         <button
-          onClick={() => router.push(`/admin/mobile-invoices/${invoice.id}/edit`)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          type="button"
+          onClick={handleDeleteInvoice}
+          className="w-1/2 inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-gray-50"
         >
-          Edit
+          Delete
+        </button>
+        <button
+          type="button"
+          onClick={handleDownloadPDF}
+          className="w-1/2 inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+        >
+          Download PDF
         </button>
       </div>
     </div>
