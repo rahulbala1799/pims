@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String
+  email          String           @unique
+  password       String
+  role           Role             @default(EMPLOYEE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  jobs           Job[]            @relation("AssignedTo")
+  createdJobs    Job[]            @relation("CreatedBy")
+  progressUpdates ProgressUpdate[]
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  jobs      Job[]
+}
+
+model Job {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  status          JobStatus        @default(PENDING)
+  priority        JobPriority      @default(MEDIUM)
+  customerId      String
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  createdById     String
+  createdBy       User             @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId    String?
+  assignedTo      User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
+  dueDate         DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  progressUpdates ProgressUpdate[]
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum JobPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model ProgressUpdate {
+  id        String   @id @default(cuid())
+  content   String
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
