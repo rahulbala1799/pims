@@ -30,11 +30,16 @@ export default function AdminDashboard() {
         const productResponse = await fetch('/api/products');
         const products = await productResponse.json();
         
+        // Fetch customer count
+        const customerResponse = await fetch('/api/customers');
+        const customers = await customerResponse.json();
+        
         // In a real app, you would fetch other stats too
-        // For now, we'll update just the products count
+        // For now, we'll update the products and customers count
         setStats(prev => ({
           ...prev,
-          products: products.length
+          products: products.length,
+          customers: customers.length
         }));
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
@@ -106,7 +111,7 @@ export default function AdminDashboard() {
                   title="Customers" 
                   count={stats.customers.toString()} 
                   description="Manage customer accounts and orders"
-                  link="#"
+                  link="/admin/customers"
                   icon={<CustomerIcon />}
                 />
               </div>
