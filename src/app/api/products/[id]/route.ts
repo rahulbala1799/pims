@@ -122,6 +122,9 @@ export async function PUT(
         // Class-specific fields
         packagingType: data.packagingType,
         printResolution: data.printResolution,
+        defaultLength: data.defaultLength,
+        defaultWidth: data.defaultWidth,
+        costPerSqMeter: data.costPerSqMeter,
         paperWeight: data.paperWeight,
         foldType: data.foldType,
         bindingType: data.bindingType,

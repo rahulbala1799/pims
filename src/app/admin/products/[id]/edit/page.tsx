@@ -38,6 +38,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     // Class-specific fields
     packagingType: '',
     printResolution: '',
+    defaultLength: '',
+    defaultWidth: '',
+    costPerSqMeter: '',
     paperWeight: '',
     foldType: '',
     bindingType: '',
@@ -78,6 +81,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           // Class-specific fields
           packagingType: product.packagingType || '',
           printResolution: product.printResolution || '',
+          defaultLength: product.defaultLength ? product.defaultLength.toString() : '',
+          defaultWidth: product.defaultWidth ? product.defaultWidth.toString() : '',
+          costPerSqMeter: product.costPerSqMeter ? product.costPerSqMeter.toString() : '',
           paperWeight: product.paperWeight ? product.paperWeight.toString() : '',
           foldType: product.foldType || '',
           bindingType: product.bindingType || '',
@@ -126,6 +132,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         leadTime: formData.leadTime ? parseInt(formData.leadTime) : null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
         paperWeight: formData.paperWeight ? parseInt(formData.paperWeight) : null,
+        defaultLength: formData.defaultLength ? parseFloat(formData.defaultLength) : null,
+        defaultWidth: formData.defaultWidth ? parseFloat(formData.defaultWidth) : null,
+        costPerSqMeter: formData.costPerSqMeter ? parseFloat(formData.costPerSqMeter) : null,
         finishOptions: formData.finishOptions ? formData.finishOptions.split(',').map(item => item.trim()) : [],
       };
       
@@ -182,20 +191,70 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         return (
           <div className="mt-6 border-t border-gray-200 pt-6">
             <h3 className="text-lg font-medium text-gray-900">Wide Format Details</h3>
-            <div className="mt-4">
-              <label htmlFor="printResolution" className="block text-sm font-medium text-gray-700">
-                Print Resolution
-              </label>
-              <input
-                type="text"
-                name="printResolution"
-                id="printResolution"
-                value={formData.printResolution}
-                onChange={handleChange}
-                placeholder="e.g., 720dpi, 1440dpi"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-              <p className="mt-1 text-sm text-gray-500">Specify the print resolution (e.g., 720dpi, 1440dpi)</p>
+            <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="printResolution" className="block text-sm font-medium text-gray-700">
+                  Print Resolution
+                </label>
+                <input
+                  type="text"
+                  name="printResolution"
+                  id="printResolution"
+                  value={formData.printResolution}
+                  onChange={handleChange}
+                  placeholder="e.g., 720dpi, 1440dpi"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-sm text-gray-500">Specify the print resolution</p>
+              </div>
+              <div>
+                <label htmlFor="costPerSqMeter" className="block text-sm font-medium text-gray-700">
+                  Cost Per Sq Meter (£)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="costPerSqMeter"
+                  id="costPerSqMeter"
+                  value={formData.costPerSqMeter}
+                  onChange={handleChange}
+                  placeholder="e.g., 12.50"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-sm text-gray-500">Base cost per square meter</p>
+              </div>
+              <div>
+                <label htmlFor="defaultLength" className="block text-sm font-medium text-gray-700">
+                  Default Length (meters)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="defaultLength"
+                  id="defaultLength"
+                  value={formData.defaultLength}
+                  onChange={handleChange}
+                  placeholder="e.g., 2.5"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-sm text-gray-500">Standard length in meters</p>
+              </div>
+              <div>
+                <label htmlFor="defaultWidth" className="block text-sm font-medium text-gray-700">
+                  Default Width (meters)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="defaultWidth"
+                  id="defaultWidth"
+                  value={formData.defaultWidth}
+                  onChange={handleChange}
+                  placeholder="e.g., 1.5"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-sm text-gray-500">Standard width in meters</p>
+              </div>
             </div>
           </div>
         );

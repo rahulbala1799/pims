@@ -127,6 +127,9 @@ model Product {
   
   // Wide Format specific
   printResolution   String?       // e.g., "720dpi", "1440dpi"
+  defaultLength     Float?        // in meters
+  defaultWidth      Float?        // in meters
+  costPerSqMeter    Decimal?      @db.Decimal(10, 2)
   
   // Leaflets specific
   paperWeight       Int?          // in gsm

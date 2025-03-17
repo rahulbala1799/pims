@@ -34,6 +34,9 @@ interface Product {
   // Class-specific fields
   packagingType: string | null;
   printResolution: string | null;
+  defaultLength: number | null;
+  defaultWidth: number | null;
+  costPerSqMeter: number | null;
   paperWeight: number | null;
   foldType: string | null;
   bindingType: string | null;
@@ -252,7 +255,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                   <div className="flex flex-wrap gap-2">
                     {product.finishOptions.map((option, index) => (
-                      <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {option}
                       </span>
                     ))}
@@ -262,30 +265,63 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             )}
             
             {/* Class-specific fields */}
+            {/* Packaging specific */}
             {product.productClass === 'PACKAGING' && product.packagingType && (
               <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Packaging Type</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.packagingType}</dd>
               </div>
             )}
-            {product.productClass === 'WIDE_FORMAT' && product.printResolution && (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Print Resolution</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.printResolution}</dd>
-              </div>
+            
+            {/* Wide Format specific */}
+            {product.productClass === 'WIDE_FORMAT' && (
+              <>
+                {product.printResolution && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Print Resolution</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.printResolution}</dd>
+                  </div>
+                )}
+                {product.defaultLength && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Default Length</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.defaultLength} meters</dd>
+                  </div>
+                )}
+                {product.defaultWidth && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Default Width</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.defaultWidth} meters</dd>
+                  </div>
+                )}
+                {product.costPerSqMeter && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Cost Per Square Meter</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatCurrency(product.costPerSqMeter)}</dd>
+                  </div>
+                )}
+              </>
             )}
-            {product.productClass === 'LEAFLETS' && product.paperWeight && (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Paper Weight</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.paperWeight} gsm</dd>
-              </div>
+            
+            {/* Leaflets specific */}
+            {product.productClass === 'LEAFLETS' && (
+              <>
+                {product.paperWeight && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Paper Weight</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.paperWeight} gsm</dd>
+                  </div>
+                )}
+                {product.foldType && (
+                  <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Fold Type</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.foldType}</dd>
+                  </div>
+                )}
+              </>
             )}
-            {product.productClass === 'LEAFLETS' && product.foldType && (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Fold Type</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{product.foldType}</dd>
-              </div>
-            )}
+            
+            {/* Finished specific */}
             {product.productClass === 'FINISHED' && product.bindingType && (
               <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Binding Type</dt>

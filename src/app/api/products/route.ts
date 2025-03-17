@@ -99,6 +99,11 @@ export async function POST(request: Request) {
         paperWeight: data.paperWeight,
         foldType: data.foldType,
         bindingType: data.bindingType,
+        
+        // Wide Format specific fields
+        defaultLength: data.defaultLength,
+        defaultWidth: data.defaultWidth,
+        costPerSqMeter: data.costPerSqMeter,
       },
       include: {
         createdBy: {

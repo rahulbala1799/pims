@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -40,7 +40,33 @@ export default function NewProductPage() {
     paperWeight: '',
     foldType: '',
     bindingType: '',
+    defaultLength: '',
+    defaultWidth: '',
+    costPerSqMeter: '',
   });
+  
+  // Auto-calculate base price for Wide Format products
+  useEffect(() => {
+    if (selectedClass === 'WIDE_FORMAT' && 
+        formData.defaultLength && 
+        formData.defaultWidth && 
+        formData.costPerSqMeter) {
+      
+      const length = parseFloat(formData.defaultLength);
+      const width = parseFloat(formData.defaultWidth);
+      const costPerSqMeter = parseFloat(formData.costPerSqMeter);
+      
+      if (length > 0 && width > 0 && costPerSqMeter > 0) {
+        const area = length * width;
+        const calculatedPrice = (area * costPerSqMeter).toFixed(2);
+        
+        setFormData(prev => ({
+          ...prev,
+          basePrice: calculatedPrice
+        }));
+      }
+    }
+  }, [selectedClass, formData.defaultLength, formData.defaultWidth, formData.costPerSqMeter]);
   
   // Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -133,20 +159,104 @@ export default function NewProductPage() {
         return (
           <div className="mt-6 border-t border-gray-200 pt-6">
             <h3 className="text-lg font-medium text-gray-900">Wide Format Details</h3>
-            <div className="mt-4">
-              <label htmlFor="printResolution" className="block text-sm font-medium text-gray-700">
-                Print Resolution
-              </label>
-              <input
-                type="text"
-                name="printResolution"
-                id="printResolution"
-                value={formData.printResolution}
-                onChange={handleChange}
-                placeholder="e.g., 720dpi, 1440dpi"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              />
-              <p className="mt-1 text-sm text-gray-500">Specify the print resolution (e.g., 720dpi, 1440dpi)</p>
+            <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="printResolution" className="block text-sm font-medium text-gray-700">
+                  Print Resolution
+                </label>
+                <input
+                  type="text"
+                  name="printResolution"
+                  id="printResolution"
+                  value={formData.printResolution}
+                  onChange={handleChange}
+                  placeholder="e.g., 720dpi, 1440dpi"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="material" className="block text-sm font-medium text-gray-700">
+                  Material
+                </label>
+                <input
+                  type="text"
+                  name="material"
+                  id="material"
+                  value={formData.material}
+                  onChange={handleChange}
+                  placeholder="e.g., Vinyl, Banner, Canvas"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="defaultLength" className="block text-sm font-medium text-gray-700">
+                  Default Length (m)
+                </label>
+                <input
+                  type="number"
+                  name="defaultLength"
+                  id="defaultLength"
+                  value={formData.defaultLength || ''}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g., 1.0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="defaultWidth" className="block text-sm font-medium text-gray-700">
+                  Default Width (m)
+                </label>
+                <input
+                  type="number"
+                  name="defaultWidth"
+                  id="defaultWidth"
+                  value={formData.defaultWidth || ''}
+                  onChange={handleChange}
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g., 1.0"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="costPerSqMeter" className="block text-sm font-medium text-gray-700">
+                  Cost Per Sq Meter (£)
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">£</span>
+                  </div>
+                  <input
+                    type="number"
+                    name="costPerSqMeter"
+                    id="costPerSqMeter"
+                    value={formData.costPerSqMeter || ''}
+                    onChange={handleChange}
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  />
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  This will be used for job costing calculations
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="block text-sm font-medium text-gray-700">
+                  Total Area
+                </p>
+                <div className="mt-1 text-sm text-gray-900">
+                  {formData.defaultLength && formData.defaultWidth ? 
+                    `${(parseFloat(formData.defaultLength) * parseFloat(formData.defaultWidth)).toFixed(2)} sq.m` : 
+                    "Enter length and width to calculate area"}
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  Base price = Cost per sq meter × Area
+                </p>
+              </div>
             </div>
           </div>
         );
