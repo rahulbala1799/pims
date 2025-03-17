@@ -156,6 +156,9 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
     return `£${amount.toFixed(2)}`;
   };
 
+  // Ensure we have items to map over (handle both items and invoiceItems properties)
+  const invoiceItems = invoice.items || invoice.invoiceItems || [];
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -218,7 +221,7 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
           </View>
 
           {/* Table Rows */}
-          {invoice.items.map((item: any, index: number) => (
+          {invoiceItems.map((item: any, index: number) => (
             <View key={index} style={styles.tableRow}>
               <View style={[styles.tableCol, styles.colDescription]}>
                 <Text style={styles.tableCell}>{item.description}</Text>
@@ -369,11 +372,14 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     `Status: ${invoice.status}`
   ], 195, 60, { align: 'right' });
   
+  // Ensure we have items to map over (handle both items and invoiceItems properties)
+  const invoiceItems = invoice.items || invoice.invoiceItems || [];
+  
   // Add invoice items table
   (doc as any).autoTable({
     startY: 85,
     head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
-    body: invoice.items.map((item: any) => [
+    body: invoiceItems.map((item: any) => [
       item.description,
       item.quantity,
       item.length && item.width

@@ -60,12 +60,14 @@ export default function AdminHeader() {
             >
               Mobile Invoices
             </Link>
+            {/* Temporarily commenting out Reports link until the page is created
             <Link 
               href="/admin/reports" 
               className={`hover:text-indigo-600 ${isActive('/admin/reports')}`}
             >
               Reports
             </Link>
+            */}
           </nav>
           
           {/* User menu (desktop) */}
@@ -148,12 +150,14 @@ export default function AdminHeader() {
             >
               Mobile Invoices
             </Link>
+            {/* Temporarily commenting out Reports link until the page is created
             <Link
               href="/admin/reports"
               className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/reports')} hover:bg-gray-100`}
             >
               Reports
             </Link>
+            */}
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-5">
