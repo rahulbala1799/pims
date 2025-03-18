@@ -1,13 +1,26 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface JobProductProgress {
+  id: string;
+  completedQuantity: number;
+  quantity: number;
+  timeTaken?: number;
+  inkCostPerUnit?: number;
+  inkUsageInMl?: number;
+}
+
+interface ProgressUpdateRequest {
+  jobProducts: JobProductProgress[];
+}
+
 // POST /api/jobs/:id/progress - Update job progress and costs
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const data = await request.json();
+    const data = await request.json() as ProgressUpdateRequest;
     
     if (!data.jobProducts || !Array.isArray(data.jobProducts)) {
       return NextResponse.json(
@@ -26,7 +39,6 @@ export async function POST(
         customer: true,
         assignedTo: true,
         createdBy: true,
-        invoice: true,
       },
     });
 
@@ -38,7 +50,7 @@ export async function POST(
     }
 
     // Update job status if all products are completed
-    const allCompleted = data.jobProducts.every((product: any) => 
+    const allCompleted = data.jobProducts.every((product) => 
       product.completedQuantity === product.quantity
     );
 
@@ -54,49 +66,23 @@ export async function POST(
       });
     }
 
-    // Update the original products first
-    const updatePromises = data.jobProducts.map(async (product: any) => {
-      return prisma.jobProduct.update({
-        where: { id: product.id },
-        data: {
-          quantity: parseInt(product.quantity.toString(), 10),
-          totalPrice: parseFloat(product.totalPrice.toString()),
-          completedQuantity: parseInt(product.completedQuantity?.toString() || '0', 10),
-          inkCostPerUnit: product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : null,
-          inkUsageInMl: product.inkUsageInMl ? parseFloat(product.inkUsageInMl.toString()) : null,
-          timeTaken: product.timeTaken ? parseInt(product.timeTaken.toString(), 10) : null
-        }
-      });
+    // Update the original products first using raw queries
+    const updatePromises = data.jobProducts.map(async (product) => {
+      return prisma.$executeRaw`
+        UPDATE "JobProduct" 
+        SET 
+          "quantity" = ${parseInt(product.quantity.toString(), 10)},
+          "completedQuantity" = ${parseInt(product.completedQuantity?.toString() || '0', 10)},
+          "inkCostPerUnit" = ${product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : null},
+          "inkUsageInMl" = ${product.inkUsageInMl ? parseFloat(product.inkUsageInMl.toString()) : null},
+          "timeTaken" = ${product.timeTaken ? parseInt(product.timeTaken.toString(), 10) : null},
+          "updatedAt" = ${new Date()}
+        WHERE "id" = ${product.id}
+      `;
     });
     
     // Execute all updates in parallel
-    const updatedProducts = await Promise.all(updatePromises);
-    
-    // Handle creating new job products for split tasks
-    let newJobProducts = [];
-    if (data.remainingJobProducts && data.remainingJobProducts.length > 0) {
-      const newProductsPromises = data.remainingJobProducts.map(async (product: any) => {
-        return prisma.jobProduct.create({
-          data: {
-            jobId: params.id,
-            productId: product.productId,
-            quantity: parseInt(product.quantity.toString(), 10),
-            unitPrice: parseFloat(product.unitPrice.toString()),
-            totalPrice: parseFloat(product.totalPrice.toString()),
-            notes: product.notes || null,
-            completedQuantity: 0,
-            inkCostPerUnit: null,
-            inkUsageInMl: null,
-            timeTaken: null
-          },
-          include: {
-            product: true
-          }
-        });
-      });
-      
-      newJobProducts = await Promise.all(newProductsPromises);
-    }
+    await Promise.all(updatePromises);
     
     // Fetch the updated job with all products
     const updatedJob = await prisma.job.findUnique({
@@ -112,7 +98,6 @@ export async function POST(
         customer: true,
         assignedTo: true,
         createdBy: true,
-        invoice: true,
       },
     });
     

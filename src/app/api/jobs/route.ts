@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+interface JobQuery {
+  invoiceId?: string;
+}
+
 // GET /api/jobs - Get all jobs
 export async function GET(request: Request) {
   try {
@@ -9,14 +13,56 @@ export async function GET(request: Request) {
     const invoiceId = url.searchParams.get('invoiceId');
     
     // Build where clause based on filters
-    const whereClause: any = {};
+    let whereClause = {};
+    
+    // If invoiceId is provided, use raw query to handle optional relationship
     if (invoiceId) {
-      whereClause.invoiceId = invoiceId;
+      const jobs = await prisma.$queryRaw`
+        SELECT j.*, 
+          c.id as "customer_id", c.name as "customer_name",
+          u1.id as "createdBy_id", u1.name as "createdBy_name",
+          u2.id as "assignedTo_id", u2.name as "assignedTo_name"
+        FROM "Job" j
+        LEFT JOIN "Customer" c ON j."customerId" = c.id
+        LEFT JOIN "User" u1 ON j."createdById" = u1.id
+        LEFT JOIN "User" u2 ON j."assignedToId" = u2.id
+        WHERE j."invoiceId" = ${invoiceId}
+        ORDER BY j."createdAt" DESC
+      `;
+      
+      // Transform the raw results to match the structure expected by the frontend
+      const formattedJobs = (jobs as any[]).map(job => ({
+        id: job.id,
+        title: job.title,
+        description: job.description,
+        status: job.status,
+        priority: job.priority,
+        customerId: job.customerId,
+        createdById: job.createdById,
+        assignedToId: job.assignedToId,
+        dueDate: job.dueDate,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        invoiceId: job.invoiceId,
+        customer: job.customer_id ? {
+          id: job.customer_id,
+          name: job.customer_name
+        } : null,
+        createdBy: job.createdBy_id ? {
+          id: job.createdBy_id,
+          name: job.createdBy_name
+        } : null,
+        assignedTo: job.assignedTo_id ? {
+          id: job.assignedTo_id,
+          name: job.assignedTo_name
+        } : null
+      }));
+      
+      return NextResponse.json(formattedJobs);
     }
     
-    // Fetch jobs with relations
+    // Otherwise use normal Prisma query
     const jobs = await prisma.job.findMany({
-      where: whereClause,
       include: {
         customer: true,
         assignedTo: true,
@@ -91,8 +137,6 @@ export async function POST(request: Request) {
         customerId: data.customerId,
         assignedToId: data.assignedToId,
         createdById: createdById,
-        // Only include invoiceId if it's provided
-        ...(data.invoiceId ? { invoiceId: data.invoiceId } : {}),
       },
       include: {
         customer: true,
@@ -101,10 +145,17 @@ export async function POST(request: Request) {
       },
     });
     
+    // If invoiceId is provided, set it via raw query
+    if (data.invoiceId) {
+      await prisma.$executeRaw`
+        UPDATE "Job" SET "invoiceId" = ${data.invoiceId} WHERE id = ${job.id}
+      `;
+    }
+    
     console.log(`Job created: ${job.id}`);
     
     return NextResponse.json(job, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating job:', error);
     return NextResponse.json(
       { error: `Failed to create job: ${error instanceof Error ? error.message : 'Unknown error'}` },

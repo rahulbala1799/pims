@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, JobProduct, Invoice, InvoiceItem } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -13,16 +13,39 @@ interface InvoiceItemUpdate {
   length?: number;
   width?: number;
   area?: number;
-  productId?: string;
+  productId: string;
 }
 
 interface InvoiceUpdateRequest {
+  invoiceNumber?: string;
+  customerId?: string;
   issueDate?: string;
   dueDate?: string;
   status?: 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  subtotal?: number;
   taxRate?: number;
+  taxAmount?: number;
+  totalAmount?: number;
   notes?: string;
   invoiceItems?: InvoiceItemUpdate[];
+}
+
+// Extended types for job-related operations
+interface JobWithProducts {
+  id: string;
+  jobProducts: JobProduct[];
+  [key: string]: any; // Allow other Job properties
+}
+
+interface InvoiceWithItems extends Invoice {
+  invoiceItems: (InvoiceItem & {
+    product: {
+      id: string;
+      name: string;
+      sku: string;
+      productClass: string;
+    }
+  })[];
 }
 
 // GET /api/invoices/[id] - Get a specific invoice
@@ -104,7 +127,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const data = await request.json();
+    const data = await request.json() as InvoiceUpdateRequest;
 
     // Check if invoice exists
     const existingInvoice = await prisma.invoice.findUnique({
@@ -149,9 +172,9 @@ export async function PUT(
       const existingItemIds = existingInvoice.invoiceItems.map(item => item.id);
       
       // Find items to create, update, or delete
-      const itemsToUpdate = data.invoiceItems.filter(item => item.id && existingItemIds.includes(item.id));
-      const itemsToCreate = data.invoiceItems.filter(item => !item.id || !existingItemIds.includes(item.id));
-      const itemIdsToKeep = itemsToUpdate.map(item => item.id).filter(Boolean);
+      const itemsToUpdate = data.invoiceItems.filter((item: InvoiceItemUpdate) => item.id && existingItemIds.includes(item.id));
+      const itemsToCreate = data.invoiceItems.filter((item: InvoiceItemUpdate) => !item.id || !existingItemIds.includes(item.id));
+      const itemIdsToKeep = itemsToUpdate.map((item: InvoiceItemUpdate) => item.id).filter(Boolean);
       const itemIdsToDelete = existingItemIds.filter(id => !itemIdsToKeep.includes(id));
       
       // Delete invoice items that were removed
@@ -201,17 +224,23 @@ export async function PUT(
     }
     
     // Check if there's a job associated with this invoice and update it
-    const relatedJob = await prisma.job.findFirst({
-      where: {
-        invoiceId: params.id
-      },
-      include: {
-        jobProducts: true
-      }
-    });
+    const relatedJob = await prisma.$queryRaw`
+      SELECT * FROM "Job" WHERE "invoiceId" = ${params.id}
+    ` as any[];
     
-    if (relatedJob) {
-      console.log(`Updating job ${relatedJob.id} related to invoice ${params.id}`);
+    if (relatedJob && relatedJob.length > 0) {
+      const job = relatedJob[0];
+      console.log(`Updating job ${job.id} related to invoice ${params.id}`);
+      
+      // Get job products
+      const jobProducts = await prisma.jobProduct.findMany({
+        where: {
+          jobId: job.id
+        },
+        include: {
+          product: true
+        }
+      });
       
       // Get updated invoice with items
       const updatedInvoiceWithItems = await prisma.invoice.findUnique({
@@ -223,15 +252,13 @@ export async function PUT(
             }
           }
         }
-      });
+      }) as InvoiceWithItems;
       
       if (updatedInvoiceWithItems) {
-        // Get existing job product IDs
-        const existingJobProductIds = relatedJob.jobProducts.map(product => product.id);
-        const existingProductMap = new Map();
-        
         // Create a map of product ID to job product
-        relatedJob.jobProducts.forEach(jobProduct => {
+        const existingProductMap = new Map<string, typeof jobProducts[0]>();
+        
+        jobProducts.forEach(jobProduct => {
           existingProductMap.set(jobProduct.productId, jobProduct);
         });
         
@@ -253,23 +280,27 @@ export async function PUT(
             });
           } else {
             // Create new job product
-            await prisma.jobProduct.create({
-              data: {
-                jobId: relatedJob.id,
-                productId: invoiceItem.productId,
-                quantity: invoiceItem.quantity,
-                unitPrice: parseFloat(invoiceItem.unitPrice.toString()),
-                totalPrice: parseFloat(invoiceItem.totalPrice.toString()),
-                notes: invoiceItem.description,
-                completedQuantity: 0
-              }
-            });
+            await prisma.$executeRaw`
+              INSERT INTO "JobProduct" ("id", "jobId", "productId", "quantity", "unitPrice", "totalPrice", "notes", "completedQuantity", "createdAt", "updatedAt")
+              VALUES (
+                ${`jp-${Math.random().toString(36).substring(2, 15)}`},
+                ${job.id},
+                ${invoiceItem.productId},
+                ${invoiceItem.quantity},
+                ${parseFloat(invoiceItem.unitPrice.toString())},
+                ${parseFloat(invoiceItem.totalPrice.toString())},
+                ${invoiceItem.description},
+                ${0},
+                ${new Date()},
+                ${new Date()}
+              )
+            `;
           }
         }
         
         // Remove job products that no longer exist in the invoice
         const currentProductIds = updatedInvoiceWithItems.invoiceItems.map(item => item.productId);
-        const jobProductsToDelete = relatedJob.jobProducts
+        const jobProductsToDelete = jobProducts
           .filter(jobProduct => !currentProductIds.includes(jobProduct.productId));
         
         for (const jobProduct of jobProductsToDelete) {
