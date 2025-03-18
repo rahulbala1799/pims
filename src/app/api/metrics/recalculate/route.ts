@@ -1,37 +1,17 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { Decimal } from 'decimal.js';
 
-// GET /api/metrics/jobs - Get job metrics data
-export async function GET(request: Request) {
+// POST /api/metrics/recalculate - Force recalculation of all job metrics
+export async function POST() {
   try {
-    // Check if we should force recalculation
-    const url = new URL(request.url);
-    const forceRecalculate = url.searchParams.get('force') === 'true';
+    // Step 1: Delete all existing job metrics
+    await prisma.$executeRaw`TRUNCATE TABLE "JobMetrics" RESTART IDENTITY CASCADE;`;
     
-    // First check if we have any job metrics already and we're not forcing recalculation
-    if (!forceRecalculate) {
-      const existingMetrics = await prisma.jobMetrics.findMany({
-        include: {
-          job: {
-            include: {
-              customer: true
-            }
-          }
-        }
-      });
-  
-      if (existingMetrics.length > 0) {
-        // Return existing metrics
-        return NextResponse.json(existingMetrics);
-      }
-    }
-
-    // If no metrics exist or we're forcing recalculation, fetch jobs with invoices and products
+    // Step 2: Fetch all jobs with invoices and products
     const jobs = await prisma.job.findMany({
       where: {
         NOT: {
-          invoiceId: null
+          invoice: null
         },
         jobProducts: {
           some: {}
@@ -57,10 +37,13 @@ export async function GET(request: Request) {
     });
 
     if (jobs.length === 0) {
-      return NextResponse.json([]);
+      return NextResponse.json({ 
+        success: true, 
+        message: "No jobs with invoices found to recalculate metrics" 
+      });
     }
 
-    // Calculate metrics for each job
+    // Step 3: Calculate metrics for each job
     const metricsPromises = jobs.map(async job => {
       // Get the revenue from invoice subtotal
       const revenue = job.invoice?.subtotal || 0;
@@ -79,14 +62,14 @@ export async function GET(request: Request) {
             const quantity = item.quantity;
             
             materialCosts += costPerSqMeter * area * quantity;
-            console.log(`Wide format cost for ${job.title}: ${costPerSqMeter} * ${area} * ${quantity} = ${costPerSqMeter * area * quantity}`);
+            console.log(`Wide format cost: ${costPerSqMeter} * ${area} * ${quantity} = ${costPerSqMeter * area * quantity}`);
           } else {
             // For non-wide format, use the product's base price
             const baseCost = parseFloat(item.product.basePrice.toString());
             const quantity = item.quantity;
             
             materialCosts += baseCost * quantity;
-            console.log(`Standard cost for ${job.title}: ${baseCost} * ${quantity} = ${baseCost * quantity}`);
+            console.log(`Standard cost: ${baseCost} * ${quantity} = ${baseCost * quantity}`);
           }
         });
       } else {
@@ -123,23 +106,12 @@ export async function GET(request: Request) {
       const totalTime = job.jobProducts.reduce((total, product) => {
         return total + (product.timeTaken || 0);
       }, 0);
-      
+
       console.log(`Job ${job.title}: Revenue = ${revenue}, Material = ${materialCosts}, Ink = ${inkCosts}, Profit = ${grossProfit}, Margin = ${profitMargin}%`);
 
-      // Create or update metrics in the database
-      return prisma.jobMetrics.upsert({
-        where: { jobId: job.id },
-        update: {
-          revenue: revenue.toString(),
-          materialCost: materialCosts.toString(),
-          inkCost: inkCosts.toString(),
-          grossProfit: grossProfit.toString(),
-          profitMargin: profitMargin.toString(),
-          totalQuantity,
-          totalTime,
-          lastUpdated: new Date(),
-        },
-        create: {
+      // Create metrics in the database
+      return prisma.jobMetrics.create({
+        data: {
           jobId: job.id,
           revenue: revenue.toString(),
           materialCost: materialCosts.toString(),
@@ -149,24 +121,21 @@ export async function GET(request: Request) {
           totalQuantity,
           totalTime,
           lastUpdated: new Date(),
-        },
-        include: {
-          job: {
-            include: {
-              customer: true
-            }
-          }
         }
       });
     });
 
     const metrics = await Promise.all(metricsPromises);
-    return NextResponse.json(metrics);
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Successfully recalculated metrics for ${metrics.length} jobs` 
+    });
     
   } catch (error) {
-    console.error('Error fetching job metrics:', error);
+    console.error('Error recalculating job metrics:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch job metrics' },
+      { error: 'Failed to recalculate job metrics', details: error.message },
       { status: 500 }
     );
   }

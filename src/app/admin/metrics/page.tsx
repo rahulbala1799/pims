@@ -318,6 +318,65 @@ export default function MetricsPage() {
     setModalOpen(true);
   };
 
+  // Function to recalculate metrics
+  const recalculateMetrics = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch metrics with force parameter
+      const response = await fetch('/api/metrics/jobs?force=true');
+      
+      if (!response.ok) {
+        throw new Error('Failed to recalculate metrics');
+      }
+      
+      const data = await response.json();
+      setMetrics(data);
+      
+      // Calculate summary metrics
+      if (data.length > 0) {
+        const totals = data.reduce((acc: SummaryMetrics, metric: JobMetrics) => {
+          const revenue = new Decimal(metric.revenue || 0);
+          const materialCost = new Decimal(metric.materialCost || 0);
+          const inkCost = new Decimal(metric.inkCost || 0);
+          const profit = new Decimal(metric.grossProfit || 0);
+          const margin = new Decimal(metric.profitMargin || 0);
+          
+          return {
+            totalRevenue: acc.totalRevenue.plus(revenue),
+            totalMaterialCost: acc.totalMaterialCost.plus(materialCost),
+            totalInkCost: acc.totalInkCost.plus(inkCost),
+            totalProfit: acc.totalProfit.plus(profit),
+            totalMargin: acc.totalMargin.plus(margin),
+            jobCount: acc.jobCount + 1
+          };
+        }, {
+          totalRevenue: new Decimal(0),
+          totalMaterialCost: new Decimal(0),
+          totalInkCost: new Decimal(0),
+          totalProfit: new Decimal(0),
+          totalMargin: new Decimal(0),
+          jobCount: 0
+        });
+        
+        setSummaryMetrics({
+          totalRevenue: totals.totalRevenue,
+          totalMaterialCost: totals.totalMaterialCost,
+          totalInkCost: totals.totalInkCost,
+          totalProfit: totals.totalProfit,
+          averageMargin: totals.jobCount > 0 
+            ? totals.totalMargin.dividedBy(totals.jobCount) 
+            : new Decimal(0),
+          jobCount: totals.jobCount
+        });
+      }
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Error recalculating metrics:', err);
+      setError('Failed to recalculate metrics');
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -349,14 +408,22 @@ export default function MetricsPage() {
     <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Job Profitability Metrics</h1>
-        {metrics.length === 0 && (
+        <div className="flex space-x-4">
+          {metrics.length === 0 && (
+            <button
+              onClick={generateDemoData}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Generate Demo Data
+            </button>
+          )}
           <button
-            onClick={generateDemoData}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={recalculateMetrics}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            Generate Demo Data
+            Recalculate Metrics
           </button>
-        )}
+        </div>
       </div>
 
       {/* Summary Cards */}
