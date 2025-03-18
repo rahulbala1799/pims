@@ -268,6 +268,9 @@ export default function EditInvoicePage() {
         notes,
         issueDate,
         dueDate,
+        subtotal, // Include the calculated subtotal
+        taxAmount, // Include the calculated tax amount
+        totalAmount, // Include the calculated total amount
         invoiceItems: items.map(item => ({
           id: item.id,
           description: item.description,

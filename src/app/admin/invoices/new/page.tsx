@@ -345,7 +345,10 @@ export default function NewInvoicePage() {
         issueDate: formData.issueDate,
         dueDate: formData.dueDate,
         status: formData.status,
-        notes: formData.notes
+        notes: formData.notes,
+        subtotal, // Add subtotal
+        taxAmount, // Add taxAmount
+        totalAmount: total // Add total as totalAmount
       };
       
       console.log('Submitting invoice data:', invoiceData);

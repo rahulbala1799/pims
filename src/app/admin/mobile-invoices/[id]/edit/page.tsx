@@ -268,6 +268,9 @@ export default function EditMobileInvoicePage() {
         notes,
         issueDate,
         dueDate,
+        subtotal,
+        taxAmount,
+        totalAmount,
         invoiceItems: items.map(item => ({
           id: item.id,
           description: item.description,
