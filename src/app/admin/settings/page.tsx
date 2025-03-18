@@ -16,11 +16,14 @@ export default function SettingsPage() {
   useEffect(() => {
     // In a real app, you might fetch this from an API
     // For now, we'll just check if the logo file exists
-    const img = new Image();
-    img.src = '/images/logo.png?cache=' + new Date().getTime(); // Cache busting
-    img.onload = () => {
-      setLogo('/images/logo.png');
-    };
+    // Use the browser's Image constructor
+    if (typeof window !== 'undefined') {
+      const img = new window.Image();
+      img.src = '/images/logo.png?cache=' + new Date().getTime(); // Cache busting
+      img.onload = () => {
+        setLogo('/images/logo.png');
+      };
+    }
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
