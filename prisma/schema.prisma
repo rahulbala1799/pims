@@ -166,6 +166,7 @@ model JobProduct {
   completedQuantity Int @default(0)
   inkCostPerUnit  Decimal? @db.Decimal(10, 2)  // For packaging products
   inkUsageInMl    Float?   // For wide format products
+  timeTaken       Int?     // Time taken in minutes
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

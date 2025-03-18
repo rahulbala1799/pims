@@ -34,6 +34,8 @@ interface JobProduct {
   // For tracking costs
   inkCostPerUnit?: number; // For packaging products
   inkUsageInMl?: number; // For wide format printing
+  // For time tracking
+  timeTaken?: number; // Time taken in minutes
 }
 
 interface Invoice {
@@ -118,18 +120,61 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     setJobProducts(newJobProducts);
   };
 
+  const handleUpdateTimeTaken = (productIndex: number, timeTaken: number) => {
+    const newJobProducts = [...jobProducts];
+    newJobProducts[productIndex] = {
+      ...newJobProducts[productIndex],
+      timeTaken
+    };
+    setJobProducts(newJobProducts);
+  };
+
   const saveProgress = async () => {
     if (!job) return;
 
     setIsSaving(true);
     try {
+      // Filter out products that have partial completion and need to be split
+      const productsToSplit = jobProducts.filter(product => 
+        product.completedQuantity !== undefined && 
+        product.completedQuantity > 0 && 
+        product.completedQuantity < product.quantity
+      );
+      
+      // Create new job products for the remaining quantities
+      const remainingJobProducts = productsToSplit.map(product => ({
+        productId: product.productId,
+        quantity: product.quantity - (product.completedQuantity || 0),
+        unitPrice: product.unitPrice,
+        totalPrice: ((product.quantity - (product.completedQuantity || 0)) * product.unitPrice).toFixed(2),
+        product: product.product,
+        notes: `Remaining from task: ${product.notes || product.product.name}`
+      }));
+      
+      // Update the original product quantities to match the completed quantities
+      const updatedJobProducts = jobProducts.map(product => {
+        if (product.completedQuantity !== undefined && 
+            product.completedQuantity > 0 && 
+            product.completedQuantity < product.quantity) {
+          return {
+            ...product,
+            quantity: product.completedQuantity,
+            totalPrice: (product.completedQuantity * product.unitPrice).toFixed(2)
+          };
+        }
+        return product;
+      });
+      
       // Send the progress data to our API endpoint
       const response = await fetch(`/api/jobs/${job.id}/progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ jobProducts }),
+        body: JSON.stringify({ 
+          jobProducts: updatedJobProducts,
+          remainingJobProducts: remainingJobProducts.length > 0 ? remainingJobProducts : undefined
+        }),
       });
       
       if (!response.ok) {
@@ -138,6 +183,10 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
       
       // Get the updated data
       const data = await response.json();
+      
+      // Update local state with new data including split tasks
+      setJob(data.job);
+      setJobProducts(data.jobProducts);
       
       alert('Progress saved successfully!');
     } catch (err) {
@@ -289,6 +338,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Time Taken (mins)</th>
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ink Costs</th>
                   </tr>
                 </thead>
@@ -327,6 +377,17 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                           <span className="text-xs whitespace-nowrap">
                             {calculateProgressPercentage(product)}%
                           </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={product.timeTaken || 0}
+                            onChange={(e) => handleUpdateTimeTaken(index, parseInt(e.target.value, 10) || 0)}
+                            className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          />
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">

@@ -23,6 +23,10 @@ export async function POST(
       },
       include: {
         jobProducts: true,
+        customer: true,
+        assignedTo: true,
+        createdBy: true,
+        invoice: true,
       },
     });
 
@@ -50,14 +54,17 @@ export async function POST(
       });
     }
 
-    // Update the progress for each job product
+    // Update the original products first
     const updatePromises = data.jobProducts.map(async (product: any) => {
       return prisma.jobProduct.update({
         where: { id: product.id },
         data: {
-          completedQuantity: product.completedQuantity || 0,
-          inkCostPerUnit: product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit) : null,
-          inkUsageInMl: product.inkUsageInMl ? parseFloat(product.inkUsageInMl) : null
+          quantity: parseInt(product.quantity.toString(), 10),
+          totalPrice: parseFloat(product.totalPrice.toString()),
+          completedQuantity: parseInt(product.completedQuantity?.toString() || '0', 10),
+          inkCostPerUnit: product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : null,
+          inkUsageInMl: product.inkUsageInMl ? parseFloat(product.inkUsageInMl.toString()) : null,
+          timeTaken: product.timeTaken ? parseInt(product.timeTaken.toString(), 10) : null
         }
       });
     });
@@ -65,10 +72,55 @@ export async function POST(
     // Execute all updates in parallel
     const updatedProducts = await Promise.all(updatePromises);
     
+    // Handle creating new job products for split tasks
+    let newJobProducts = [];
+    if (data.remainingJobProducts && data.remainingJobProducts.length > 0) {
+      const newProductsPromises = data.remainingJobProducts.map(async (product: any) => {
+        return prisma.jobProduct.create({
+          data: {
+            jobId: params.id,
+            productId: product.productId,
+            quantity: parseInt(product.quantity.toString(), 10),
+            unitPrice: parseFloat(product.unitPrice.toString()),
+            totalPrice: parseFloat(product.totalPrice.toString()),
+            notes: product.notes || null,
+            completedQuantity: 0,
+            inkCostPerUnit: null,
+            inkUsageInMl: null,
+            timeTaken: null
+          },
+          include: {
+            product: true
+          }
+        });
+      });
+      
+      newJobProducts = await Promise.all(newProductsPromises);
+    }
+    
+    // Fetch the updated job with all products
+    const updatedJob = await prisma.job.findUnique({
+      where: {
+        id: params.id,
+      },
+      include: {
+        jobProducts: {
+          include: {
+            product: true
+          }
+        },
+        customer: true,
+        assignedTo: true,
+        createdBy: true,
+        invoice: true,
+      },
+    });
+    
     // Return the updated data
     return NextResponse.json({ 
       message: 'Progress updated successfully',
-      jobProducts: updatedProducts,
+      job: updatedJob,
+      jobProducts: updatedJob?.jobProducts || [],
     });
   } catch (error: any) {
     console.error('Error updating job progress:', error);
