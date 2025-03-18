@@ -174,6 +174,45 @@ export default function InvoicesPage() {
     }
   };
 
+  // Handle deleting an invoice
+  const handleDeleteInvoice = async (id: string, invoiceNumber: string) => {
+    if (!confirm(`Are you sure you want to cancel invoice #${invoiceNumber}? This action cannot be undone. Any associated jobs will be retained but their revenue will be set to 0.`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/invoices/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to cancel invoice: ${response.statusText}`);
+      }
+      
+      // Update local state to reflect the cancelled invoice
+      const updatedInvoices = invoices.map(invoice => 
+        invoice.id === id 
+          ? { ...invoice, status: 'CANCELLED' as 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED', totalAmount: 0, taxAmount: 0, subtotal: 0 }
+          : invoice
+      );
+      setInvoices(updatedInvoices);
+      
+      // Also update the filtered invoices
+      setFilteredInvoices(
+        filteredInvoices.map(invoice => 
+          invoice.id === id 
+            ? { ...invoice, status: 'CANCELLED' as 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED', totalAmount: 0, taxAmount: 0, subtotal: 0 }
+            : invoice
+        )
+      );
+      
+      alert('Invoice cancelled successfully');
+    } catch (err) {
+      console.error('Error cancelling invoice:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8">
       <div className="sm:flex sm:items-center">
@@ -421,10 +460,16 @@ export default function InvoicesPage() {
                       </Link>
                       <Link
                         href={`/admin/invoices/${invoice.id}/edit`}
-                        className="text-indigo-600 hover:text-indigo-900"
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
                       >
                         Edit
                       </Link>
+                      <button
+                        onClick={() => handleDeleteInvoice(invoice.id, invoice.invoiceNumber)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </td>
                 </tr>

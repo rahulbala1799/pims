@@ -1,5 +1,34 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { JobStatus, JobPriority, Job as PrismaJob, Invoice, InvoiceItem, Product, JobProduct } from '@prisma/client';
+
+// Define TypeScript types to avoid linter errors
+interface ProductWithDetails extends Product {
+  costPerSqMeter?: any;
+  defaultLength?: number;
+  defaultWidth?: number;
+  productClass: string;
+}
+
+interface InvoiceItemWithProduct extends InvoiceItem {
+  product: ProductWithDetails;
+  area?: any;
+}
+
+interface InvoiceWithItems extends Invoice {
+  invoiceItems: InvoiceItemWithProduct[];
+}
+
+interface JobProductWithDetails extends JobProduct {
+  product: ProductWithDetails;
+}
+
+interface JobWithRelations extends PrismaJob {
+  invoice?: InvoiceWithItems | null;
+  jobProducts: JobProductWithDetails[];
+  customer?: any;
+  title: string;
+}
 
 // POST /api/webhooks/metrics-update - Trigger metrics recalculation when source data changes
 export async function POST(request: Request) {
@@ -28,7 +57,7 @@ export async function POST(request: Request) {
             }
           }
         }
-      });
+      }) as unknown as JobWithRelations;
       
       if (!job) {
         return NextResponse.json({ 
@@ -37,16 +66,10 @@ export async function POST(request: Request) {
         }, { status: 404 });
       }
       
-      if (!job.invoice) {
-        return NextResponse.json({ 
-          success: false, 
-          message: `Job with ID ${jobId} has no invoice` 
-        }, { status: 400 });
-      }
-      
+      // No longer require job to have an invoice - we'll set revenue to 0 if no invoice
       // Calculate updated metrics for this job
-      // Get the revenue from invoice subtotal
-      const revenue = job.invoice?.subtotal || 0;
+      // Get the revenue from invoice subtotal or set to 0 if no invoice
+      const revenue = job.invoice ? parseFloat(job.invoice.subtotal.toString()) : 0;
 
       // Calculate material costs - handle wide format products differently
       let materialCosts = 0;
@@ -71,6 +94,24 @@ export async function POST(request: Request) {
             materialCosts += baseCost * quantity;
           }
         });
+      } else if (job.jobProducts) {
+        // If job has no invoice but has jobProducts, calculate material costs directly from jobProducts
+        for (const jobProduct of job.jobProducts) {
+          if (jobProduct.product.productClass === 'WIDE_FORMAT' && jobProduct.product.costPerSqMeter) {
+            // For wide format, use dimensions if available
+            const costPerSqMeter = parseFloat(jobProduct.product.costPerSqMeter.toString());
+            // Estimate area from default dimensions if actual area is not available
+            const defaultLength = jobProduct.product.defaultLength || 1;
+            const defaultWidth = jobProduct.product.defaultWidth || 1;
+            const estimatedArea = defaultLength * defaultWidth;
+            
+            materialCosts += costPerSqMeter * estimatedArea * jobProduct.quantity;
+          } else {
+            // For other products, use base price
+            const baseCost = parseFloat(jobProduct.product.basePrice.toString());
+            materialCosts += baseCost * jobProduct.quantity;
+          }
+        }
       }
 
       // Calculate ink costs from inkUsageInMl
@@ -82,11 +123,11 @@ export async function POST(request: Request) {
 
       // Calculate gross profit
       const totalCosts = materialCosts + inkCosts;
-      const grossProfit = parseFloat(revenue.toString()) - totalCosts;
+      const grossProfit = revenue - totalCosts;
 
       // Calculate profit margin as a percentage
-      const profitMargin = parseFloat(revenue.toString()) > 0 
-        ? (grossProfit / parseFloat(revenue.toString())) * 100 
+      const profitMargin = revenue > 0 
+        ? (grossProfit / revenue) * 100 
         : 0;
 
       // Calculate total quantity 
@@ -173,8 +214,8 @@ export async function POST(request: Request) {
 
     // Calculate metrics for each job
     const metricsPromises = jobs.map(async job => {
-      // Get the revenue from invoice subtotal
-      const revenue = job.invoice?.subtotal || 0;
+      // Get the revenue from invoice subtotal or set to 0 if no invoice
+      const revenue = job.invoice ? parseFloat(job.invoice.subtotal.toString()) : 0;
 
       // Calculate material costs - handle wide format products differently
       let materialCosts = 0;
@@ -198,6 +239,24 @@ export async function POST(request: Request) {
             materialCosts += baseCost * quantity;
           }
         });
+      } else if (job.jobProducts) {
+        // If job has no invoice but has jobProducts, calculate material costs directly from jobProducts
+        for (const jobProduct of job.jobProducts) {
+          if (jobProduct.product.productClass === 'WIDE_FORMAT' && jobProduct.product.costPerSqMeter) {
+            // For wide format, use dimensions if available
+            const costPerSqMeter = parseFloat(jobProduct.product.costPerSqMeter.toString());
+            // Estimate area from default dimensions if actual area is not available
+            const defaultLength = jobProduct.product.defaultLength || 1;
+            const defaultWidth = jobProduct.product.defaultWidth || 1;
+            const estimatedArea = defaultLength * defaultWidth;
+            
+            materialCosts += costPerSqMeter * estimatedArea * jobProduct.quantity;
+          } else {
+            // For other products, use base price
+            const baseCost = parseFloat(jobProduct.product.basePrice.toString());
+            materialCosts += baseCost * jobProduct.quantity;
+          }
+        }
       }
 
       // Calculate ink costs from inkUsageInMl
@@ -209,11 +268,11 @@ export async function POST(request: Request) {
 
       // Calculate gross profit
       const totalCosts = materialCosts + inkCosts;
-      const grossProfit = parseFloat(revenue.toString()) - totalCosts;
+      const grossProfit = revenue - totalCosts;
 
       // Calculate profit margin as a percentage
-      const profitMargin = parseFloat(revenue.toString()) > 0 
-        ? (grossProfit / parseFloat(revenue.toString())) * 100 
+      const profitMargin = revenue > 0 
+        ? (grossProfit / revenue) * 100 
         : 0;
 
       // Calculate total quantity 

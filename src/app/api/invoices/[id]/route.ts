@@ -367,28 +367,42 @@ export async function DELETE(
       );
     }
     
-    // Delete invoice items first (to avoid foreign key constraint issues)
-    await prisma.invoiceItem.deleteMany({
-      where: {
-        invoiceId,
-      },
-    });
+    // Check if there are any jobs associated with this invoice
+    const associatedJobs = await prisma.$queryRaw`
+      SELECT * FROM "Job" WHERE "invoiceId" = ${invoiceId}
+    ` as any[];
     
-    // Delete the invoice
-    await prisma.invoice.delete({
-      where: {
-        id: invoiceId,
-      },
+    // Update jobs to remove invoice association
+    if (associatedJobs && associatedJobs.length > 0) {
+      console.log(`Found ${associatedJobs.length} jobs associated with invoice ${invoiceId}`);
+      
+      // Update each job to remove invoice association
+      for (const job of associatedJobs) {
+        await prisma.$executeRaw`
+          UPDATE "Job" SET "invoiceId" = NULL WHERE id = ${job.id}
+        `;
+      }
+    }
+    
+    // Instead of deleting, mark the invoice as CANCELLED and set totalAmount to 0
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: 'CANCELLED',
+        totalAmount: 0,
+        taxAmount: 0,
+        subtotal: 0
+      }
     });
     
     return NextResponse.json(
-      { message: 'Invoice deleted successfully' },
+      { message: 'Invoice cancelled successfully' },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error deleting invoice:', error);
+    console.error('Error cancelling invoice:', error);
     return NextResponse.json(
-      { error: 'Failed to delete invoice' },
+      { error: 'Failed to cancel invoice' },
       { status: 500 }
     );
   } finally {
