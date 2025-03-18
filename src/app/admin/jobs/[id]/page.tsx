@@ -255,10 +255,29 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative pb-16 md:pb-6">
+      {/* Fixed save button for mobile */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 z-10">
+        <button
+          onClick={saveProgress}
+          disabled={isSaving}
+          className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          {isSaving ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </>
+          ) : 'Save Progress'}
+        </button>
+      </div>
+      
       {/* Basic Job Info Header */}
       <div className="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+        <div className="px-4 py-5 sm:px-6 flex flex-col sm:flex-row justify-between sm:items-center">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">{job.title}</h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -271,7 +290,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           <button
             onClick={saveProgress}
             disabled={isSaving}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="mt-4 sm:mt-0 w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             {isSaving ? (
               <>
@@ -330,100 +349,189 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
         
         <div className="border-t border-gray-200">
           {jobProducts.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Time Taken (mins)</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ink Costs</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {jobProducts.map((product, index) => (
-                    <tr key={product.id}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        <div>{product.product.name}</div>
-                        <div className="text-sm text-gray-500">SKU: {product.product.sku}</div>
-                        <div className="text-xs text-gray-500">Type: {product.product.productClass}</div>
-                        {product.notes && (
-                          <div className="text-sm text-gray-500 mt-1">{product.notes}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {product.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+            <>
+              {/* Desktop view - Table layout */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Time Taken (mins)</th>
+                      <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ink Costs</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {jobProducts.map((product, index) => (
+                      <tr key={product.id}>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          <div>{product.product.name}</div>
+                          <div className="text-sm text-gray-500">SKU: {product.product.sku}</div>
+                          <div className="text-xs text-gray-500">Type: {product.product.productClass}</div>
+                          {product.notes && (
+                            <div className="text-sm text-gray-500 mt-1">{product.notes}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {product.quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          <input
+                            type="number"
+                            min="0"
+                            max={product.quantity}
+                            value={product.completedQuantity || 0}
+                            onChange={(e) => handleUpdateProgress(index, parseInt(e.target.value, 10) || 0)}
+                            className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                              <div
+                                className="bg-indigo-600 h-2.5 rounded-full"
+                                style={{ width: `${calculateProgressPercentage(product)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs whitespace-nowrap">
+                              {calculateProgressPercentage(product)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={product.timeTaken || 0}
+                              onChange={(e) => handleUpdateTimeTaken(index, parseInt(e.target.value, 10) || 0)}
+                              className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {product.product.productClass === 'PACKAGING' && (
+                            <div className="flex items-center justify-end space-x-2">
+                              <label className="text-xs">Ink Cost/Unit ($):</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={product.inkCostPerUnit || 0}
+                                onChange={(e) => handleUpdateInkCost(index, parseFloat(e.target.value) || 0)}
+                                className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                              />
+                            </div>
+                          )}
+                          
+                          {product.product.productClass === 'WIDE_FORMAT' && (
+                            <div className="flex items-center justify-end space-x-2">
+                              <label className="text-xs">Ink Usage (ml):</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.1"
+                                value={product.inkUsageInMl || 0}
+                                onChange={(e) => handleUpdateInkUsage(index, parseFloat(e.target.value) || 0)}
+                                className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                              />
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            
+              {/* Mobile view - Card layout */}
+              <div className="md:hidden divide-y divide-gray-200">
+                {jobProducts.map((product, index) => (
+                  <div key={product.id} className="p-4 border-b border-gray-200 bg-white hover:bg-gray-50">
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-900">{product.product.name}</h4>
+                      <p className="text-sm text-gray-500">SKU: {product.product.sku}</p>
+                      <p className="text-xs text-gray-500">Type: {product.product.productClass}</p>
+                      {product.notes && <p className="text-sm text-gray-500 mt-1">{product.notes}</p>}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 mb-1">Total Quantity</p>
+                        <p className="font-medium">{product.quantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 mb-1">Completed</p>
                         <input
                           type="number"
                           min="0"
                           max={product.quantity}
                           value={product.completedQuantity || 0}
                           onChange={(e) => handleUpdateProgress(index, parseInt(e.target.value, 10) || 0)}
-                          className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          className="w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm border-gray-300 rounded-md"
                         />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center">
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                            <div
-                              className="bg-indigo-600 h-2.5 rounded-full"
-                              style={{ width: `${calculateProgressPercentage(product)}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-xs whitespace-nowrap">
-                            {calculateProgressPercentage(product)}%
-                          </span>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Progress</p>
+                      <div className="flex items-center">
+                        <div className="flex-grow bg-gray-200 rounded-full h-2.5 mr-2">
+                          <div
+                            className="bg-indigo-600 h-2.5 rounded-full"
+                            style={{ width: `${calculateProgressPercentage(product)}%` }}
+                          ></div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <input
-                            type="number"
-                            min="0"
-                            value={product.timeTaken || 0}
-                            onChange={(e) => handleUpdateTimeTaken(index, parseInt(e.target.value, 10) || 0)}
-                            className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {product.product.productClass === 'PACKAGING' && (
-                          <div className="flex items-center justify-end space-x-2">
-                            <label className="text-xs">Ink Cost/Unit ($):</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={product.inkCostPerUnit || 0}
-                              onChange={(e) => handleUpdateInkCost(index, parseFloat(e.target.value) || 0)}
-                              className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                        )}
-                        
-                        {product.product.productClass === 'WIDE_FORMAT' && (
-                          <div className="flex items-center justify-end space-x-2">
-                            <label className="text-xs">Ink Usage (ml):</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={product.inkUsageInMl || 0}
-                              onChange={(e) => handleUpdateInkUsage(index, parseFloat(e.target.value) || 0)}
-                              className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <span className="text-xs font-medium whitespace-nowrap">
+                          {calculateProgressPercentage(product)}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">Time Taken (mins)</p>
+                      <input
+                        type="number"
+                        min="0"
+                        value={product.timeTaken || 0}
+                        onChange={(e) => handleUpdateTimeTaken(index, parseInt(e.target.value, 10) || 0)}
+                        className="w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm border-gray-300 rounded-md"
+                      />
+                    </div>
+                    
+                    {product.product.productClass === 'PACKAGING' && (
+                      <div className="mb-2">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Ink Cost/Unit ($)</p>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={product.inkCostPerUnit || 0}
+                          onChange={(e) => handleUpdateInkCost(index, parseFloat(e.target.value) || 0)}
+                          className="w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+                    
+                    {product.product.productClass === 'WIDE_FORMAT' && (
+                      <div className="mb-2">
+                        <p className="text-xs font-medium text-gray-500 mb-1">Ink Usage (ml)</p>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={product.inkUsageInMl || 0}
+                          onChange={(e) => handleUpdateInkUsage(index, parseFloat(e.target.value) || 0)}
+                          className="w-full shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="py-6 text-center text-gray-500">
               No tasks found for this job.
@@ -451,11 +559,14 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                   }}
                 ></div>
               </div>
-              <div className="text-right text-sm text-gray-500">
-                {Math.round(
-                  jobProducts.reduce((acc, product) => acc + calculateProgressPercentage(product), 0) / 
-                  jobProducts.length
-                )}% Complete
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-500">Job Progress</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {Math.round(
+                    jobProducts.reduce((acc, product) => acc + calculateProgressPercentage(product), 0) / 
+                    jobProducts.length
+                  )}% Complete
+                </span>
               </div>
             </>
           ) : (
