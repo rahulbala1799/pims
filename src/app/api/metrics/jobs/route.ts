@@ -33,7 +33,15 @@ export async function GET() {
       },
       include: {
         customer: true,
-        invoice: true,
+        invoice: {
+          include: {
+            invoiceItems: {
+              include: {
+                product: true
+              }
+            }
+          }
+        },
         jobProducts: {
           include: {
             product: true
@@ -51,12 +59,36 @@ export async function GET() {
       // Get the revenue from invoice subtotal
       const revenue = job.invoice?.subtotal || 0;
 
-      // Calculate material costs from product base prices
-      const materialCosts = job.jobProducts.reduce((total, product) => {
-        const baseCost = product.product.basePrice || 0;
-        const quantity = product.quantity || 0;
-        return total + (baseCost * quantity);
-      }, 0);
+      // Calculate material costs - handle wide format products differently
+      let materialCosts = 0;
+      
+      if (job.invoice && job.invoice.invoiceItems) {
+        // Go through each invoice item to calculate material costs
+        job.invoice.invoiceItems.forEach(item => {
+          // If wide format product
+          if (item.product.productClass === 'WIDE_FORMAT' && item.area && item.product.costPerSqMeter) {
+            // Calculate cost based on area × cost per sq meter × quantity
+            const costPerSqMeter = parseFloat(item.product.costPerSqMeter.toString());
+            const area = item.area;
+            const quantity = item.quantity;
+            
+            materialCosts += costPerSqMeter * area * quantity;
+          } else {
+            // For non-wide format, use the product's base price
+            const baseCost = parseFloat(item.product.basePrice.toString());
+            const quantity = item.quantity;
+            
+            materialCosts += baseCost * quantity;
+          }
+        });
+      } else {
+        // Fallback if no invoice items - use job products
+        job.jobProducts.forEach(product => {
+          const baseCost = parseFloat(product.product.basePrice.toString());
+          const quantity = product.quantity;
+          materialCosts += baseCost * quantity;
+        });
+      }
 
       // Calculate ink costs from inkUsageInMl
       const inkCosts = job.jobProducts.reduce((total, product) => {
@@ -67,11 +99,11 @@ export async function GET() {
 
       // Calculate gross profit
       const totalCosts = materialCosts + inkCosts;
-      const grossProfit = revenue - totalCosts;
+      const grossProfit = parseFloat(revenue.toString()) - totalCosts;
 
       // Calculate profit margin as a percentage
-      const profitMargin = revenue > 0 
-        ? (grossProfit / revenue) * 100 
+      const profitMargin = parseFloat(revenue.toString()) > 0 
+        ? (grossProfit / parseFloat(revenue.toString())) * 100 
         : 0;
 
       // Calculate total quantity 
