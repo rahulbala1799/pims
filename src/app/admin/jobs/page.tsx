@@ -205,6 +205,31 @@ export default function JobsPage() {
     return due < today;
   };
 
+  const handleDeleteJob = async (jobId: string, jobTitle: string) => {
+    if (!confirm(`Are you sure you want to delete the job "${jobTitle}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete job');
+      }
+      
+      setJobs(jobs.filter(job => job.id !== jobId));
+      
+      calculateMetrics(jobs.filter(job => job.id !== jobId));
+      
+      alert('Job deleted successfully');
+    } catch (err) {
+      console.error('Error deleting job:', err);
+      alert('Failed to delete job. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -312,88 +337,92 @@ export default function JobsPage() {
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         {jobs.length > 0 ? (
-          <ul className="divide-y divide-gray-200">
-            {jobs.map((job) => (
-              <li key={job.id}>
-                <Link href={`/admin/jobs/${job.id}`} className="block hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <p className="text-sm font-medium text-indigo-600 truncate">{job.title}</p>
-                        <div className="flex-shrink-0">
-                          <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(job.status)}`}>
-                            {job.status.replace('_', ' ')}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(job.priority)}`}>
-                            {job.priority}
-                          </p>
-                        </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Job
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Progress
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Due Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Assigned To
+                </th>
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jobs.map((job) => (
+                <tr key={job.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link href={`/admin/jobs/${job.id}`} className="text-indigo-600 hover:text-indigo-900 font-medium">
+                      {job.title}
+                    </Link>
+                    {job.invoice && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        Invoice #{job.invoice.invoiceNumber}
+                      </span>
+                    )}
+                    <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(job.priority)}`}>
+                      {job.priority}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{job.customer.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                      {job.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                        <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${calculateProgress(job)}%` }}></div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {job.invoiceId && job.invoice && (
-                          <p className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                            INV: {job.invoice.invoiceNumber}
-                          </p>
-                        )}
-                        <p className={`text-xs ${isDueDateOverdue(job.dueDate) ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                          {isDueDateOverdue(job.dueDate) ? '⚠ Due: ' : 'Due: '}{formatDate(job.dueDate)}
-                        </p>
-                      </div>
+                      <span className="text-sm text-gray-500">{calculateProgress(job)}%</span>
                     </div>
-                    
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex space-x-6">
-                        <p className="flex items-center text-sm text-gray-500">
-                          <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          {job.customer?.name || 'N/A'}
-                        </p>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                          <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                          </svg>
-                          {job.assignedTo?.name || 'Unassigned'}
-                        </p>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                          <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                          </svg>
-                          {job.jobProducts?.length || 0} item{job.jobProducts?.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm sm:mt-0">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2.5">
-                              <div 
-                                className="bg-indigo-600 h-2.5 rounded-full" 
-                                style={{ width: `${calculateProgress(job)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs text-gray-500">{calculateProgress(job)}%</span>
-                          </div>
-                          <div className="flex items-center justify-end space-x-2">
-                            <svg className="flex-shrink-0 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-xs text-gray-500">{getEstimatedTime(job)}</span>
-                          </div>
-                        </div>
-                      </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className={`text-sm ${isDueDateOverdue(job.dueDate) && job.status !== 'COMPLETED' ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                      {formatDate(job.dueDate)}
                     </div>
-                    
-                    <div className="mt-2 text-xs text-gray-500">
-                      Created: {formatDate(job.createdAt)} by {job.createdBy?.name || 'Unknown'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{job.assignedTo ? job.assignedTo.name : 'Unassigned'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                    <div className="flex justify-center space-x-2">
+                      <Link 
+                        href={`/admin/jobs/${job.id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        View
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteJob(job.id, job.title)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

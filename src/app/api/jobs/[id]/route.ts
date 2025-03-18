@@ -150,7 +150,37 @@ export async function DELETE(
       );
     }
 
-    // Delete the job
+    // Delete related data first to avoid foreign key constraint issues
+    
+    // Delete job metrics if they exist
+    try {
+      // Using raw query to avoid TypeScript issues
+      await prisma.$executeRaw`DELETE FROM "JobMetrics" WHERE "jobId" = ${params.id}`;
+    } catch (err) {
+      console.warn('No job metrics found or could not delete job metrics:', err);
+      // Continue with deletion even if metrics deletion fails
+    }
+
+    // Delete job products
+    await prisma.jobProduct.deleteMany({
+      where: {
+        jobId: params.id,
+      },
+    });
+
+    // Delete progress updates if they exist
+    try {
+      await prisma.progressUpdate.deleteMany({
+        where: {
+          jobId: params.id,
+        },
+      });
+    } catch (err) {
+      console.warn('No progress updates found or could not delete progress updates:', err);
+      // Continue with deletion even if progress updates deletion fails
+    }
+
+    // Finally delete the job itself
     await prisma.job.delete({
       where: {
         id: params.id,
