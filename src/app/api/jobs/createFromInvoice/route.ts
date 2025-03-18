@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient, JobStatus, JobPriority } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { JobStatus, JobPriority } from '@prisma/client';
+import prisma from '@/lib/prisma';
 
 // POST /api/jobs/createFromInvoice - Create a new job from an invoice
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    
+    console.log('Creating job from invoice with data:', data);
     
     // Ensure invoice ID is provided
     if (!data.invoiceId) {
@@ -38,28 +39,46 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log('Found invoice:', invoice.id, invoice.invoiceNumber);
+
     try {
-      // Create the job using proper enum types
-      const jobData = {
-        title: data.title || `Job for Invoice #${invoice.invoiceNumber}`,
-        description: data.description || `Job created from Invoice #${invoice.invoiceNumber}`,
-        status: JobStatus.PENDING,
-        priority: (data.priority as JobPriority) || JobPriority.MEDIUM,
-        customerId: invoice.customerId,
-        createdById: data.createdById || 'user-01',
-        assignedToId: data.assignedToId,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        invoiceId: invoice.id
-      };
-      
+      // Create the job with minimal fields first
       const job = await prisma.job.create({
-        data: jobData
+        data: {
+          title: data.title || `Job for Invoice #${invoice.invoiceNumber}`,
+          description: data.description || `Job created from Invoice #${invoice.invoiceNumber}`,
+          status: JobStatus.PENDING,
+          priority: JobPriority.MEDIUM,
+          customerId: invoice.customerId,
+          createdById: data.createdById || 'user-01',
+        }
       });
+      
+      console.log('Created job:', job.id);
+
+      // Update with any remaining fields
+      if (data.assignedToId) {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { assignedToId: data.assignedToId }
+        });
+      }
+      
+      if (data.dueDate) {
+        await prisma.job.update({
+          where: { id: job.id },
+          data: { dueDate: new Date(data.dueDate) }
+        });
+      }
+
+      // Link job to invoice using raw query to avoid any potential type issues
+      await prisma.$executeRaw`UPDATE "Job" SET "invoiceId" = ${invoice.id} WHERE id = ${job.id}`;
+      
+      console.log('Linked job to invoice');
 
       // Add job products separately
-      const jobProducts = [];
       for (const item of invoice.invoiceItems) {
-        const jobProduct = await prisma.jobProduct.create({
+        await prisma.jobProduct.create({
           data: {
             jobId: job.id,
             productId: item.productId,
@@ -67,13 +86,11 @@ export async function POST(request: Request) {
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice,
             notes: `From invoice item: ${item.description}`
-          },
-          include: {
-            product: true
           }
         });
-        jobProducts.push(jobProduct);
       }
+      
+      console.log('Added job products');
 
       // Fetch the complete job with all relations
       const completeJob = await prisma.job.findUnique({
@@ -89,22 +106,31 @@ export async function POST(request: Request) {
           }
         }
       });
+      
+      console.log('Job creation complete');
 
-      // Add the job products to the response
-      const response = {
-        ...completeJob,
-        jobProducts
-      };
-
-      return NextResponse.json(response, { status: 201 });
-    } catch (innerError) {
-      console.error('Detailed error:', innerError);
-      throw innerError; // Re-throw to be caught by outer catch
+      return NextResponse.json(completeJob, { status: 201 });
+    } catch (innerError: any) {
+      console.error('Detailed error creating job:', innerError);
+      console.error('Error message:', innerError.message);
+      console.error('Error stack:', innerError.stack);
+      
+      if (innerError.meta) {
+        console.error('Prisma error metadata:', innerError.meta);
+      }
+      
+      return NextResponse.json(
+        { error: `Error creating job: ${innerError.message}` },
+        { status: 500 }
+      );
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating job from invoice:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return NextResponse.json(
-      { error: 'Failed to create job from invoice' },
+      { error: `Failed to create job from invoice: ${error.message}` },
       { status: 500 }
     );
   }

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 // GET /api/jobs - Get all jobs
 export async function GET() {
@@ -18,10 +16,12 @@ export async function GET() {
     });
 
     return NextResponse.json(jobs);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching jobs:', error);
+    console.error('Error message:', error.message);
+    
     return NextResponse.json(
-      { error: 'Failed to fetch jobs' },
+      { error: `Failed to fetch jobs: ${error.message}` },
       { status: 500 }
     );
   }
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         status: data.status || 'PENDING',
         priority: data.priority || 'MEDIUM',
         customerId: data.customerId,
-        createdById: data.createdById || 'admin', // This should be the actual user ID in a real app
+        createdById: data.createdById || 'user-01', // This should be the actual user ID in a real app
         assignedToId: data.assignedToId || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
       },
@@ -60,10 +60,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(job, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating job:', error);
+    console.error('Error message:', error.message);
+    
     return NextResponse.json(
-      { error: 'Failed to create job' },
+      { error: `Failed to create job: ${error.message}` },
       { status: 500 }
     );
   }

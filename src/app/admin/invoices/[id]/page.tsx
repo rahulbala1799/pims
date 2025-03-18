@@ -156,6 +156,10 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     try {
       setIsCreatingJob(true);
       
+      // Get current user ID - in a real app this would come from auth context
+      // For now, we'll use a default value
+      const createdById = 'user-01';
+      
       const response = await fetch('/api/jobs/createFromInvoice', {
         method: 'POST',
         headers: {
@@ -165,15 +169,33 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           invoiceId: invoice.id,
           title: `Job for Invoice #${invoice.invoiceNumber}`,
           description: `Job created from Invoice #${invoice.invoiceNumber} for ${invoice.customer.name}`,
+          createdById
         }),
       });
       
+      // Get the response as text first to help with debugging
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create job');
+        let errorMessage = 'Failed to create job';
+        
+        try {
+          // Try to parse the error message from the JSON response
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError);
+          // If JSON parsing fails, use the raw response text if available
+          if (responseText) {
+            errorMessage = `Server error: ${responseText}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
       
-      const job = await response.json();
+      // Parse the successful response
+      const job = JSON.parse(responseText);
       
       // Redirect to the new job page
       router.push(`/admin/jobs/${job.id}`);

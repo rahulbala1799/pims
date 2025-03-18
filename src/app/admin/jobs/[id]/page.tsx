@@ -292,11 +292,11 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(job.dueDate)}</dd>
             </div>
             
-            {job.invoice && (
+            {job.invoice || job.invoiceId ? (
               <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">From Invoice</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {job.invoice.invoiceNumber ? (
+                  {job.invoice && job.invoice.invoiceNumber ? (
                     <Link 
                       href={`/admin/invoices/${job.invoice.id}`}
                       className="text-indigo-600 hover:text-indigo-900"
@@ -308,7 +308,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                   )}
                 </dd>
               </div>
-            )}
+            ) : null}
             
             <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Created</dt>

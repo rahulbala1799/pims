@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 // POST /api/jobs/:id/progress - Update job progress and costs
 export async function POST(
@@ -66,10 +64,13 @@ export async function POST(
       message: 'Progress updated successfully',
       jobProducts: data.jobProducts,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating job progress:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return NextResponse.json(
-      { error: 'Failed to update job progress' },
+      { error: `Failed to update job progress: ${error.message}` },
       { status: 500 }
     );
   }

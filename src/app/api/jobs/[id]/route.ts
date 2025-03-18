@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 // GET /api/jobs/:id - Get a specific job
 export async function GET(
@@ -65,10 +63,13 @@ export async function GET(
     };
 
     return NextResponse.json(job);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching job:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
     return NextResponse.json(
-      { error: 'Failed to fetch job' },
+      { error: `Failed to fetch job: ${error.message}` },
       { status: 500 }
     );
   }
@@ -118,10 +119,12 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedJob);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating job:', error);
+    console.error('Error message:', error.message);
+    
     return NextResponse.json(
-      { error: 'Failed to update job' },
+      { error: `Failed to update job: ${error.message}` },
       { status: 500 }
     );
   }
@@ -155,10 +158,12 @@ export async function DELETE(
     });
 
     return NextResponse.json({ message: 'Job deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting job:', error);
+    console.error('Error message:', error.message);
+    
     return NextResponse.json(
-      { error: 'Failed to delete job' },
+      { error: `Failed to delete job: ${error.message}` },
       { status: 500 }
     );
   }
