@@ -154,18 +154,20 @@ model ProductVariant {
 }
 
 model JobProduct {
-  id          String   @id @default(cuid())
-  jobId       String
-  job         Job      @relation(fields: [jobId], references: [id])
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  notes       String?
-  completedQuantity Int @default(0) 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  quantity        Int
+  unitPrice       Decimal  @db.Decimal(10, 2)
+  totalPrice      Decimal  @db.Decimal(10, 2)
+  notes           String?
+  completedQuantity Int @default(0)
+  inkCostPerUnit  Decimal? @db.Decimal(10, 2)  // For packaging products
+  inkUsageInMl    Float?   // For wide format products
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model JobCosting {

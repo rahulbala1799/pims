@@ -55,7 +55,9 @@ export async function POST(
       return prisma.jobProduct.update({
         where: { id: product.id },
         data: {
-          completedQuantity: product.completedQuantity || 0
+          completedQuantity: product.completedQuantity || 0,
+          inkCostPerUnit: product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit) : null,
+          inkUsageInMl: product.inkUsageInMl ? parseFloat(product.inkUsageInMl) : null
         }
       });
     });
