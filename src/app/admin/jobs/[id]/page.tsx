@@ -296,12 +296,16 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">From Invoice</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  <Link 
-                    href={`/admin/invoices/${job.invoice.id}`}
-                    className="text-indigo-600 hover:text-indigo-900"
-                  >
-                    #{job.invoice.invoiceNumber}
-                  </Link>
+                  {job.invoice.invoiceNumber ? (
+                    <Link 
+                      href={`/admin/invoices/${job.invoice.id}`}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      #{job.invoice.invoiceNumber}
+                    </Link>
+                  ) : (
+                    <span>Invoice #{job.invoiceId}</span>
+                  )}
                 </dd>
               </div>
             )}

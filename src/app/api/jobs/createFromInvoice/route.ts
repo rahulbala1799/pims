@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, JobStatus, JobPriority } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -38,66 +38,69 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the job
-    const job = await prisma.job.create({
-      data: {
+    try {
+      // Create the job using proper enum types
+      const jobData = {
         title: data.title || `Job for Invoice #${invoice.invoiceNumber}`,
         description: data.description || `Job created from Invoice #${invoice.invoiceNumber}`,
-        status: 'PENDING',
-        priority: data.priority || 'MEDIUM',
-        customer: {
-          connect: { id: invoice.customerId }
-        },
-        createdBy: {
-          connect: { id: data.createdById || 'user-01' } // Replace with actual user ID from auth
-        },
-        assignedTo: data.assignedToId ? {
-          connect: { id: data.assignedToId }
-        } : undefined,
+        status: JobStatus.PENDING,
+        priority: (data.priority as JobPriority) || JobPriority.MEDIUM,
+        customerId: invoice.customerId,
+        createdById: data.createdById || 'user-01',
+        assignedToId: data.assignedToId,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
-        // Create job products from invoice items
-        jobProducts: {
-          create: invoice.invoiceItems.map(item => ({
-            product: { connect: { id: item.productId } },
+        invoiceId: invoice.id
+      };
+      
+      const job = await prisma.job.create({
+        data: jobData
+      });
+
+      // Add job products separately
+      const jobProducts = [];
+      for (const item of invoice.invoiceItems) {
+        const jobProduct = await prisma.jobProduct.create({
+          data: {
+            jobId: job.id,
+            productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice,
             notes: `From invoice item: ${item.description}`
-          }))
-        }
-      },
-      include: {
-        customer: true,
-        assignedTo: true,
-        createdBy: true,
-        jobProducts: {
+          },
           include: {
             product: true
           }
-        },
-      },
-    });
-    
-    // Use a raw query to update the invoice relationship
-    // This bypasses the Prisma type system which might be out of sync
-    await prisma.$executeRaw`UPDATE "Job" SET "invoiceId" = ${invoice.id} WHERE id = ${job.id}`;
-    
-    // Fetch the updated job
-    const updatedJob = await prisma.job.findUnique({
-      where: { id: job.id },
-      include: {
-        customer: true,
-        assignedTo: true,
-        createdBy: true,
-        jobProducts: {
-          include: {
-            product: true
-          }
-        },
+        });
+        jobProducts.push(jobProduct);
       }
-    });
 
-    return NextResponse.json(updatedJob, { status: 201 });
+      // Fetch the complete job with all relations
+      const completeJob = await prisma.job.findUnique({
+        where: { id: job.id },
+        include: {
+          customer: true,
+          assignedTo: true,
+          createdBy: true,
+          jobProducts: {
+            include: {
+              product: true
+            }
+          }
+        }
+      });
+
+      // Add the job products to the response
+      const response = {
+        ...completeJob,
+        jobProducts
+      };
+
+      return NextResponse.json(response, { status: 201 });
+    } catch (innerError) {
+      console.error('Detailed error:', innerError);
+      throw innerError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
     console.error('Error creating job from invoice:', error);
     return NextResponse.json(
