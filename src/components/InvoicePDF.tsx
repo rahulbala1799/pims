@@ -166,10 +166,18 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
-            {/* Use an absolute path for the logo with cache busting */}
+            {/* Use an absolute path for the logo with cache busting and fallback */}
             <Image 
               style={styles.logo} 
-              src={typeof window !== 'undefined' ? `${window.location.origin}/images/logo.png?cache=${Date.now()}` : '/images/logo.png'} 
+              src={
+                typeof window !== 'undefined' 
+                  ? `${window.location.origin}${
+                      window.location.hostname === 'localhost' 
+                        ? '/images/logo.png' 
+                        : '/placeholder-logo.png'
+                    }?cache=${Date.now()}` 
+                  : '/images/logo.png'
+              }
             />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
@@ -328,9 +336,12 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     
     // Add logo (if available)
     try {
-      // Try to add logo from public/images directory with correct path and cache busting
+      // Try to add logo with correct path based on environment
       // In browser environment, we need to use the absolute URL path
-      const logoUrl = `${window.location.origin}/images/logo.png?cache=${Date.now()}`;
+      const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+      const logoPath = isLocalhost ? '/images/logo.png' : '/placeholder-logo.png';
+      const logoUrl = `${window.location.origin}${logoPath}?cache=${Date.now()}`;
+      
       console.log('Loading logo from:', logoUrl);
       doc.addImage(logoUrl, 'PNG', 14, 10, 70, 28);
       

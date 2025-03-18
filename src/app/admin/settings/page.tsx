@@ -20,19 +20,42 @@ export default function SettingsPage() {
 
   const checkForExistingLogo = () => {
     // In a real app, you might fetch this from an API
-    // For now, we'll just check if the logo file exists
+    // For now, we'll check if our logo exists
     if (typeof window !== 'undefined') {
       const img = new window.Image();
       // Add timestamp to prevent browser caching
-      img.src = `/images/logo.png?cache=${Date.now()}`;
+      const timestamp = Date.now();
+      
+      // Try main logo location first
+      img.onerror = () => {
+        console.log('No logo found at primary location');
+        setLogo(null);
+        
+        // For production (Railway), we'd use a cloud storage URL
+        // This is just a placeholder since we don't have actual S3 setup yet
+        if (window.location.hostname !== 'localhost') {
+          console.log('Checking alternative logo sources for production...');
+          
+          // Display a placeholder logo in production since we can't access S3 yet
+          const placeholderImg = new window.Image();
+          placeholderImg.onload = () => {
+            console.log('Using placeholder logo');
+            setLogo(`/placeholder-logo.png?cache=${timestamp}`);
+          };
+          placeholderImg.onerror = () => {
+            console.log('No placeholder logo found');
+            setLogo(null);
+          };
+          placeholderImg.src = `/placeholder-logo.png?cache=${timestamp}`;
+        }
+      };
+      
       img.onload = () => {
         console.log('Logo found');
-        setLogo(`/images/logo.png?cache=${Date.now()}`);
+        setLogo(`/images/logo.png?cache=${timestamp}`);
       };
-      img.onerror = () => {
-        console.log('No logo found');
-        setLogo(null);
-      };
+      
+      img.src = `/images/logo.png?cache=${timestamp}`;
     }
   };
 
@@ -81,10 +104,17 @@ export default function SettingsPage() {
       }
       
       console.log('Upload response:', data);
-      setSuccessMessage('Logo uploaded successfully! It will appear on your invoices and throughout the site.');
+      setSuccessMessage(data.message || 'Logo uploaded successfully! It will appear on your invoices and throughout the site.');
       
-      // Force refresh the image by updating the src with a cache-busting timestamp
-      checkForExistingLogo();
+      // Handle display based on environment
+      if (window.location.hostname === 'localhost') {
+        // For local development, we use the local file system
+        checkForExistingLogo();
+      } else {
+        // For production, just show the uploaded preview until page refresh
+        // The actual file is stored in cloud storage
+        // Keep the data URL for preview
+      }
       
       // Force a refresh of the page to update any components using the logo
       setTimeout(() => {
@@ -118,6 +148,17 @@ export default function SettingsPage() {
                 <p className="text-gray-500 mb-4">
                   Upload your company logo. This will be used on invoices, reports, and throughout the application.
                 </p>
+                
+                {/* Environment notice for production */}
+                {window?.location?.hostname !== 'localhost' && (
+                  <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 rounded-md">
+                    <h4 className="font-medium">Production Environment Notice</h4>
+                    <p>
+                      In production, logos should be stored in cloud storage (AWS S3). 
+                      For this demo, the logo upload will appear to work, but the file won't actually be stored persistently.
+                    </p>
+                  </div>
+                )}
                 
                 {/* Logo preview */}
                 <div className="mb-4">

@@ -20,7 +20,13 @@ export default function AdminHeader() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const cacheParam = `cache=${Date.now()}`;
-      const url = `/images/logo.png?${cacheParam}`;
+      const isLocalhost = window.location.hostname === 'localhost';
+      
+      // Determine which logo path to use based on environment
+      const logoPath = isLocalhost ? '/images/logo.png' : '/placeholder-logo.png';
+      const url = `${logoPath}?${cacheParam}`;
+      
+      console.log('AdminHeader: Checking for logo at', url);
       
       const img = new window.Image();
       img.onload = () => {
@@ -29,8 +35,26 @@ export default function AdminHeader() {
         setLogoUrl(url);
       };
       img.onerror = () => {
-        console.log('AdminHeader: No logo found');
+        console.log('AdminHeader: No logo found at', url);
         setLogoExists(false);
+        
+        // If we're in production and the specific path failed, try a placeholder
+        if (!isLocalhost) {
+          const placeholderUrl = `/placeholder-logo.png?${cacheParam}`;
+          console.log('AdminHeader: Trying placeholder logo at', placeholderUrl);
+          
+          const placeholderImg = new window.Image();
+          placeholderImg.onload = () => {
+            console.log('AdminHeader: Placeholder logo found');
+            setLogoExists(true);
+            setLogoUrl(placeholderUrl);
+          };
+          placeholderImg.onerror = () => {
+            console.log('AdminHeader: No placeholder logo found');
+            setLogoExists(false);
+          };
+          placeholderImg.src = placeholderUrl;
+        }
       };
       img.src = url;
     }
