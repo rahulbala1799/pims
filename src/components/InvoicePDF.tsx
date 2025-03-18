@@ -18,7 +18,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 150,
-    height: 50,
+    height: 60,
+    marginBottom: 10,
   },
   companyInfo: {
     fontSize: 10,
@@ -165,6 +166,7 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
+            <Image style={styles.logo} src="/images/logo.png" />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
           <View style={styles.companyInfo}>
@@ -320,10 +322,18 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Add autotable functionality to jsPDF instance
     autoTable(doc, {}); // Initialize the plugin
     
+    // Add logo (if available)
+    try {
+      // Add logo from public/images directory
+      doc.addImage('/images/logo.png', 'PNG', 14, 10, 70, 28);
+    } catch (logoError) {
+      console.warn('Could not add logo to PDF:', logoError);
+    }
+    
     // Add company info
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('PrintNPack Ltd', 14, 22);
+    doc.text('PrintNPack Ltd', 14, 45);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -339,14 +349,14 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Add invoice title
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 14, 45);
+    doc.text('INVOICE', 14, 60);
     doc.setLineWidth(0.5);
-    doc.line(14, 48, 195, 48);
+    doc.line(14, 63, 195, 63);
     
     // Add customer info
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 14, 60);
+    doc.text('Bill To:', 14, 75);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -357,7 +367,7 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
       customer?.address || ''
     ].filter(line => line.trim() !== '');
     
-    doc.text(customerInfo, 14, 65);
+    doc.text(customerInfo, 14, 80);
     
     // Format date safely
     const formatDate = (dateString: string) => {
@@ -382,7 +392,7 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
       `Invoice Date: ${formatDate(invoice.issueDate)}`,
       `Due Date: ${formatDate(invoice.dueDate)}`,
       `Status: ${invoice.status || 'N/A'}`
-    ], 195, 60, { align: 'right' });
+    ], 195, 75, { align: 'right' });
     
     // Ensure we have items to map over (handle different data structures)
     const invoiceItems = invoice.items || invoice.invoiceItems || [];
@@ -415,7 +425,7 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     
     // Add invoice items table - use the proper autoTable syntax
     autoTable(doc, {
-      startY: 85,
+      startY: 90,
       head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
       body: tableData,
       theme: 'grid',

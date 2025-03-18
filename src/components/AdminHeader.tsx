@@ -24,7 +24,7 @@ export default function AdminHeader() {
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link href="/admin/dashboard" className="text-2xl font-bold text-indigo-600">
-              PrintPack MIS
+              PrintNPack Ltd
             </Link>
           </div>
           
@@ -59,6 +59,12 @@ export default function AdminHeader() {
               className={`hover:text-indigo-600 ${isActive('/admin/mobile-invoices')}`}
             >
               Mobile Invoices
+            </Link>
+            <Link 
+              href="/admin/settings" 
+              className={`hover:text-indigo-600 ${isActive('/admin/settings')}`}
+            >
+              Settings
             </Link>
             {/* Temporarily commenting out Reports link until the page is created
             <Link 
@@ -149,6 +155,12 @@ export default function AdminHeader() {
               className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/mobile-invoices')} hover:bg-gray-100`}
             >
               Mobile Invoices
+            </Link>
+            <Link
+              href="/admin/settings"
+              className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/settings')} hover:bg-gray-100`}
+            >
+              Settings
             </Link>
             {/* Temporarily commenting out Reports link until the page is created
             <Link
