@@ -25,6 +25,7 @@ model User {
   createdJobs    Job[]            @relation("CreatedBy")
   progressUpdates ProgressUpdate[]
   createdProducts Product[]        @relation("ProductCreatedBy")
+  attendances    Attendance[]
 }
 
 enum Role {
@@ -256,4 +257,19 @@ model InvoiceItem {
   width       Float?   // Width in meters for wide format products
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Attendance {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  clockInTime  DateTime
+  clockOutTime DateTime?
+  totalHours   Float?
+  date         DateTime @default(now()) @db.Date
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, date])
 }

@@ -82,7 +82,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
         const data = await response.json();
         setJob(data);
         setJobProducts(data.jobProducts || []);
-        setIsLoading(false);
+          setIsLoading(false);
       } catch (err) {
         console.error('Error fetching job:', err);
         setError('Failed to load job details');
@@ -299,7 +299,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           ) : 'Save Progress'}
         </button>
       </div>
-      
+
       {/* Basic Job Info Header */}
       <div className="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6 flex flex-col sm:flex-row justify-between sm:items-center">
@@ -351,7 +351,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                 {job.invoice ? (
                   <Link href={`/admin/invoices/${job.invoice.id}`} className="text-indigo-600 hover:text-indigo-900">
                     #{job.invoice.invoiceNumber}
-                  </Link>
+                </Link>
                 ) : job.invoiceId ? (
                   job.invoiceId
                 ) : (
@@ -367,10 +367,10 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                 {job.assignedTo ? job.assignedTo.name : 'Unassigned'}
               </p>
             </div>
-          </div>
+            </div>
         </div>
       </div>
-      
+
       {/* Tasks - Each invoice line item is a task */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
         <div className="px-4 py-5 sm:px-6">
@@ -568,11 +568,11 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           ) : (
             <div className="py-6 text-center text-gray-500">
               No tasks found for this job.
-            </div>
+          </div>
           )}
         </div>
       </div>
-      
+
       {/* Overall Progress */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
         <div className="px-4 py-5 sm:px-6">
@@ -605,7 +605,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           ) : (
             <div className="text-center text-gray-500">
               No tasks to track progress.
-            </div>
+          </div>
           )}
         </div>
       </div>
