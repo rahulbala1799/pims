@@ -57,6 +57,8 @@ model Job {
   assignedToId    String?
   assignedTo      User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
   dueDate         DateTime?
+  invoiceId       String?
+  invoice         Invoice?         @relation(fields: [invoiceId], references: [id])
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   progressUpdates ProgressUpdate[]
@@ -196,6 +198,7 @@ model Invoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   invoiceItems  InvoiceItem[]
+  jobs          Job[]
 }
 
 enum InvoiceStatus {

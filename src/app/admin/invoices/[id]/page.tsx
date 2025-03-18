@@ -49,6 +49,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -148,6 +149,42 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  // Handle generating a job from this invoice
+  const handleGenerateJob = async () => {
+    if (!invoice) return;
+    
+    try {
+      setIsCreatingJob(true);
+      
+      const response = await fetch('/api/jobs/createFromInvoice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          title: `Job for Invoice #${invoice.invoiceNumber}`,
+          description: `Job created from Invoice #${invoice.invoiceNumber} for ${invoice.customer.name}`,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create job');
+      }
+      
+      const job = await response.json();
+      
+      // Redirect to the new job page
+      router.push(`/admin/jobs/${job.id}`);
+    } catch (err) {
+      console.error('Error creating job:', err);
+      alert(err instanceof Error ? err.message : 'Failed to create job from invoice');
+    } finally {
+      setIsCreatingJob(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -190,6 +227,29 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           </p>
         </div>
         <div className="mt-4 flex flex-shrink-0 md:mt-0 md:ml-4 space-x-2">
+          <button
+            type="button"
+            onClick={handleGenerateJob}
+            disabled={isCreatingJob}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            {isCreatingJob ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                Generate Job
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={handleDownloadPDF}

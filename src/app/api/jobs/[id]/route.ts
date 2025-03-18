@@ -18,6 +18,7 @@ export async function GET(
         assignedTo: true,
         createdBy: true,
         progressUpdates: true,
+        invoice: true,
         jobProducts: {
           include: {
             product: true,
