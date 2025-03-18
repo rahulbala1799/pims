@@ -67,6 +67,12 @@ export default function AdminHeader() {
               Mobile Invoices
             </Link>
             <Link 
+              href="/admin/metrics" 
+              className={`hover:text-indigo-600 ${isActive('/admin/metrics')}`}
+            >
+              Metrics
+            </Link>
+            <Link 
               href="/admin/settings" 
               className={`hover:text-indigo-600 ${isActive('/admin/settings')}`}
             >
@@ -159,6 +165,12 @@ export default function AdminHeader() {
               className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/mobile-invoices')} hover:bg-gray-100`}
             >
               Mobile Invoices
+            </Link>
+            <Link
+              href="/admin/metrics"
+              className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/metrics')} hover:bg-gray-100`}
+            >
+              Metrics
             </Link>
             <Link
               href="/admin/settings"

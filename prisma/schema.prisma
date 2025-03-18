@@ -64,6 +64,7 @@ model Job {
   progressUpdates ProgressUpdate[]
   jobProducts     JobProduct[]
   jobCostings     JobCosting[]
+  metrics         JobMetrics?      // Relation to the metrics
 }
 
 enum JobStatus {
@@ -89,6 +90,37 @@ model ProgressUpdate {
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// New model for job metrics
+model JobMetrics {
+  id              String   @id @default(cuid())
+  jobId           String   @unique
+  job             Job      @relation(fields: [jobId], references: [id])
+  
+  // Revenue data
+  revenue         Decimal  @db.Decimal(10, 2) @default(0)
+  
+  // Cost data
+  materialCost    Decimal  @db.Decimal(10, 2) @default(0)
+  inkCost         Decimal  @db.Decimal(10, 2) @default(0)
+  laborCost       Decimal  @db.Decimal(10, 2) @default(0)
+  overheadCost    Decimal  @db.Decimal(10, 2) @default(0)
+  totalCost       Decimal  @db.Decimal(10, 2) @default(0)
+  
+  // Metrics
+  grossProfit     Decimal  @db.Decimal(10, 2) @default(0)
+  profitMargin    Decimal  @db.Decimal(5, 2) @default(0) // Percentage
+  
+  // Volume metrics
+  totalQuantity   Int      @default(0)
+  totalTime       Int      @default(0) // In minutes
+  
+  // Last updated
+  lastUpdated     DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // Product Models
