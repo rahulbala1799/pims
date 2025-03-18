@@ -322,11 +322,20 @@ export default function MetricsPage() {
   const recalculateMetrics = async () => {
     setIsLoading(true);
     try {
-      // Fetch metrics with force parameter
-      const response = await fetch('/api/metrics/jobs?force=true');
+      // Use the dedicated recalculate endpoint to clear all metrics and recalculate from scratch
+      const recalculateResponse = await fetch('/api/metrics/recalculate', {
+        method: 'POST'
+      });
+      
+      if (!recalculateResponse.ok) {
+        throw new Error('Failed to recalculate metrics');
+      }
+      
+      // After recalculation, fetch the fresh metrics
+      const response = await fetch('/api/metrics/jobs');
       
       if (!response.ok) {
-        throw new Error('Failed to recalculate metrics');
+        throw new Error('Failed to fetch updated metrics');
       }
       
       const data = await response.json();
