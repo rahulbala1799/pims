@@ -31,9 +31,6 @@ interface JobProduct {
   notes: string | null;
   // For tracking progress
   completedQuantity?: number;
-  // For tracking costs
-  inkCostPerUnit?: number; // For packaging products
-  inkUsageInMl?: number; // For wide format printing
 }
 
 interface Invoice {
@@ -100,24 +97,6 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     setJobProducts(newJobProducts);
   };
 
-  const handleUpdateInkCost = (productIndex: number, inkCostPerUnit: number) => {
-    const newJobProducts = [...jobProducts];
-    newJobProducts[productIndex] = {
-      ...newJobProducts[productIndex],
-      inkCostPerUnit
-    };
-    setJobProducts(newJobProducts);
-  };
-
-  const handleUpdateInkUsage = (productIndex: number, inkUsageInMl: number) => {
-    const newJobProducts = [...jobProducts];
-    newJobProducts[productIndex] = {
-      ...newJobProducts[productIndex],
-      inkUsageInMl
-    };
-    setJobProducts(newJobProducts);
-  };
-
   const saveProgress = async () => {
     if (!job) return;
 
@@ -158,17 +137,6 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     });
   };
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -177,19 +145,6 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
         return 'bg-blue-100 text-blue-800';
       case 'CANCELLED':
         return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityBadgeColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH':
-        return 'bg-red-100 text-red-800';
-      case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'LOW':
-        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -231,9 +186,18 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">{job.title}</h1>
-        <div className="flex space-x-2">
+      {/* Basic Job Info Header */}
+      <div className="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">{job.title}</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(job.status)}`}>
+                {job.status}
+              </span>
+              {job.dueDate && <span className="ml-3">Due: {formatDate(job.dueDate)}</span>}
+            </p>
+          </div>
           <button
             onClick={saveProgress}
             disabled={isSaving}
@@ -250,86 +214,48 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
             ) : 'Save Progress'}
           </button>
         </div>
-      </div>
-      
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Job Details</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Details about this print job.</p>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{job.customer.name}</dd>
+        <div className="border-t border-gray-200 px-4 py-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Customer */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Customer</h3>
+              <p className="mt-1 text-sm text-gray-900">{job.customer.name}</p>
             </div>
             
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(job.status)}`}>
-                  {job.status.replace('_', ' ')}
-                </span>
-              </dd>
+            {/* Invoice */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Invoice</h3>
+              <p className="mt-1 text-sm text-gray-900">
+                {job.invoice ? (
+                  <Link href={`/admin/invoices/${job.invoice.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    #{job.invoice.invoiceNumber}
+                  </Link>
+                ) : job.invoiceId ? (
+                  job.invoiceId
+                ) : (
+                  'No invoice'
+                )}
+              </p>
             </div>
             
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Priority</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(job.priority)}`}>
-                  {job.priority}
-                </span>
-              </dd>
+            {/* Assigned To */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Assigned To</h3>
+              <p className="mt-1 text-sm text-gray-900">
+                {job.assignedTo ? job.assignedTo.name : 'Unassigned'}
+              </p>
             </div>
-            
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Assigned To</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{job.assignedTo?.name || 'Unassigned'}</dd>
-            </div>
-            
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(job.dueDate)}</dd>
-            </div>
-            
-            {job.invoice || job.invoiceId ? (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">From Invoice</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {job.invoice && job.invoice.invoiceNumber ? (
-                    <Link 
-                      href={`/admin/invoices/${job.invoice.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      #{job.invoice.invoiceNumber}
-                    </Link>
-                  ) : (
-                    <span>Invoice #{job.invoiceId}</span>
-                  )}
-                </dd>
-              </div>
-            ) : null}
-            
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDateTime(job.createdAt)}</dd>
-            </div>
-            
-            {job.description && (
-              <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Description</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{job.description}</dd>
-              </div>
-            )}
-          </dl>
+          </div>
         </div>
       </div>
       
-      {/* Job Products & Progress Tracking */}
+      {/* Tasks - Each invoice line item is a task */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
         <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Job Items & Progress</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Track progress and costs for each item in this job.</p>
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Tasks</h3>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            Track progress for each task in this job.
+          </p>
         </div>
         
         <div className="border-t border-gray-200">
@@ -338,19 +264,21 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
                   <tr>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th scope="col" className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
                     <th scope="col" className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                    <th scope="col" className="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cost Tracking</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {jobProducts.map((product, index) => (
                     <tr key={product.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         <div>{product.product.name}</div>
                         <div className="text-sm text-gray-500">SKU: {product.product.sku}</div>
+                        {product.notes && (
+                          <div className="text-sm text-gray-500 mt-1">{product.notes}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                         {product.quantity}
@@ -365,45 +293,18 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                           className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div
-                            className="bg-indigo-600 h-2.5 rounded-full"
-                            style={{ width: `${calculateProgressPercentage(product)}%` }}
-                          ></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                            <div
+                              className="bg-indigo-600 h-2.5 rounded-full"
+                              style={{ width: `${calculateProgressPercentage(product)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-xs whitespace-nowrap">
+                            {calculateProgressPercentage(product)}%
+                          </span>
                         </div>
-                        <span className="text-xs mt-1 inline-block">
-                          {calculateProgressPercentage(product)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {product.product.productClass === 'PACKAGING' && (
-                          <div className="flex items-center justify-end space-x-2">
-                            <label className="text-xs">Ink Cost/Unit:</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={product.inkCostPerUnit || 0}
-                              onChange={(e) => handleUpdateInkCost(index, parseFloat(e.target.value) || 0)}
-                              className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                        )}
-                        
-                        {product.product.productClass === 'WIDE_FORMAT' && (
-                          <div className="flex items-center justify-end space-x-2">
-                            <label className="text-xs">Ink Usage (ml):</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={product.inkUsageInMl || 0}
-                              onChange={(e) => handleUpdateInkUsage(index, parseFloat(e.target.value) || 0)}
-                              className="max-w-[80px] shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                            />
-                          </div>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -411,127 +312,71 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               </table>
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500">No products found for this job.</div>
+            <div className="py-6 text-center text-gray-500">
+              No tasks found for this job.
+            </div>
           )}
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{job.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Job ID: {job.id}
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <Link
-            href={`/admin/jobs/${job.id}/edit`}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Edit
-          </Link>
-          <Link
-            href="/admin/jobs"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Back to Jobs
-          </Link>
-        </div>
       </div>
-
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-          <div>
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Job Details</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Details and information about the job.
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(job.status)}`}>
-              {job.status.replace('_', ' ')}
-            </span>
-            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(job.priority)}`}>
-              {job.priority} Priority
-            </span>
-          </div>
+      
+      {/* Overall Progress */}
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Overall Progress</h3>
         </div>
         <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-          <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                <Link href={`/admin/customers/${job.customer.id}`} className="text-indigo-600 hover:text-indigo-900">
-                  {job.customer.name}
-                </Link>
-              </dd>
+          {jobProducts.length > 0 ? (
+            <>
+              <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+                <div
+                  className="bg-indigo-600 h-4 rounded-full"
+                  style={{ 
+                    width: `${
+                      jobProducts.reduce((acc, product) => acc + calculateProgressPercentage(product), 0) / 
+                      jobProducts.length
+                    }%` 
+                  }}
+                ></div>
+              </div>
+              <div className="text-right text-sm text-gray-500">
+                {Math.round(
+                  jobProducts.reduce((acc, product) => acc + calculateProgressPercentage(product), 0) / 
+                  jobProducts.length
+                )}% Complete
+              </div>
+            </>
+          ) : (
+            <div className="text-center text-gray-500">
+              No tasks to track progress.
             </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Assigned To</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {job.assignedTo ? job.assignedTo.name : 'Unassigned'}
-              </dd>
-            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Additional Details (Collapsed) */}
+      <details className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <summary className="px-4 py-5 sm:px-6 cursor-pointer">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Additional Details</h3>
+        </summary>
+        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
             <div className="sm:col-span-1">
               <dt className="text-sm font-medium text-gray-500">Created By</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {job.createdBy.name}
-              </dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDate(job.dueDate)}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900">{job.createdBy.name}</dd>
             </div>
             <div className="sm:col-span-1">
               <dt className="text-sm font-medium text-gray-500">Created At</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDateTime(job.createdAt)}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900">{formatDate(job.createdAt)}</dd>
             </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDateTime(job.updatedAt)}
-              </dd>
-            </div>
-            <div className="sm:col-span-2">
-              <dt className="text-sm font-medium text-gray-500">Description</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {job.description || 'No description provided.'}
-              </dd>
-            </div>
+            {job.description && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Description</dt>
+                <dd className="mt-1 text-sm text-gray-900">{job.description}</dd>
+              </div>
+            )}
           </dl>
         </div>
-      </div>
-
-      {/* Job Products Section - Placeholder for future implementation */}
-      <div className="mt-6 bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Job Products</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Products associated with this job.
-          </p>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <div className="py-5 sm:px-6 text-center text-gray-500 italic">
-            Products will be shown here when implemented.
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Updates Section - Placeholder for future implementation */}
-      <div className="mt-6 bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Progress Updates</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            History of progress updates for this job.
-          </p>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <div className="py-5 sm:px-6 text-center text-gray-500 italic">
-            Progress updates will be shown here when implemented.
-          </div>
-        </div>
-      </div>
+      </details>
     </div>
   );
 } 
