@@ -14,7 +14,8 @@
     "seed:leaflets:js": "node prisma/leaflet-seed.js",
     "railway:seed": "prisma generate && node prisma/seed.js && node prisma/leaflet-seed.js",
     "railway:seed:run": "node prisma/railway-seed.js",
-    "manual:seed": "node prisma/manual-seed.js"
+    "manual:seed": "node prisma/manual-seed.js",
+    "seed:pizza-boxes": "node prisma/pizza-boxes-seed.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

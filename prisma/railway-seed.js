@@ -5,32 +5,35 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-console.log('Starting database seeding on Railway...');
+console.log('Starting database seeding process on Railway...');
 
-// Verify schema exists
+// Check if schema.prisma exists
 const schemaPath = path.join(__dirname, 'schema.prisma');
 if (fs.existsSync(schemaPath)) {
-  console.log(`Schema found at: ${schemaPath}`);
+  console.log('Found schema at:', schemaPath);
 } else {
-  console.error(`Schema not found at: ${schemaPath}`);
-  process.exit(1);
+  console.log('Schema not found at:', schemaPath);
 }
 
 try {
   // Generate Prisma client first
   console.log('Generating Prisma client...');
-  execSync('npx prisma generate --schema=./prisma/schema.prisma', { stdio: 'inherit' });
+  execSync('npx prisma generate', { stdio: 'inherit' });
   
-  // Run the main seed script first
-  console.log('Running main seed script...');
+  // Run the main seed script (users, example products)
+  console.log('\n=== Running main seed script ===');
   execSync('node prisma/seed.js', { stdio: 'inherit' });
   
-  // Then run the leaflet seed script
-  console.log('Running leaflet seed script...');
+  // Run the leaflet seed script
+  console.log('\n=== Running leaflet and brochure seed script ===');
   execSync('node prisma/leaflet-seed.js', { stdio: 'inherit' });
   
-  console.log('Database seeding completed successfully!');
+  // Run the pizza boxes seed script
+  console.log('\n=== Running pizza boxes seed script ===');
+  execSync('node prisma/pizza-boxes-seed.js', { stdio: 'inherit' });
+  
+  console.log('\nAll seed scripts completed successfully!');
 } catch (error) {
-  console.error('Error during database seeding:', error);
+  console.error('Error during seeding:', error.message);
   process.exit(1);
 } 
