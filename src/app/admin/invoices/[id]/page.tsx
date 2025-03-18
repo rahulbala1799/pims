@@ -50,11 +50,12 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [existingJobId, setExistingJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchInvoice = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const response = await fetch(`/api/invoices/${params.id}`);
         
         if (!response.ok) {
@@ -73,6 +74,15 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         };
         
         setInvoice(processedInvoice);
+        
+        // Check if a job exists for this invoice
+        const jobResponse = await fetch(`/api/jobs?invoiceId=${data.id}`);
+        if (jobResponse.ok) {
+          const jobData = await jobResponse.json();
+          if (jobData && jobData.length > 0) {
+            setExistingJobId(jobData[0].id);
+          }
+        }
       } catch (err) {
         console.error('Error fetching invoice:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -173,29 +183,30 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       // Get the response as text first to help with debugging
       const responseText = await response.text();
       
+      // Try to parse the response as JSON
+      let jsonResponse;
+      try {
+        jsonResponse = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        throw new Error(`Server returned invalid JSON: ${responseText}`);
+      }
+      
+      // Check for conflict (job already exists)
+      if (response.status === 409 && jsonResponse.jobId) {
+        alert('A job already exists for this invoice. Redirecting to the existing job.');
+        router.push(`/admin/jobs/${jsonResponse.jobId}`);
+        return;
+      }
+      
       if (!response.ok) {
         let errorMessage = 'Failed to create job';
-        
-        try {
-          // Try to parse the error message from the JSON response
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
-          // If JSON parsing fails, use the raw response text if available
-          if (responseText) {
-            errorMessage = `Server error: ${responseText}`;
-          }
-        }
-        
+        errorMessage = jsonResponse.error || errorMessage;
         throw new Error(errorMessage);
       }
       
-      // Parse the successful response
-      const job = JSON.parse(responseText);
-      
       // Redirect to the new job page
-      router.push(`/admin/jobs/${job.id}`);
+      router.push(`/admin/jobs/${jsonResponse.id}`);
     } catch (err) {
       console.error('Error creating job:', err);
       alert(err instanceof Error ? err.message : 'Failed to create job from invoice');
@@ -246,29 +257,30 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           </p>
         </div>
         <div className="mt-4 flex flex-shrink-0 md:mt-0 md:ml-4 space-x-2">
-          <button
-            type="button"
-            onClick={handleGenerateJob}
-            disabled={isCreatingJob}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            {isCreatingJob ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Creating...
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-                Generate Job
-              </>
-            )}
-          </button>
+          {existingJobId ? (
+            <Link
+              href={`/admin/jobs/${existingJobId}`}
+              className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              View Existing Job
+            </Link>
+          ) : (
+            <button
+              onClick={handleGenerateJob}
+              disabled={isCreatingJob}
+              className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {isCreatingJob ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating Job...
+                </>
+              ) : 'Generate Job'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDownloadPDF}

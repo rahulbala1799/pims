@@ -2,51 +2,66 @@ import { NextResponse } from 'next/server';
 import { JobStatus, JobPriority } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
-// POST /api/jobs/createFromInvoice - Create a new job from an invoice
+// POST /api/jobs/createFromInvoice - Create a job from an invoice
 export async function POST(request: Request) {
   try {
     const data = await request.json();
     
-    console.log('Creating job from invoice with data:', data);
-    
-    // Ensure invoice ID is provided
+    // Check required fields
     if (!data.invoiceId) {
       return NextResponse.json(
-        { error: 'Invoice ID is required' },
+        { error: "Invoice ID is required" },
         { status: 400 }
       );
     }
 
-    // Find a valid admin user to use as creator if none provided
+    // Check if a job already exists for this invoice
+    const existingJob = await prisma.job.findFirst({
+      where: {
+        invoiceId: data.invoiceId
+      }
+    });
+
+    if (existingJob) {
+      return NextResponse.json(
+        { 
+          error: "A job already exists for this invoice", 
+          jobId: existingJob.id 
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+    
+    // Find a valid user to assign as the creator
     let createdById = data.createdById;
+    
     if (!createdById) {
-      // Find the first admin user in the system
+      // Try to find an admin user first
       const adminUser = await prisma.user.findFirst({
         where: { role: 'ADMIN' }
       });
       
-      if (!adminUser) {
-        // Fallback to any user if no admin found
+      if (adminUser) {
+        createdById = adminUser.id;
+      } else {
+        // Fall back to any user
         const anyUser = await prisma.user.findFirst();
+        
         if (!anyUser) {
+          console.error('No users found in the database');
           return NextResponse.json(
-            { error: 'No valid users found in the system' },
+            { error: 'Could not find a valid user to assign as job creator' },
             { status: 500 }
           );
         }
+        
         createdById = anyUser.id;
-      } else {
-        createdById = adminUser.id;
       }
-      
-      console.log('Using user ID for job creation:', createdById);
     }
-
+    
     // Fetch the invoice with its items
     const invoice = await prisma.invoice.findUnique({
-      where: {
-        id: data.invoiceId
-      },
+      where: { id: data.invoiceId },
       include: {
         customer: true,
         invoiceItems: {
@@ -56,99 +71,66 @@ export async function POST(request: Request) {
         }
       }
     });
-
+    
     if (!invoice) {
       return NextResponse.json(
-        { error: 'Invoice not found' },
+        { error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    console.log('Found invoice:', invoice.id, invoice.invoiceNumber);
-
-    try {
-      // Create the job with minimal fields first
-      const job = await prisma.job.create({
-        data: {
-          title: data.title || `Job for Invoice #${invoice.invoiceNumber}`,
-          description: data.description || `Job created from Invoice #${invoice.invoiceNumber}`,
-          status: JobStatus.PENDING,
-          priority: JobPriority.MEDIUM,
-          customerId: invoice.customerId,
-          createdById: createdById, // Use the valid user ID
-        }
-      });
-      
-      console.log('Created job:', job.id);
-
-      // Update with any remaining fields
-      if (data.assignedToId) {
-        await prisma.job.update({
-          where: { id: job.id },
-          data: { assignedToId: data.assignedToId }
-        });
-      }
-      
-      if (data.dueDate) {
-        await prisma.job.update({
-          where: { id: job.id },
-          data: { dueDate: new Date(data.dueDate) }
-        });
-      }
-
-      // Link job to invoice using raw query to avoid any potential type issues
-      await prisma.$executeRaw`UPDATE "Job" SET "invoiceId" = ${invoice.id} WHERE id = ${job.id}`;
-      
-      console.log('Linked job to invoice');
-
-      // Add job products separately
-      for (const item of invoice.invoiceItems) {
-        await prisma.jobProduct.create({
+    // Create job
+    const job = await prisma.job.create({
+      data: {
+        title: data.title || `Job for Invoice #${invoice.invoiceNumber}`,
+        description: data.description || `Job created from Invoice #${invoice.invoiceNumber}`,
+        status: 'PENDING',
+        priority: 'MEDIUM',
+        customerId: invoice.customerId,
+        createdById: createdById,
+        invoiceId: invoice.id,
+      },
+    });
+    
+    console.log(`Job created: ${job.id}`);
+    
+    // Create job products from invoice items
+    const jobProducts = await Promise.all(
+      invoice.invoiceItems.map(async (item) => {
+        return prisma.jobProduct.create({
           data: {
             jobId: job.id,
             productId: item.productId,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            notes: `From invoice item: ${item.description}`
+            unitPrice: parseFloat(item.unitPrice.toString()),
+            totalPrice: parseFloat(item.totalPrice.toString()),
+            notes: item.description,
+            completedQuantity: 0,
+          },
+          include: {
+            product: true
           }
         });
-      }
-      
-      console.log('Added job products');
-
-      // Fetch the complete job with all relations
-      const completeJob = await prisma.job.findUnique({
-        where: { id: job.id },
-        include: {
-          customer: true,
-          assignedTo: true,
-          createdBy: true,
-          jobProducts: {
-            include: {
-              product: true
-            }
+      })
+    );
+    
+    // Get full job with all relations
+    const fullJob = await prisma.job.findUnique({
+      where: { id: job.id },
+      include: {
+        customer: true,
+        assignedTo: true,
+        createdBy: true,
+        invoice: true,
+        jobProducts: {
+          include: {
+            product: true
           }
         }
-      });
-      
-      console.log('Job creation complete');
-
-      return NextResponse.json(completeJob, { status: 201 });
-    } catch (innerError: any) {
-      console.error('Detailed error creating job:', innerError);
-      console.error('Error message:', innerError.message);
-      console.error('Error stack:', innerError.stack);
-      
-      if (innerError.meta) {
-        console.error('Prisma error metadata:', innerError.meta);
       }
-      
-      return NextResponse.json(
-        { error: `Error creating job: ${innerError.message}` },
-        { status: 500 }
-      );
-    }
+    });
+    
+    return NextResponse.json(fullJob, { status: 201 });
   } catch (error: any) {
     console.error('Error creating job from invoice:', error);
     console.error('Error message:', error.message);

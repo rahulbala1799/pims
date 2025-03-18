@@ -2,9 +2,21 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // GET /api/jobs - Get all jobs
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Extract query parameters
+    const url = new URL(request.url);
+    const invoiceId = url.searchParams.get('invoiceId');
+    
+    // Build where clause based on filters
+    const whereClause: any = {};
+    if (invoiceId) {
+      whereClause.invoiceId = invoiceId;
+    }
+    
+    // Fetch jobs with relations
     const jobs = await prisma.job.findMany({
+      where: whereClause,
       include: {
         customer: true,
         assignedTo: true,
@@ -14,11 +26,12 @@ export async function GET() {
         createdAt: 'desc',
       },
     });
-
+    
     return NextResponse.json(jobs);
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
     console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     return NextResponse.json(
       { error: `Failed to fetch jobs: ${error.message}` },
