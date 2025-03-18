@@ -166,8 +166,11 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
-            {/* Try to use the uploaded logo with fallback to company name */}
-            <Image style={styles.logo} src="/images/logo.png" />
+            {/* Use an absolute path for the logo, which works better with react-pdf */}
+            <Image 
+              style={styles.logo} 
+              src={typeof window !== 'undefined' ? window.location.origin + '/images/logo.png' : '/images/logo.png'} 
+            />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
           <View style={styles.companyInfo}>
