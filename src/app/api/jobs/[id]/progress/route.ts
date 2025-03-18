@@ -51,18 +51,22 @@ export async function POST(
     }
 
     // Update the progress for each job product
-    // We need to implement this with a custom solution since Prisma doesn't support
-    // extended properties like completedQuantity directly on the jobProducts model
+    const updatePromises = data.jobProducts.map(async (product: any) => {
+      return prisma.jobProduct.update({
+        where: { id: product.id },
+        data: {
+          completedQuantity: product.completedQuantity || 0
+        }
+      });
+    });
     
-    // For a real implementation, you would need to:
-    // 1. Store the progress data in a separate table linked to jobProducts
-    // 2. Or use a JSON field to store the progress data
-    // 3. Or extend the JobProduct model with these fields
+    // Execute all updates in parallel
+    const updatedProducts = await Promise.all(updatePromises);
     
-    // For this example, we'll just return success
+    // Return the updated data
     return NextResponse.json({ 
       message: 'Progress updated successfully',
-      jobProducts: data.jobProducts,
+      jobProducts: updatedProducts,
     });
   } catch (error: any) {
     console.error('Error updating job progress:', error);

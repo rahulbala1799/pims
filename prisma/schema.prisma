@@ -163,6 +163,7 @@ model JobProduct {
   unitPrice   Decimal  @db.Decimal(10, 2)
   totalPrice  Decimal  @db.Decimal(10, 2)
   notes       String?
+  completedQuantity Int @default(0) 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
