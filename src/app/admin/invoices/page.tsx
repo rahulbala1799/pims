@@ -50,6 +50,7 @@ export default function InvoicesPage() {
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
   const [startDateFilter, setStartDateFilter] = useState<string>('');
   const [endDateFilter, setEndDateFilter] = useState<string>('');
+  const [showCancelled, setShowCancelled] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -116,6 +117,11 @@ export default function InvoicesPage() {
   useEffect(() => {
     let result = [...invoices];
     
+    // Filter out cancelled invoices by default
+    if (!showCancelled) {
+      result = result.filter(invoice => invoice.status !== 'CANCELLED');
+    }
+    
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -179,7 +185,7 @@ export default function InvoicesPage() {
     setFilteredInvoices(result);
     setTotalPages(Math.ceil(result.length / invoicesPerPage));
     setCurrentPage(1); // Reset to first page when filters change
-  }, [invoices, searchQuery, statusFilter, sortBy, sortDirection, invoicesPerPage, customerFilter, startDateFilter, endDateFilter]);
+  }, [invoices, searchQuery, statusFilter, sortBy, sortDirection, invoicesPerPage, customerFilter, startDateFilter, endDateFilter, showCancelled]);
 
   // Toggle sort when clicking column header
   const handleSort = (column: string) => {
@@ -269,7 +275,22 @@ export default function InvoicesPage() {
             Create and manage invoices for customers.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-3">
+          <button
+            onClick={() => setShowCancelled(!showCancelled)}
+            className={`inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              showCancelled 
+                ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' 
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {showCancelled ? 'Hide Cancelled Invoices' : 'Show Cancelled Invoices'}
+            {showCancelled && (
+              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                {invoices.filter(invoice => invoice.status === 'CANCELLED').length}
+              </span>
+            )}
+          </button>
           <Link
             href="/admin/invoices/new"
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
@@ -314,7 +335,7 @@ export default function InvoicesPage() {
               <option value="PENDING">Pending</option>
               <option value="PAID">Paid</option>
               <option value="OVERDUE">Overdue</option>
-              <option value="CANCELLED">Cancelled</option>
+              {showCancelled && <option value="CANCELLED">Cancelled</option>}
             </select>
           </div>
           
@@ -401,6 +422,7 @@ export default function InvoicesPage() {
                 setEndDateFilter('');
                 setSortBy('createdAt');
                 setSortDirection('desc');
+                setShowCancelled(false);
               }}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
