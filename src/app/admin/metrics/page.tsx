@@ -36,6 +36,79 @@ interface SummaryMetrics {
   jobCount: number;
 }
 
+interface BreakdownModalProps {
+  title: string;
+  isOpen: boolean;
+  onClose: () => void;
+  data: {
+    label: string;
+    value: string;
+    color?: string;
+    percentage?: number;
+  }[];
+  totalLabel?: string;
+  totalValue?: string;
+}
+
+// Breakdown Modal Component
+const BreakdownModal = ({ title, isOpen, onClose, data, totalLabel, totalValue }: BreakdownModalProps) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+        <div className="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-4 py-5 sm:p-6 overflow-y-auto max-h-[60vh]">
+          <ul className="divide-y divide-gray-200">
+            {data.map((item, index) => (
+              <li key={index} className="py-3 flex justify-between items-center">
+                <div className="flex items-center">
+                  {item.color && (
+                    <div className={`w-3 h-3 rounded-full mr-2 bg-${item.color}-500`}></div>
+                  )}
+                  <span className="text-sm text-gray-900">{item.label}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm font-medium text-gray-900 mr-2">{item.value}</span>
+                  {item.percentage !== undefined && (
+                    <span className="text-xs text-gray-500">({item.percentage}%)</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+          
+          {totalLabel && totalValue && (
+            <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+              <span className="font-medium text-gray-900">{totalLabel}</span>
+              <span className="font-bold text-gray-900">{totalValue}</span>
+            </div>
+          )}
+        </div>
+        <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
+          <button
+            onClick={onClose}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function MetricsPage() {
   const [metrics, setMetrics] = useState<JobMetrics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +118,23 @@ export default function MetricsPage() {
     totalCost: new Decimal(0),
     totalProfit: new Decimal(0),
     averageMargin: new Decimal(0),
+    materialCost: new Decimal(0),
+    inkCost: new Decimal(0),
+    laborCost: new Decimal(0),
+    overheadCost: new Decimal(0),
     jobCount: 0
+  });
+  
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<{
+    title: string;
+    data: { label: string; value: string; color?: string; percentage?: number }[];
+    totalLabel?: string;
+    totalValue?: string;
+  }>({
+    title: '',
+    data: [],
   });
 
   // Fetch metrics data
@@ -65,8 +154,12 @@ export default function MetricsPage() {
         
         // Calculate summary metrics
         if (data.length > 0) {
-          const totals = data.reduce((acc: SummaryMetrics, metric: JobMetrics) => {
+          const totals = data.reduce((acc: SummaryMetrics & { materialCost: Decimal, inkCost: Decimal, laborCost: Decimal, overheadCost: Decimal }, metric: JobMetrics) => {
             const revenue = new Decimal(metric.revenue || 0);
+            const materialCost = new Decimal(metric.materialCost || 0);
+            const inkCost = new Decimal(metric.inkCost || 0);
+            const laborCost = new Decimal(metric.laborCost || 0);
+            const overheadCost = new Decimal(metric.overheadCost || 0);
             const cost = new Decimal(metric.totalCost || 0);
             const profit = new Decimal(metric.grossProfit || 0);
             const margin = new Decimal(metric.profitMargin || 0);
@@ -76,6 +169,10 @@ export default function MetricsPage() {
               totalCost: acc.totalCost.plus(cost),
               totalProfit: acc.totalProfit.plus(profit),
               totalMargin: acc.totalMargin.plus(margin),
+              materialCost: acc.materialCost.plus(materialCost),
+              inkCost: acc.inkCost.plus(inkCost),
+              laborCost: acc.laborCost.plus(laborCost),
+              overheadCost: acc.overheadCost.plus(overheadCost),
               jobCount: acc.jobCount + 1
             };
           }, {
@@ -83,6 +180,10 @@ export default function MetricsPage() {
             totalCost: new Decimal(0),
             totalProfit: new Decimal(0),
             totalMargin: new Decimal(0),
+            materialCost: new Decimal(0),
+            inkCost: new Decimal(0),
+            laborCost: new Decimal(0),
+            overheadCost: new Decimal(0),
             jobCount: 0
           });
           
@@ -93,6 +194,10 @@ export default function MetricsPage() {
             averageMargin: totals.jobCount > 0 
               ? totals.totalMargin.dividedBy(totals.jobCount) 
               : new Decimal(0),
+            materialCost: totals.materialCost,
+            inkCost: totals.inkCost,
+            laborCost: totals.laborCost,
+            overheadCost: totals.overheadCost,
             jobCount: totals.jobCount
           });
         }
@@ -146,6 +251,101 @@ export default function MetricsPage() {
       maximumFractionDigits: 1
     }).format(Number(value) / 100);
   };
+  
+  // Show revenue breakdown
+  const showRevenueBreakdown = () => {
+    // Group revenue by job
+    const revenueByJob = metrics.map(metric => ({
+      label: metric.job.title,
+      value: formatCurrency(metric.revenue),
+      percentage: Number(new Decimal(metric.revenue).dividedBy(summaryMetrics.totalRevenue).times(100).toFixed(1))
+    })).sort((a, b) => b.percentage - a.percentage);
+    
+    setModalData({
+      title: 'Revenue Breakdown',
+      data: revenueByJob,
+      totalLabel: 'Total Revenue',
+      totalValue: formatCurrency(summaryMetrics.totalRevenue.toString())
+    });
+    setModalOpen(true);
+  };
+  
+  // Show cost breakdown
+  const showCostBreakdown = () => {
+    // Overall cost breakdown by type
+    const totalCost = summaryMetrics.totalCost;
+    
+    const costBreakdown = [
+      {
+        label: 'Material Costs',
+        value: formatCurrency(summaryMetrics.materialCost.toString()),
+        color: 'blue',
+        percentage: Number(summaryMetrics.materialCost.dividedBy(totalCost).times(100).toFixed(1))
+      },
+      {
+        label: 'Ink Costs',
+        value: formatCurrency(summaryMetrics.inkCost.toString()),
+        color: 'purple',
+        percentage: Number(summaryMetrics.inkCost.dividedBy(totalCost).times(100).toFixed(1))
+      },
+      {
+        label: 'Labor Costs',
+        value: formatCurrency(summaryMetrics.laborCost.toString()),
+        color: 'yellow',
+        percentage: Number(summaryMetrics.laborCost.dividedBy(totalCost).times(100).toFixed(1))
+      },
+      {
+        label: 'Overhead Costs',
+        value: formatCurrency(summaryMetrics.overheadCost.toString()),
+        color: 'gray',
+        percentage: Number(summaryMetrics.overheadCost.dividedBy(totalCost).times(100).toFixed(1))
+      }
+    ].sort((a, b) => b.percentage - a.percentage);
+    
+    setModalData({
+      title: 'Cost Breakdown',
+      data: costBreakdown,
+      totalLabel: 'Total Costs',
+      totalValue: formatCurrency(summaryMetrics.totalCost.toString())
+    });
+    setModalOpen(true);
+  };
+  
+  // Show profit breakdown
+  const showProfitBreakdown = () => {
+    // Profit by job
+    const profitByJob = metrics.map(metric => ({
+      label: metric.job.title,
+      value: formatCurrency(metric.grossProfit),
+      percentage: Number(new Decimal(metric.grossProfit).dividedBy(summaryMetrics.totalProfit).times(100).toFixed(1))
+    })).sort((a, b) => b.percentage - a.percentage);
+    
+    setModalData({
+      title: 'Profit Breakdown',
+      data: profitByJob,
+      totalLabel: 'Total Profit',
+      totalValue: formatCurrency(summaryMetrics.totalProfit.toString())
+    });
+    setModalOpen(true);
+  };
+  
+  // Show margin breakdown
+  const showMarginBreakdown = () => {
+    // Margin by job
+    const marginByJob = metrics.map(metric => ({
+      label: metric.job.title,
+      value: formatPercentage(metric.profitMargin),
+      percentage: Number(metric.profitMargin)
+    })).sort((a, b) => b.percentage - a.percentage);
+    
+    setModalData({
+      title: 'Margin Breakdown',
+      data: marginByJob,
+      totalLabel: 'Average Margin',
+      totalValue: formatPercentage(summaryMetrics.averageMargin.toString())
+    });
+    setModalOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -190,7 +390,10 @@ export default function MetricsPage() {
 
       {/* Summary Cards */}
       <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200"
+          onClick={showRevenueBreakdown}
+        >
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
@@ -205,10 +408,14 @@ export default function MetricsPage() {
                 </dl>
               </div>
             </div>
+            <div className="mt-2 text-xs text-gray-500 text-right">Click for breakdown</div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200"
+          onClick={showCostBreakdown}
+        >
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-red-500 rounded-md p-3">
@@ -223,10 +430,14 @@ export default function MetricsPage() {
                 </dl>
               </div>
             </div>
+            <div className="mt-2 text-xs text-gray-500 text-right">Click for breakdown</div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200"
+          onClick={showProfitBreakdown}
+        >
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
@@ -241,10 +452,14 @@ export default function MetricsPage() {
                 </dl>
               </div>
             </div>
+            <div className="mt-2 text-xs text-gray-500 text-right">Click for breakdown</div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div 
+          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200"
+          onClick={showMarginBreakdown}
+        >
           <div className="px-4 py-5 sm:p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
@@ -259,6 +474,7 @@ export default function MetricsPage() {
                 </dl>
               </div>
             </div>
+            <div className="mt-2 text-xs text-gray-500 text-right">Click for breakdown</div>
           </div>
         </div>
       </div>
@@ -294,7 +510,23 @@ export default function MetricsPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {metrics.map((metric) => (
-                      <tr key={metric.id}>
+                      <tr key={metric.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
+                        // Show detailed breakdown for this job
+                        setModalData({
+                          title: `Metrics for ${metric.job.title}`,
+                          data: [
+                            { label: 'Revenue', value: formatCurrency(metric.revenue) },
+                            { label: 'Material Cost', value: formatCurrency(metric.materialCost), color: 'blue' },
+                            { label: 'Ink Cost', value: formatCurrency(metric.inkCost), color: 'purple' },
+                            { label: 'Labor Cost', value: formatCurrency(metric.laborCost), color: 'yellow' },
+                            { label: 'Overhead Cost', value: formatCurrency(metric.overheadCost), color: 'gray' },
+                            { label: 'Total Cost', value: formatCurrency(metric.totalCost), color: 'red' },
+                          ],
+                          totalLabel: 'Gross Profit',
+                          totalValue: `${formatCurrency(metric.grossProfit)} (${formatPercentage(metric.profitMargin)})`
+                        });
+                        setModalOpen(true);
+                      }}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-indigo-600">{metric.job.title}</div>
                           <div className="text-sm text-gray-500">{metric.job.status}</div>
@@ -337,6 +569,16 @@ export default function MetricsPage() {
           </div>
         </div>
       </div>
+      
+      {/* Breakdown Modal */}
+      <BreakdownModal 
+        title={modalData.title}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        data={modalData.data}
+        totalLabel={modalData.totalLabel}
+        totalValue={modalData.totalValue}
+      />
     </div>
   );
 } 
