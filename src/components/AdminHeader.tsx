@@ -8,6 +8,7 @@ import Image from 'next/image';
 export default function AdminHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [logoExists, setLogoExists] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
   const pathname = usePathname();
 
   // Close mobile menu when pathname changes
@@ -18,10 +19,20 @@ export default function AdminHeader() {
   // Check if logo exists
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const cacheParam = `cache=${Date.now()}`;
+      const url = `/images/logo.png?${cacheParam}`;
+      
       const img = new window.Image();
-      img.onload = () => setLogoExists(true);
-      img.onerror = () => setLogoExists(false);
-      img.src = `/images/logo.png?cache=${new Date().getTime()}`; // Cache busting
+      img.onload = () => {
+        console.log('AdminHeader: Logo found');
+        setLogoExists(true);
+        setLogoUrl(url);
+      };
+      img.onerror = () => {
+        console.log('AdminHeader: No logo found');
+        setLogoExists(false);
+      };
+      img.src = url;
     }
   }, []);
 
@@ -40,7 +51,7 @@ export default function AdminHeader() {
                 <div className="h-10 mr-2 relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/images/logo.png"
+                    src={logoUrl}
                     alt="PrintNPack Ltd"
                     className="h-10 object-contain"
                   />

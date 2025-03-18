@@ -10,21 +10,31 @@ export default function SettingsPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
   const router = useRouter();
 
   // Check if we already have a logo at page load
   useEffect(() => {
+    checkForExistingLogo();
+  }, []);
+
+  const checkForExistingLogo = () => {
     // In a real app, you might fetch this from an API
     // For now, we'll just check if the logo file exists
-    // Use the browser's Image constructor
     if (typeof window !== 'undefined') {
       const img = new window.Image();
-      img.src = '/images/logo.png?cache=' + new Date().getTime(); // Cache busting
+      // Add timestamp to prevent browser caching
+      img.src = `/images/logo.png?cache=${Date.now()}`;
       img.onload = () => {
-        setLogo('/images/logo.png');
+        console.log('Logo found');
+        setLogo(`/images/logo.png?cache=${Date.now()}`);
+      };
+      img.onerror = () => {
+        console.log('No logo found');
+        setLogo(null);
       };
     }
-  }, []);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,19 +68,30 @@ export default function SettingsPage() {
     formData.append('logo', fileInputRef.current.files[0]);
     
     try {
+      console.log('Uploading logo...');
       const response = await fetch('/api/upload-logo', {
         method: 'POST',
         body: formData,
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to upload logo');
+        throw new Error(data.error || 'Failed to upload logo');
       }
       
-      setSuccessMessage('Logo uploaded successfully!');
+      console.log('Upload response:', data);
+      setSuccessMessage('Logo uploaded successfully! It will appear on your invoices and throughout the site.');
       
-      // Force a refresh of the logo throughout the app
-      router.refresh();
+      // Force refresh the image by updating the src with a cache-busting timestamp
+      checkForExistingLogo();
+      
+      // Force a refresh of the page to update any components using the logo
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }, 2000);
     } catch (error) {
       console.error('Error uploading logo:', error);
       setErrorMessage('Failed to upload logo. Please try again.');
@@ -104,6 +125,7 @@ export default function SettingsPage() {
                     {logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        ref={logoRef}
                         src={logo}
                         alt="Company logo"
                         className="max-h-40 max-w-full object-contain"
@@ -129,6 +151,13 @@ export default function SettingsPage() {
                     )}
                   </div>
                 </div>
+                
+                {/* Current logo info */}
+                {logo && logo.startsWith('/images/') && (
+                  <div className="mb-4 text-sm text-gray-500">
+                    <p>Current logo is being used throughout the application.</p>
+                  </div>
+                )}
                 
                 {/* File input */}
                 <div className="mb-4">

@@ -166,10 +166,10 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
-            {/* Use an absolute path for the logo, which works better with react-pdf */}
+            {/* Use an absolute path for the logo with cache busting */}
             <Image 
               style={styles.logo} 
-              src={typeof window !== 'undefined' ? window.location.origin + '/images/logo.png' : '/images/logo.png'} 
+              src={typeof window !== 'undefined' ? `${window.location.origin}/images/logo.png?cache=${Date.now()}` : '/images/logo.png'} 
             />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
@@ -328,9 +328,10 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     
     // Add logo (if available)
     try {
-      // Try to add logo from public/images directory with correct path
+      // Try to add logo from public/images directory with correct path and cache busting
       // In browser environment, we need to use the absolute URL path
-      const logoUrl = window.location.origin + '/images/logo.png';
+      const logoUrl = `${window.location.origin}/images/logo.png?cache=${Date.now()}`;
+      console.log('Loading logo from:', logoUrl);
       doc.addImage(logoUrl, 'PNG', 14, 10, 70, 28);
       
       // If logo is successfully added, adjust the company name position
