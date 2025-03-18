@@ -3,10 +3,24 @@
 
 const { execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 console.log('Starting database seeding on Railway...');
 
+// Verify schema exists
+const schemaPath = path.join(__dirname, 'schema.prisma');
+if (fs.existsSync(schemaPath)) {
+  console.log(`Schema found at: ${schemaPath}`);
+} else {
+  console.error(`Schema not found at: ${schemaPath}`);
+  process.exit(1);
+}
+
 try {
+  // Generate Prisma client first
+  console.log('Generating Prisma client...');
+  execSync('npx prisma generate --schema=./prisma/schema.prisma', { stdio: 'inherit' });
+  
   // Run the main seed script first
   console.log('Running main seed script...');
   execSync('node prisma/seed.js', { stdio: 'inherit' });

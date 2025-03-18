@@ -7,13 +7,14 @@
     "build": "next build",
     "start": "node server.js",
     "lint": "next lint",
-    "postinstall": "prisma generate && node prisma/seed.js",
+    "postinstall": "prisma generate && ([ \"$RAILWAY_ENVIRONMENT_NAME\" ] || node prisma/seed.js)",
     "seed:admin": "node prisma/seed-admin.js",
     "seed:employee": "node prisma/seed-employee.js",
     "seed:leaflets": "ts-node prisma/leaflet-seed.ts",
     "seed:leaflets:js": "node prisma/leaflet-seed.js",
     "railway:seed": "prisma generate && node prisma/seed.js && node prisma/leaflet-seed.js",
-    "railway:seed:run": "node prisma/railway-seed.js"
+    "railway:seed:run": "node prisma/railway-seed.js",
+    "manual:seed": "node prisma/manual-seed.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
