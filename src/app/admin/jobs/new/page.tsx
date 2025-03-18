@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -14,7 +14,8 @@ interface User {
   name: string;
 }
 
-export default function NewJobPage() {
+// Component to handle search params separately
+function JobFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCustomerId = searchParams.get('customerId');
@@ -306,5 +307,23 @@ export default function NewJobPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function JobFormLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+    </div>
+  );
+}
+
+// Main page component with Suspense
+export default function NewJobPage() {
+  return (
+    <Suspense fallback={<JobFormLoading />}>
+      <JobFormContent />
+    </Suspense>
   );
 } 
