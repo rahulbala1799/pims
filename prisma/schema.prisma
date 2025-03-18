@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,35 +8,30 @@ datasource db {
 }
 
 model User {
-  id             String           @id @default(cuid())
-  name           String
-  email          String           @unique
-  password       String
-  role           Role             @default(EMPLOYEE)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  jobs           Job[]            @relation("AssignedTo")
-  createdJobs    Job[]            @relation("CreatedBy")
-  progressUpdates ProgressUpdate[]
+  id              String           @id @default(cuid())
+  name            String
+  email           String           @unique
+  password        String
+  role            Role             @default(EMPLOYEE)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  hourLogs        HourLog[]
+  jobs            Job[]            @relation("AssignedTo")
+  createdJobs     Job[]            @relation("CreatedBy")
   createdProducts Product[]        @relation("ProductCreatedBy")
-  hourLogs       HourLog[]        // Changed from attendances to hourLogs
-}
-
-enum Role {
-  ADMIN
-  EMPLOYEE
+  progressUpdates ProgressUpdate[]
 }
 
 model Customer {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String    @unique
   phone     String?
   address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  jobs      Job[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   invoices  Invoice[]
+  jobs      Job[]
 }
 
 model Job {
@@ -52,20 +41,182 @@ model Job {
   status          JobStatus        @default(PENDING)
   priority        JobPriority      @default(MEDIUM)
   customerId      String
-  customer        Customer         @relation(fields: [customerId], references: [id])
   createdById     String
-  createdBy       User             @relation("CreatedBy", fields: [createdById], references: [id])
   assignedToId    String?
-  assignedTo      User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
   dueDate         DateTime?
-  invoiceId       String?
-  invoice         Invoice?         @relation(fields: [invoiceId], references: [id])
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  progressUpdates ProgressUpdate[]
-  jobProducts     JobProduct[]
+  invoiceId       String?
+  assignedTo      User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdBy       User             @relation("CreatedBy", fields: [createdById], references: [id])
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  invoice         Invoice?         @relation(fields: [invoiceId], references: [id])
   jobCostings     JobCosting[]
-  metrics         JobMetrics?      // Relation to the metrics
+  metrics         JobMetrics?
+  jobProducts     JobProduct[]
+  progressUpdates ProgressUpdate[]
+}
+
+model ProgressUpdate {
+  id        String   @id @default(cuid())
+  content   String
+  jobId     String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  job       Job      @relation(fields: [jobId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model JobMetrics {
+  id            String   @id @default(cuid())
+  jobId         String   @unique
+  revenue       Decimal  @default(0) @db.Decimal(10, 2)
+  materialCost  Decimal  @default(0) @db.Decimal(10, 2)
+  inkCost       Decimal  @default(0) @db.Decimal(10, 2)
+  grossProfit   Decimal  @default(0) @db.Decimal(10, 2)
+  profitMargin  Decimal  @default(0) @db.Decimal(5, 2)
+  totalQuantity Int      @default(0)
+  totalTime     Int      @default(0)
+  lastUpdated   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  job           Job      @relation(fields: [jobId], references: [id])
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  name             String
+  sku              String           @unique
+  description      String?
+  productClass     ProductClass
+  basePrice        Decimal          @db.Decimal(10, 2)
+  unit             String
+  dimensions       String?
+  weight           Float?
+  material         String?
+  finishOptions    String[]
+  minOrderQuantity Int              @default(1)
+  leadTime         Int?
+  isActive         Boolean          @default(true)
+  createdById      String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  packagingType    String?
+  printResolution  String?
+  paperWeight      Int?
+  foldType         String?
+  bindingType      String?
+  costPerSqMeter   Decimal?         @db.Decimal(10, 2)
+  defaultLength    Float?
+  defaultWidth     Float?
+  invoiceItems     InvoiceItem[]
+  jobProducts      JobProduct[]
+  createdBy        User             @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  productVariants  ProductVariant[]
+}
+
+model ProductVariant {
+  id              String   @id @default(cuid())
+  productId       String
+  name            String
+  description     String?
+  priceAdjustment Decimal  @db.Decimal(10, 2)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  product         Product  @relation(fields: [productId], references: [id])
+}
+
+model JobProduct {
+  id                String   @id @default(cuid())
+  jobId             String
+  productId         String
+  quantity          Int
+  unitPrice         Decimal  @db.Decimal(10, 2)
+  totalPrice        Decimal  @db.Decimal(10, 2)
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  completedQuantity Int      @default(0)
+  inkCostPerUnit    Decimal? @db.Decimal(10, 2)
+  inkUsageInMl      Float?
+  timeTaken         Int?
+  job               Job      @relation(fields: [jobId], references: [id])
+  product           Product  @relation(fields: [productId], references: [id])
+}
+
+model JobCosting {
+  id              String   @id @default(cuid())
+  jobId           String
+  materialCost    Decimal  @db.Decimal(10, 2)
+  laborCost       Decimal  @db.Decimal(10, 2)
+  overheadCost    Decimal  @db.Decimal(10, 2)
+  totalCost       Decimal  @db.Decimal(10, 2)
+  profitMargin    Decimal  @db.Decimal(5, 2)
+  estimatedProfit Decimal  @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  job             Job      @relation(fields: [jobId], references: [id])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  customerId    String
+  issueDate     DateTime
+  dueDate       DateTime
+  status        InvoiceStatus @default(PENDING)
+  subtotal      Decimal       @db.Decimal(10, 2)
+  taxRate       Decimal       @db.Decimal(5, 2)
+  taxAmount     Decimal       @db.Decimal(10, 2)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  invoiceItems  InvoiceItem[]
+  jobs          Job[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  productId   String
+  description String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  area        Float?
+  length      Float?
+  width       Float?
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model HourLog {
+  id          String    @id @default(cuid())
+  userId      String
+  date        DateTime  @db.Date
+  startTime   DateTime
+  endTime     DateTime?
+  hours       Float?
+  isActive    Boolean   @default(true)
+  autoStopped Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, date])
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
 }
 
 enum JobStatus {
@@ -82,47 +233,6 @@ enum JobPriority {
   URGENT
 }
 
-model ProgressUpdate {
-  id        String   @id @default(cuid())
-  content   String
-  jobId     String
-  job       Job      @relation(fields: [jobId], references: [id])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// New model for job metrics
-model JobMetrics {
-  id              String   @id @default(cuid())
-  jobId           String   @unique
-  job             Job      @relation(fields: [jobId], references: [id])
-  
-  // Revenue data
-  revenue         Decimal  @db.Decimal(10, 2) @default(0)
-  
-  // Cost data
-  materialCost    Decimal  @db.Decimal(10, 2) @default(0)
-  inkCost         Decimal  @db.Decimal(10, 2) @default(0)
-  
-  // Metrics
-  grossProfit     Decimal  @db.Decimal(10, 2) @default(0)
-  profitMargin    Decimal  @db.Decimal(5, 2) @default(0) // Percentage
-  
-  // Volume metrics
-  totalQuantity   Int      @default(0)
-  totalTime       Int      @default(0) // In minutes
-  
-  // Last updated
-  lastUpdated     DateTime @default(now())
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-// Product Models
-
 enum ProductClass {
   PACKAGING
   WIDE_FORMAT
@@ -130,148 +240,9 @@ enum ProductClass {
   FINISHED
 }
 
-model Product {
-  id                String        @id @default(cuid())
-  name              String
-  sku               String        @unique
-  description       String?
-  productClass      ProductClass
-  basePrice         Decimal       @db.Decimal(10, 2)
-  unit              String        // e.g., "per item", "per square meter", etc.
-  dimensions        String?       // Format: "width x height x depth" in mm
-  weight            Float?        // in grams
-  material          String?
-  finishOptions     String[]
-  minOrderQuantity  Int           @default(1)
-  leadTime          Int?          // in days
-  isActive          Boolean       @default(true)
-  createdById       String
-  createdBy         User          @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  jobProducts       JobProduct[]
-  invoiceItems      InvoiceItem[]
-  productVariants   ProductVariant[]
-  
-  // Class-specific fields
-  // Packaging specific
-  packagingType     String?       // e.g., "box", "bag", "envelope"
-  
-  // Wide Format specific
-  printResolution   String?       // e.g., "720dpi", "1440dpi"
-  defaultLength     Float?        // in meters
-  defaultWidth      Float?        // in meters
-  costPerSqMeter    Decimal?      @db.Decimal(10, 2)
-  
-  // Leaflets specific
-  paperWeight       Int?          // in gsm
-  foldType          String?       // e.g., "tri-fold", "z-fold"
-  
-  // Finished specific
-  bindingType       String?       // e.g., "perfect bound", "saddle stitch"
-}
-
-model ProductVariant {
-  id          String   @id @default(cuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  name        String
-  description String?
-  priceAdjustment Decimal @db.Decimal(10, 2) // Amount to add/subtract from base price
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model JobProduct {
-  id              String   @id @default(cuid())
-  jobId           String
-  job             Job      @relation(fields: [jobId], references: [id])
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  quantity        Int
-  unitPrice       Decimal  @db.Decimal(10, 2)
-  totalPrice      Decimal  @db.Decimal(10, 2)
-  notes           String?
-  completedQuantity Int @default(0)
-  inkCostPerUnit  Decimal? @db.Decimal(10, 2)  // For packaging products
-  inkUsageInMl    Float?   // For wide format products
-  timeTaken       Int?     // Time taken in minutes
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model JobCosting {
-  id              String   @id @default(cuid())
-  jobId           String
-  job             Job      @relation(fields: [jobId], references: [id])
-  materialCost    Decimal  @db.Decimal(10, 2)
-  laborCost       Decimal  @db.Decimal(10, 2)
-  overheadCost    Decimal  @db.Decimal(10, 2)
-  totalCost       Decimal  @db.Decimal(10, 2)
-  profitMargin    Decimal  @db.Decimal(5, 2) // Percentage
-  estimatedProfit Decimal  @db.Decimal(10, 2)
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
-  customerId    String
-  customer      Customer      @relation(fields: [customerId], references: [id])
-  issueDate     DateTime
-  dueDate       DateTime
-  status        InvoiceStatus @default(PENDING)
-  subtotal      Decimal       @db.Decimal(10, 2)
-  taxRate       Decimal       @db.Decimal(5, 2)
-  taxAmount     Decimal       @db.Decimal(10, 2)
-  totalAmount   Decimal       @db.Decimal(10, 2)
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  invoiceItems  InvoiceItem[]
-  jobs          Job[]
-}
-
 enum InvoiceStatus {
   PENDING
   PAID
   OVERDUE
   CANCELLED
-}
-
-model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  description String
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  area        Float?   // Area in square meters for wide format products
-  length      Float?   // Length in meters for wide format products
-  width       Float?   // Width in meters for wide format products
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model HourLog {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  date          DateTime  @db.Date
-  startTime     DateTime
-  endTime       DateTime?
-  hours         Float?
-  isActive      Boolean   @default(true)    // Indicates if the timer is currently running
-  autoStopped   Boolean   @default(false)   // Indicates if the timer was automatically stopped
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([userId, date])
 }
