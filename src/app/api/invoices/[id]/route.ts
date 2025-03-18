@@ -98,142 +98,197 @@ export async function GET(
   }
 }
 
-// PUT /api/invoices/[id] - Update an invoice
+// PUT /api/invoices/:id - Update an invoice
 export async function PUT(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const invoiceId = params.id;
-    const body = await request.json();
-    
+    const data = await request.json();
+
     // Check if invoice exists
     const existingInvoice = await prisma.invoice.findUnique({
       where: {
-        id: invoiceId,
+        id: params.id,
       },
       include: {
-        invoiceItems: true,
-      },
+        invoiceItems: true
+      }
     });
-    
+
     if (!existingInvoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
       );
     }
-    
-    // Prepare update data
-    const updateData: any = {};
-    
-    if (body.status) {
-      updateData.status = body.status;
-    }
-    
-    if (body.issueDate) {
-      updateData.issueDate = new Date(body.issueDate);
-    }
-    
-    if (body.dueDate) {
-      updateData.dueDate = new Date(body.dueDate);
-    }
-    
-    if (body.notes !== undefined) {
-      updateData.notes = body.notes;
-    }
-    
-    // Handle tax rate updates and recalculate totals
-    if (body.taxRate !== undefined) {
-      updateData.taxRate = body.taxRate;
-      
-      // Recalculate tax amount and total amount
-      const subtotal = Number(existingInvoice.subtotal);
-      updateData.taxAmount = subtotal * body.taxRate;
-      updateData.totalAmount = subtotal + updateData.taxAmount;
-    }
-    
-    // Handle invoice items updates if provided
-    if (body.invoiceItems && Array.isArray(body.invoiceItems)) {
-      // Update each invoice item
-      await Promise.all(
-        body.invoiceItems.map(async (item: InvoiceItemUpdate) => {
-          return prisma.invoiceItem.update({
-            where: { id: item.id },
-            data: {
-              description: item.description,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalPrice: item.totalPrice,
-              length: item.length,
-              width: item.width,
-              area: item.area,
-              productId: item.productId
-            }
-          });
-        })
-      );
-      
-      // Recalculate invoice subtotal
-      const updatedItems = await prisma.invoiceItem.findMany({
-        where: { invoiceId: invoiceId }
-      });
-      
-      const newSubtotal = updatedItems.reduce(
-        (sum, item) => sum + Number(item.totalPrice), 
-        0
-      );
-      
-      // Update invoice with new subtotal and recalculated tax
-      updateData.subtotal = newSubtotal;
-      updateData.taxAmount = newSubtotal * (updateData.taxRate || Number(existingInvoice.taxRate));
-      updateData.totalAmount = newSubtotal + updateData.taxAmount;
-    }
-    
-    // Update the invoice
+
+    // Update the invoice data
     const updatedInvoice = await prisma.invoice.update({
       where: {
-        id: invoiceId,
+        id: params.id,
       },
-      data: updateData,
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        invoiceItems: true,
+      data: {
+        // Only update fields that were provided
+        ...(data.invoiceNumber && { invoiceNumber: data.invoiceNumber }),
+        ...(data.customerId && { customerId: data.customerId }),
+        ...(data.issueDate && { issueDate: new Date(data.issueDate) }),
+        ...(data.dueDate && { dueDate: new Date(data.dueDate) }),
+        ...(data.status && { status: data.status }),
+        ...(data.subtotal !== undefined && { subtotal: data.subtotal }),
+        ...(data.taxRate !== undefined && { taxRate: data.taxRate }),
+        ...(data.taxAmount !== undefined && { taxAmount: data.taxAmount }),
+        ...(data.totalAmount !== undefined && { totalAmount: data.totalAmount }),
+        ...(data.notes !== undefined && { notes: data.notes }),
       },
     });
+
+    // Handle invoice items
+    if (data.invoiceItems && Array.isArray(data.invoiceItems)) {
+      // Get existing invoice item IDs
+      const existingItemIds = existingInvoice.invoiceItems.map(item => item.id);
+      
+      // Find items to create, update, or delete
+      const itemsToUpdate = data.invoiceItems.filter(item => item.id && existingItemIds.includes(item.id));
+      const itemsToCreate = data.invoiceItems.filter(item => !item.id || !existingItemIds.includes(item.id));
+      const itemIdsToKeep = itemsToUpdate.map(item => item.id).filter(Boolean);
+      const itemIdsToDelete = existingItemIds.filter(id => !itemIdsToKeep.includes(id));
+      
+      // Delete invoice items that were removed
+      if (itemIdsToDelete.length > 0) {
+        await prisma.invoiceItem.deleteMany({
+          where: {
+            id: {
+              in: itemIdsToDelete
+            }
+          }
+        });
+      }
+      
+      // Update existing invoice items
+      for (const item of itemsToUpdate) {
+        await prisma.invoiceItem.update({
+          where: { id: item.id },
+          data: {
+            productId: item.productId,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+            area: item.area,
+            length: item.length,
+            width: item.width,
+          }
+        });
+      }
+      
+      // Create new invoice items
+      for (const item of itemsToCreate) {
+        await prisma.invoiceItem.create({
+          data: {
+            invoiceId: params.id,
+            productId: item.productId,
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+            area: item.area,
+            length: item.length,
+            width: item.width,
+          }
+        });
+      }
+    }
     
-    // Convert Decimal fields to number for the response
-    const serializedInvoice = {
-      ...updatedInvoice,
-      subtotal: Number(updatedInvoice.subtotal),
-      taxRate: Number(updatedInvoice.taxRate),
-      taxAmount: Number(updatedInvoice.taxAmount),
-      totalAmount: Number(updatedInvoice.totalAmount),
-      invoiceItems: updatedInvoice.invoiceItems.map(item => ({
-        ...item,
-        unitPrice: Number(item.unitPrice),
-        totalPrice: Number(item.totalPrice),
-        ...(item.length !== null ? { length: Number(item.length) } : {}),
-        ...(item.width !== null ? { width: Number(item.width) } : {}),
-        ...(item.area !== null ? { area: Number(item.area) } : {}),
-      })),
-    };
+    // Check if there's a job associated with this invoice and update it
+    const relatedJob = await prisma.job.findFirst({
+      where: {
+        invoiceId: params.id
+      },
+      include: {
+        jobProducts: true
+      }
+    });
     
-    return NextResponse.json(serializedInvoice);
-  } catch (error) {
+    if (relatedJob) {
+      console.log(`Updating job ${relatedJob.id} related to invoice ${params.id}`);
+      
+      // Get updated invoice with items
+      const updatedInvoiceWithItems = await prisma.invoice.findUnique({
+        where: { id: params.id },
+        include: {
+          invoiceItems: {
+            include: {
+              product: true
+            }
+          }
+        }
+      });
+      
+      if (updatedInvoiceWithItems) {
+        // Get existing job product IDs
+        const existingJobProductIds = relatedJob.jobProducts.map(product => product.id);
+        const existingProductMap = new Map();
+        
+        // Create a map of product ID to job product
+        relatedJob.jobProducts.forEach(jobProduct => {
+          existingProductMap.set(jobProduct.productId, jobProduct);
+        });
+        
+        // Process each invoice item to update or create job products
+        for (const invoiceItem of updatedInvoiceWithItems.invoiceItems) {
+          const existingJobProduct = Array.from(existingProductMap.values())
+            .find(jp => jp.productId === invoiceItem.productId);
+            
+          if (existingJobProduct) {
+            // Update existing job product
+            await prisma.jobProduct.update({
+              where: { id: existingJobProduct.id },
+              data: {
+                quantity: invoiceItem.quantity,
+                unitPrice: parseFloat(invoiceItem.unitPrice.toString()),
+                totalPrice: parseFloat(invoiceItem.totalPrice.toString()),
+                notes: invoiceItem.description
+              }
+            });
+          } else {
+            // Create new job product
+            await prisma.jobProduct.create({
+              data: {
+                jobId: relatedJob.id,
+                productId: invoiceItem.productId,
+                quantity: invoiceItem.quantity,
+                unitPrice: parseFloat(invoiceItem.unitPrice.toString()),
+                totalPrice: parseFloat(invoiceItem.totalPrice.toString()),
+                notes: invoiceItem.description,
+                completedQuantity: 0
+              }
+            });
+          }
+        }
+        
+        // Remove job products that no longer exist in the invoice
+        const currentProductIds = updatedInvoiceWithItems.invoiceItems.map(item => item.productId);
+        const jobProductsToDelete = relatedJob.jobProducts
+          .filter(jobProduct => !currentProductIds.includes(jobProduct.productId));
+        
+        for (const jobProduct of jobProductsToDelete) {
+          await prisma.jobProduct.delete({
+            where: { id: jobProduct.id }
+          });
+        }
+      }
+    }
+
+    return NextResponse.json(updatedInvoice);
+  } catch (error: any) {
     console.error('Error updating invoice:', error);
+    console.error('Error message:', error.message);
+    
     return NextResponse.json(
-      { error: 'Failed to update invoice' },
+      { error: `Failed to update invoice: ${error.message}` },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
