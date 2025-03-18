@@ -46,6 +46,18 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [customers, setCustomers] = useState<{id: string, name: string}[]>([]);
+  const [customerFilter, setCustomerFilter] = useState<string>('ALL');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [invoicesPerPage] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const indexOfLastInvoice = currentPage * invoicesPerPage;
+  const indexOfFirstInvoice = indexOfLastInvoice - invoicesPerPage;
+  const currentInvoices = filteredInvoices.slice(indexOfFirstInvoice, indexOfLastInvoice);
   
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -74,8 +86,21 @@ export default function InvoicesPage() {
           })) : []
         }));
         
+        // Extract unique customers
+        const customerMap = new Map<string, {id: string, name: string}>();
+        processedInvoices.forEach((invoice: Invoice) => {
+          if (invoice.customer && invoice.customerId) {
+            customerMap.set(invoice.customerId, {
+              id: invoice.customerId,
+              name: invoice.customer.name
+            });
+          }
+        });
+        setCustomers(Array.from(customerMap.values()));
+        
         setInvoices(processedInvoices);
         setFilteredInvoices(processedInvoices);
+        setTotalPages(Math.ceil(processedInvoices.length / invoicesPerPage));
       } catch (err) {
         console.error('Error fetching invoices:', err);
         setError(err instanceof Error ? err.message : 'Failed to load invoices');
@@ -85,7 +110,7 @@ export default function InvoicesPage() {
     };
 
     fetchInvoices();
-  }, []);
+  }, [invoicesPerPage]);
   
   // Apply filters and sorting whenever the dependencies change
   useEffect(() => {
@@ -104,6 +129,21 @@ export default function InvoicesPage() {
     // Filter by status
     if (statusFilter !== 'ALL') {
       result = result.filter(invoice => invoice.status === statusFilter);
+    }
+    
+    // Filter by customer
+    if (customerFilter !== 'ALL') {
+      result = result.filter(invoice => invoice.customerId === customerFilter);
+    }
+    
+    // Filter by date
+    if (startDateFilter && endDateFilter) {
+      const start = new Date(startDateFilter).getTime();
+      const end = new Date(endDateFilter).getTime();
+      result = result.filter(invoice => {
+        const issueDate = new Date(invoice.issueDate).getTime();
+        return issueDate >= start && issueDate <= end;
+      });
     }
     
     // Sort results
@@ -137,7 +177,9 @@ export default function InvoicesPage() {
     });
     
     setFilteredInvoices(result);
-  }, [invoices, searchQuery, statusFilter, sortBy, sortDirection]);
+    setTotalPages(Math.ceil(result.length / invoicesPerPage));
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [invoices, searchQuery, statusFilter, sortBy, sortDirection, invoicesPerPage, customerFilter, startDateFilter, endDateFilter]);
 
   // Toggle sort when clicking column header
   const handleSort = (column: string) => {
@@ -213,6 +255,11 @@ export default function InvoicesPage() {
     }
   };
 
+  // Pagination controls
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8">
       <div className="sm:flex sm:items-center">
@@ -233,35 +280,133 @@ export default function InvoicesPage() {
       </div>
       
       {/* Filters and search */}
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="col-span-2">
-          <div className="relative rounded-md shadow-sm">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
-              </svg>
+      <div className="mt-6 bg-white shadow overflow-hidden rounded-lg p-4">
+        <h2 className="text-lg font-medium text-gray-900 mb-3">Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                id="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full rounded-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                placeholder="Search by invoice number or customer"
+              />
             </div>
+          </div>
+          
+          <div>
+            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              id="status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="PAID">Paid</option>
+              <option value="OVERDUE">Overdue</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="customer" className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+            <select
+              id="customer"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="ALL">All Customers</option>
+              {customers.map(customer => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+            <select
+              id="sort"
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setSortDirection('desc');
+              }}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="createdAt">Date Created</option>
+              <option value="invoiceNumber">Invoice Number</option>
+              <option value="customer">Customer</option>
+              <option value="issueDate">Issue Date</option>
+              <option value="dueDate">Due Date</option>
+              <option value="status">Status</option>
+              <option value="amount">Amount</option>
+            </select>
+          </div>
+          
+          <div>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">Issue Date From</label>
             <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full rounded-md border-gray-300 pl-10 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              placeholder="Search by invoice number or customer"
+              type="date"
+              id="startDate"
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
-        </div>
-        <div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="PAID">Paid</option>
-            <option value="OVERDUE">Overdue</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+          
+          <div>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Issue Date To</label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="direction" className="block text-sm font-medium text-gray-700 mb-1">Direction</label>
+            <select
+              id="direction"
+              value={sortDirection}
+              onChange={(e) => setSortDirection(e.target.value as 'asc' | 'desc')}
+              className="block w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('ALL');
+                setCustomerFilter('ALL');
+                setStartDateFilter('');
+                setEndDateFilter('');
+                setSortBy('createdAt');
+                setSortDirection('desc');
+              }}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Clear Filters
+            </button>
+          </div>
         </div>
       </div>
       
@@ -425,7 +570,7 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredInvoices.map((invoice) => (
+              {currentInvoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-indigo-600 sm:pl-6">
                     <Link href={`/admin/invoices/${invoice.id}`} className="hover:underline">
@@ -476,6 +621,79 @@ export default function InvoicesPage() {
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination */}
+          {filteredInvoices.length > 0 && (
+            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{indexOfFirstInvoice + 1}</span> to <span className="font-medium">
+                      {Math.min(indexOfLastInvoice, filteredInvoices.length)}
+                    </span> of <span className="font-medium">{filteredInvoices.length}</span> invoices
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                        currentPage === 1 
+                          ? 'text-gray-300 cursor-not-allowed' 
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="sr-only">Previous</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      const pageNum = currentPage <= 3 
+                        ? i + 1 
+                        : currentPage >= totalPages - 2 
+                          ? totalPages - 4 + i 
+                          : currentPage - 2 + i;
+                      
+                      if (pageNum <= 0 || pageNum > totalPages) return null;
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => paginate(pageNum)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === pageNum
+                              ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                        currentPage === totalPages 
+                          ? 'text-gray-300 cursor-not-allowed' 
+                          : 'text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className="sr-only">Next</span>
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
