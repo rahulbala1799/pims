@@ -104,9 +104,6 @@ model JobMetrics {
   // Cost data
   materialCost    Decimal  @db.Decimal(10, 2) @default(0)
   inkCost         Decimal  @db.Decimal(10, 2) @default(0)
-  laborCost       Decimal  @db.Decimal(10, 2) @default(0)
-  overheadCost    Decimal  @db.Decimal(10, 2) @default(0)
-  totalCost       Decimal  @db.Decimal(10, 2) @default(0)
   
   // Metrics
   grossProfit     Decimal  @db.Decimal(10, 2) @default(0)

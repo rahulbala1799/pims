@@ -18,9 +18,6 @@ interface JobMetrics {
   revenue: string; // Will be converted to Decimal
   materialCost: string;
   inkCost: string;
-  laborCost: string;
-  overheadCost: string;
-  totalCost: string;
   grossProfit: string;
   profitMargin: string;
   totalQuantity: number;
@@ -30,7 +27,8 @@ interface JobMetrics {
 
 interface SummaryMetrics {
   totalRevenue: Decimal;
-  totalCost: Decimal;
+  totalMaterialCost: Decimal;
+  totalInkCost: Decimal;
   totalProfit: Decimal;
   totalMargin: Decimal;
   jobCount: number;
@@ -115,13 +113,10 @@ export default function MetricsPage() {
   const [error, setError] = useState<string | null>(null);
   const [summaryMetrics, setSummaryMetrics] = useState({
     totalRevenue: new Decimal(0),
-    totalCost: new Decimal(0),
+    totalMaterialCost: new Decimal(0),
+    totalInkCost: new Decimal(0),
     totalProfit: new Decimal(0),
     averageMargin: new Decimal(0),
-    materialCost: new Decimal(0),
-    inkCost: new Decimal(0),
-    laborCost: new Decimal(0),
-    overheadCost: new Decimal(0),
     jobCount: 0
   });
   
@@ -154,50 +149,38 @@ export default function MetricsPage() {
         
         // Calculate summary metrics
         if (data.length > 0) {
-          const totals = data.reduce((acc: SummaryMetrics & { materialCost: Decimal, inkCost: Decimal, laborCost: Decimal, overheadCost: Decimal }, metric: JobMetrics) => {
+          const totals = data.reduce((acc: SummaryMetrics, metric: JobMetrics) => {
             const revenue = new Decimal(metric.revenue || 0);
             const materialCost = new Decimal(metric.materialCost || 0);
             const inkCost = new Decimal(metric.inkCost || 0);
-            const laborCost = new Decimal(metric.laborCost || 0);
-            const overheadCost = new Decimal(metric.overheadCost || 0);
-            const cost = new Decimal(metric.totalCost || 0);
             const profit = new Decimal(metric.grossProfit || 0);
             const margin = new Decimal(metric.profitMargin || 0);
             
             return {
               totalRevenue: acc.totalRevenue.plus(revenue),
-              totalCost: acc.totalCost.plus(cost),
+              totalMaterialCost: acc.totalMaterialCost.plus(materialCost),
+              totalInkCost: acc.totalInkCost.plus(inkCost),
               totalProfit: acc.totalProfit.plus(profit),
               totalMargin: acc.totalMargin.plus(margin),
-              materialCost: acc.materialCost.plus(materialCost),
-              inkCost: acc.inkCost.plus(inkCost),
-              laborCost: acc.laborCost.plus(laborCost),
-              overheadCost: acc.overheadCost.plus(overheadCost),
               jobCount: acc.jobCount + 1
             };
           }, {
             totalRevenue: new Decimal(0),
-            totalCost: new Decimal(0),
+            totalMaterialCost: new Decimal(0),
+            totalInkCost: new Decimal(0),
             totalProfit: new Decimal(0),
             totalMargin: new Decimal(0),
-            materialCost: new Decimal(0),
-            inkCost: new Decimal(0),
-            laborCost: new Decimal(0),
-            overheadCost: new Decimal(0),
             jobCount: 0
           });
           
           setSummaryMetrics({
             totalRevenue: totals.totalRevenue,
-            totalCost: totals.totalCost,
+            totalMaterialCost: totals.totalMaterialCost,
+            totalInkCost: totals.totalInkCost,
             totalProfit: totals.totalProfit,
             averageMargin: totals.jobCount > 0 
               ? totals.totalMargin.dividedBy(totals.jobCount) 
               : new Decimal(0),
-            materialCost: totals.materialCost,
-            inkCost: totals.inkCost,
-            laborCost: totals.laborCost,
-            overheadCost: totals.overheadCost,
             jobCount: totals.jobCount
           });
         }
@@ -272,41 +255,29 @@ export default function MetricsPage() {
   
   // Show cost breakdown
   const showCostBreakdown = () => {
-    // Overall cost breakdown by type
-    const totalCost = summaryMetrics.totalCost;
+    // Only material and ink costs
+    const totalCosts = summaryMetrics.totalMaterialCost.plus(summaryMetrics.totalInkCost);
     
     const costBreakdown = [
       {
         label: 'Material Costs',
-        value: formatCurrency(summaryMetrics.materialCost.toString()),
+        value: formatCurrency(summaryMetrics.totalMaterialCost.toString()),
         color: 'blue',
-        percentage: Number(summaryMetrics.materialCost.dividedBy(totalCost).times(100).toFixed(1))
+        percentage: Number(summaryMetrics.totalMaterialCost.dividedBy(totalCosts).times(100).toFixed(1))
       },
       {
         label: 'Ink Costs',
-        value: formatCurrency(summaryMetrics.inkCost.toString()),
+        value: formatCurrency(summaryMetrics.totalInkCost.toString()),
         color: 'purple',
-        percentage: Number(summaryMetrics.inkCost.dividedBy(totalCost).times(100).toFixed(1))
-      },
-      {
-        label: 'Labor Costs',
-        value: formatCurrency(summaryMetrics.laborCost.toString()),
-        color: 'yellow',
-        percentage: Number(summaryMetrics.laborCost.dividedBy(totalCost).times(100).toFixed(1))
-      },
-      {
-        label: 'Overhead Costs',
-        value: formatCurrency(summaryMetrics.overheadCost.toString()),
-        color: 'gray',
-        percentage: Number(summaryMetrics.overheadCost.dividedBy(totalCost).times(100).toFixed(1))
+        percentage: Number(summaryMetrics.totalInkCost.dividedBy(totalCosts).times(100).toFixed(1))
       }
     ].sort((a, b) => b.percentage - a.percentage);
     
     setModalData({
       title: 'Cost Breakdown',
       data: costBreakdown,
-      totalLabel: 'Total Costs',
-      totalValue: formatCurrency(summaryMetrics.totalCost.toString())
+      totalLabel: 'Total Material & Ink Costs',
+      totalValue: formatCurrency(totalCosts.toString())
     });
     setModalOpen(true);
   };
@@ -425,8 +396,8 @@ export default function MetricsPage() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Costs</dt>
-                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(summaryMetrics.totalCost.toString())}</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Material & Ink Costs</dt>
+                  <dd className="text-lg font-semibold text-gray-900">{formatCurrency(summaryMetrics.totalMaterialCost.plus(summaryMetrics.totalInkCost).toString())}</dd>
                 </dl>
               </div>
             </div>
@@ -498,7 +469,10 @@ export default function MetricsPage() {
                         Revenue
                       </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Costs
+                        Material Cost
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ink Cost
                       </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Profit
@@ -511,16 +485,13 @@ export default function MetricsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {metrics.map((metric) => (
                       <tr key={metric.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => {
-                        // Show detailed breakdown for this job
+                        // Show detailed breakdown for this job - with only material and ink costs
                         setModalData({
                           title: `Metrics for ${metric.job.title}`,
                           data: [
                             { label: 'Revenue', value: formatCurrency(metric.revenue) },
                             { label: 'Material Cost', value: formatCurrency(metric.materialCost), color: 'blue' },
                             { label: 'Ink Cost', value: formatCurrency(metric.inkCost), color: 'purple' },
-                            { label: 'Labor Cost', value: formatCurrency(metric.laborCost), color: 'yellow' },
-                            { label: 'Overhead Cost', value: formatCurrency(metric.overheadCost), color: 'gray' },
-                            { label: 'Total Cost', value: formatCurrency(metric.totalCost), color: 'red' },
                           ],
                           totalLabel: 'Gross Profit',
                           totalValue: `${formatCurrency(metric.grossProfit)} (${formatPercentage(metric.profitMargin)})`
@@ -538,7 +509,10 @@ export default function MetricsPage() {
                           {formatCurrency(metric.revenue)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                          {formatCurrency(metric.totalCost)}
+                          {formatCurrency(metric.materialCost)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                          {formatCurrency(metric.inkCost)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
                           <span className={`text-sm font-medium ${Number(metric.grossProfit) >= 0 ? 'text-green-600' : 'text-red-600'}`}>

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { Decimal } from 'decimal.js';
 
 // GET /api/metrics/jobs - Get job metrics data
 export async function GET() {
   try {
-    // First, check if the JobMetrics table has any data
+    // First check if we have any job metrics already
     const existingMetrics = await prisma.jobMetrics.findMany({
       include: {
         job: {
@@ -12,23 +13,19 @@ export async function GET() {
             customer: true
           }
         }
-      },
-      orderBy: {
-        lastUpdated: 'desc'
       }
     });
 
-    // If we have existing metrics, return them
     if (existingMetrics.length > 0) {
+      // Return existing metrics
       return NextResponse.json(existingMetrics);
     }
 
-    // Otherwise, calculate metrics from job and invoice data
+    // If no metrics exist, fetch jobs with invoices and products
     const jobs = await prisma.job.findMany({
       where: {
-        // Only include jobs that have both an invoice and products
-        invoiceId: {
-          not: null
+        NOT: {
+          invoiceId: null
         },
         jobProducts: {
           some: {}
@@ -45,91 +42,71 @@ export async function GET() {
       }
     });
 
-    // If we don't have any jobs with invoices, return empty array
     if (jobs.length === 0) {
       return NextResponse.json([]);
     }
 
-    // Calculate metrics for each job and save to JobMetrics table
-    const metrics = await Promise.all(jobs.map(async (job) => {
-      // Calculate revenue from invoice
+    // Calculate metrics for each job
+    const metricsPromises = jobs.map(async job => {
+      // Get the revenue from invoice subtotal
       const revenue = job.invoice?.subtotal || 0;
-      
-      // Calculate material costs
-      let materialCost = 0;
-      let inkCost = 0;
-      let totalTime = 0;
-      let totalQuantity = 0;
-      
-      // Calculate costs from job products
-      job.jobProducts.forEach(product => {
-        // Material cost based on base price
-        materialCost += parseFloat(product.quantity.toString()) * parseFloat(product.product.basePrice.toString());
-        
-        // Ink cost
-        if (product.inkCostPerUnit) {
-          inkCost += parseFloat(product.quantity.toString()) * parseFloat(product.inkCostPerUnit.toString());
-        }
-        
-        // If it's a wide format product and has ink usage
-        if (product.product.productClass === 'WIDE_FORMAT' && product.inkUsageInMl) {
-          // Assume a cost per ml of ink (e.g., $0.50 per ml)
-          inkCost += product.inkUsageInMl * 0.5;
-        }
-        
-        // Track time
-        if (product.timeTaken) {
-          totalTime += product.timeTaken;
-        }
-        
-        // Track quantity
-        totalQuantity += product.quantity;
-      });
-      
-      // Calculate labor cost based on time (assume $30 per hour)
-      const laborCost = (totalTime / 60) * 30;
-      
-      // Calculate overhead (assume 15% of material + labor)
-      const overheadCost = (materialCost + laborCost) * 0.15;
-      
-      // Calculate total cost and profit
-      const totalCost = materialCost + inkCost + laborCost + overheadCost;
-      const grossProfit = revenue - totalCost;
-      
+
+      // Calculate material costs from product base prices
+      const materialCosts = job.jobProducts.reduce((total, product) => {
+        const baseCost = product.product.basePrice || 0;
+        const quantity = product.quantity || 0;
+        return total + (baseCost * quantity);
+      }, 0);
+
+      // Calculate ink costs from inkUsageInMl
+      const inkCosts = job.jobProducts.reduce((total, product) => {
+        const inkUsage = product.inkUsageInMl || 0;
+        const inkCostPerMl = 0.5; // Assume $0.50 per ml of ink
+        return total + (inkUsage * inkCostPerMl);
+      }, 0);
+
+      // Calculate gross profit
+      const totalCosts = materialCosts + inkCosts;
+      const grossProfit = revenue - totalCosts;
+
       // Calculate profit margin as a percentage
-      const profitMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
-      
-      // Create or update JobMetrics record
-      const metrics = await prisma.jobMetrics.upsert({
-        where: {
-          jobId: job.id
-        },
+      const profitMargin = revenue > 0 
+        ? (grossProfit / revenue) * 100 
+        : 0;
+
+      // Calculate total quantity 
+      const totalQuantity = job.jobProducts.reduce((total, product) => {
+        return total + (product.quantity || 0);
+      }, 0);
+
+      // Calculate total time
+      const totalTime = job.jobProducts.reduce((total, product) => {
+        return total + (product.timeTaken || 0);
+      }, 0);
+
+      // Create or update metrics in the database
+      return prisma.jobMetrics.upsert({
+        where: { jobId: job.id },
         update: {
-          revenue: revenue,
-          materialCost: materialCost,
-          inkCost: inkCost,
-          laborCost: laborCost,
-          overheadCost: overheadCost,
-          totalCost: totalCost,
-          grossProfit: grossProfit,
-          profitMargin: profitMargin,
-          totalQuantity: totalQuantity,
-          totalTime: totalTime,
-          lastUpdated: new Date()
+          revenue: revenue.toString(),
+          materialCost: materialCosts.toString(),
+          inkCost: inkCosts.toString(),
+          grossProfit: grossProfit.toString(),
+          profitMargin: profitMargin.toString(),
+          totalQuantity,
+          totalTime,
+          lastUpdated: new Date(),
         },
         create: {
           jobId: job.id,
-          revenue: revenue,
-          materialCost: materialCost,
-          inkCost: inkCost,
-          laborCost: laborCost,
-          overheadCost: overheadCost,
-          totalCost: totalCost,
-          grossProfit: grossProfit,
-          profitMargin: profitMargin,
-          totalQuantity: totalQuantity,
-          totalTime: totalTime,
-          lastUpdated: new Date()
+          revenue: revenue.toString(),
+          materialCost: materialCosts.toString(),
+          inkCost: inkCosts.toString(),
+          grossProfit: grossProfit.toString(),
+          profitMargin: profitMargin.toString(),
+          totalQuantity,
+          totalTime,
+          lastUpdated: new Date(),
         },
         include: {
           job: {
@@ -139,18 +116,15 @@ export async function GET() {
           }
         }
       });
-      
-      return metrics;
-    }));
-    
+    });
+
+    const metrics = await Promise.all(metricsPromises);
     return NextResponse.json(metrics);
-  } catch (error: any) {
-    console.error('Error generating job metrics:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
     
+  } catch (error) {
+    console.error('Error fetching job metrics:', error);
     return NextResponse.json(
-      { error: `Failed to generate job metrics: ${error.message}` },
+      { error: 'Failed to fetch job metrics' },
       { status: 500 }
     );
   }
