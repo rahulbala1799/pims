@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { InvoicePDFDownloadButton, generateInvoicePDF } from '@/components/InvoicePDF';
+import { generateInvoicePDF } from '@/components/InvoicePDF';
 
 interface InvoiceItem {
   id: string;
@@ -31,8 +31,8 @@ interface Invoice {
     phone: string | null;
     address: string | null;
   };
-  items: InvoiceItem[];
-  subtotalAmount: number;
+  invoiceItems: InvoiceItem[];
+  subtotal: number;
   taxAmount: number;
   taxRate: number;
   totalAmount: number;
@@ -61,7 +61,17 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         }
         
         const data = await response.json();
-        setInvoice(data);
+        
+        // Process the data to ensure proper structure
+        const processedInvoice = {
+          ...data,
+          // Ensure subtotal is properly handled
+          subtotal: data.subtotal,
+          // Make sure we handle both items and invoiceItems
+          invoiceItems: data.invoiceItems || data.items || [],
+        };
+        
+        setInvoice(processedInvoice);
       } catch (err) {
         console.error('Error fetching invoice:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -285,7 +295,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {invoice.items.map((item) => (
+                      {invoice.invoiceItems.map((item) => (
                         <tr key={item.id}>
                           <td className="px-6 py-4 whitespace-normal text-sm font-medium text-gray-900">
                             <div className="text-gray-900">{item.description}</div>
@@ -338,7 +348,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <div className="mt-4 space-y-4">
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Subtotal</p>
-                <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.subtotalAmount)}</p>
+                <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</p>
               </div>
               <div className="flex justify-between">
                 <p className="text-sm text-gray-500">Tax ({(invoice.taxRate * 100).toFixed(0)}%)</p>
