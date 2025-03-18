@@ -166,6 +166,7 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
         {/* Header with logo and company info */}
         <View style={styles.header}>
           <View>
+            {/* Try to use the uploaded logo with fallback to company name */}
             <Image style={styles.logo} src="/images/logo.png" />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
@@ -324,17 +325,25 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     
     // Add logo (if available)
     try {
-      // Add logo from public/images directory
-      doc.addImage('/images/logo.png', 'PNG', 14, 10, 70, 28);
+      // Try to add logo from public/images directory with correct path
+      // In browser environment, we need to use the absolute URL path
+      const logoUrl = window.location.origin + '/images/logo.png';
+      doc.addImage(logoUrl, 'PNG', 14, 10, 70, 28);
+      
+      // If logo is successfully added, adjust the company name position
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PrintNPack Ltd', 14, 45);
     } catch (logoError) {
-      console.warn('Could not add logo to PDF:', logoError);
+      console.warn('Could not add logo to PDF, using text header only:', logoError);
+      
+      // If logo fails, place company name at original position
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PrintNPack Ltd', 14, 22);
     }
     
     // Add company info
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('PrintNPack Ltd', 14, 45);
-    
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text([

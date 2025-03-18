@@ -3,15 +3,31 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 export default function AdminHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [logoExists, setLogoExists] = useState(false);
   const pathname = usePathname();
 
   // Close mobile menu when pathname changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  // Check if logo exists
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const img = new window.Image();
+      img.src = '/images/logo.png?cache=' + new Date().getTime(); // Cache busting
+      img.onload = () => {
+        setLogoExists(true);
+      };
+      img.onerror = () => {
+        setLogoExists(false);
+      };
+    }
+  }, []);
 
   const isActive = (path: string) => {
     return pathname?.startsWith(path) ? 'text-indigo-600 font-medium' : 'text-gray-600';
@@ -23,8 +39,18 @@ export default function AdminHeader() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/admin/dashboard" className="text-2xl font-bold text-indigo-600">
-              PrintNPack Ltd
+            <Link href="/admin/dashboard" className="flex items-center">
+              {logoExists ? (
+                <div className="h-10 w-auto mr-2 relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/images/logo.png"
+                    alt="PrintNPack Ltd Logo"
+                    className="h-10 w-auto"
+                  />
+                </div>
+              ) : null}
+              <span className="text-2xl font-bold text-indigo-600">PrintNPack Ltd</span>
             </Link>
           </div>
           
