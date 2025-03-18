@@ -156,10 +156,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     try {
       setIsCreatingJob(true);
       
-      // Get current user ID - in a real app this would come from auth context
-      // For now, we'll use a default value
-      const createdById = 'user-01';
-      
+      // We'll let the server find a valid user ID
       const response = await fetch('/api/jobs/createFromInvoice', {
         method: 'POST',
         headers: {
@@ -168,8 +165,8 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         body: JSON.stringify({
           invoiceId: invoice.id,
           title: `Job for Invoice #${invoice.invoiceNumber}`,
-          description: `Job created from Invoice #${invoice.invoiceNumber} for ${invoice.customer.name}`,
-          createdById
+          description: `Job created from Invoice #${invoice.invoiceNumber} for ${invoice.customer.name}`
+          // Not sending createdById - the API will find a valid user
         }),
       });
       

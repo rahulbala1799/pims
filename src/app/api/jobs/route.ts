@@ -32,25 +32,54 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     
-    // Ensure required fields are present
-    if (!data.title || !data.customerId) {
+    // Check required fields
+    if (!data.title) {
       return NextResponse.json(
-        { error: 'Title and customer are required' },
+        { error: "Title is required" },
         { status: 400 }
       );
     }
-
+    
+    // Find a valid user to assign as the creator
+    let createdById = data.createdById;
+    
+    if (!createdById) {
+      // Try to find an admin user first
+      const adminUser = await prisma.user.findFirst({
+        where: { role: 'ADMIN' }
+      });
+      
+      if (adminUser) {
+        createdById = adminUser.id;
+      } else {
+        // Fall back to any user
+        const anyUser = await prisma.user.findFirst();
+        
+        if (!anyUser) {
+          console.error('No users found in the database');
+          return NextResponse.json(
+            { error: 'Could not find a valid user to assign as job creator' },
+            { status: 500 }
+          );
+        }
+        
+        createdById = anyUser.id;
+      }
+    }
+    
     // Create the job
     const job = await prisma.job.create({
       data: {
         title: data.title,
-        description: data.description || null,
-        status: data.status || 'PENDING',
+        description: data.description || '',
+        status: data.status || 'NEW',
         priority: data.priority || 'MEDIUM',
-        customerId: data.customerId,
-        createdById: data.createdById || 'user-01', // This should be the actual user ID in a real app
-        assignedToId: data.assignedToId || null,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        customerId: data.customerId,
+        assignedToId: data.assignedToId,
+        createdById: createdById,
+        // Only include invoiceId if it's provided
+        ...(data.invoiceId ? { invoiceId: data.invoiceId } : {}),
       },
       include: {
         customer: true,
@@ -58,14 +87,14 @@ export async function POST(request: Request) {
         createdBy: true,
       },
     });
-
-    return NextResponse.json(job, { status: 201 });
-  } catch (error: any) {
-    console.error('Error creating job:', error);
-    console.error('Error message:', error.message);
     
+    console.log(`Job created: ${job.id}`);
+    
+    return NextResponse.json(job, { status: 201 });
+  } catch (error) {
+    console.error('Error creating job:', error);
     return NextResponse.json(
-      { error: `Failed to create job: ${error.message}` },
+      { error: `Failed to create job: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }

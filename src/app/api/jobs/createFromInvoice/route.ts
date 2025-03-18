@@ -17,6 +17,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find a valid admin user to use as creator if none provided
+    let createdById = data.createdById;
+    if (!createdById) {
+      // Find the first admin user in the system
+      const adminUser = await prisma.user.findFirst({
+        where: { role: 'ADMIN' }
+      });
+      
+      if (!adminUser) {
+        // Fallback to any user if no admin found
+        const anyUser = await prisma.user.findFirst();
+        if (!anyUser) {
+          return NextResponse.json(
+            { error: 'No valid users found in the system' },
+            { status: 500 }
+          );
+        }
+        createdById = anyUser.id;
+      } else {
+        createdById = adminUser.id;
+      }
+      
+      console.log('Using user ID for job creation:', createdById);
+    }
+
     // Fetch the invoice with its items
     const invoice = await prisma.invoice.findUnique({
       where: {
@@ -50,7 +75,7 @@ export async function POST(request: Request) {
           status: JobStatus.PENDING,
           priority: JobPriority.MEDIUM,
           customerId: invoice.customerId,
-          createdById: data.createdById || 'user-01',
+          createdById: createdById, // Use the valid user ID
         }
       });
       
