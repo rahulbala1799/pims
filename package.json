@@ -25,6 +25,7 @@
     "@prisma/client": "^5.10.2",
     "@react-pdf/renderer": "^4.3.0",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.1.0",
     "decimal.js": "^10.5.0",
     "jspdf": "^3.0.0",
     "jspdf-autotable": "^5.0.2",
