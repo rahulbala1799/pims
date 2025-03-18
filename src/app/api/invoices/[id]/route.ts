@@ -308,6 +308,28 @@ export async function PUT(
             where: { id: jobProduct.id }
           });
         }
+
+        // Trigger metrics recalculation for this job
+        try {
+          const webhookUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/webhooks/metrics-update`;
+          console.log(`Triggering metrics webhook at ${webhookUrl} for job ${job.id}`);
+          
+          const metricsResponse = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ jobId: job.id }),
+          });
+          
+          if (!metricsResponse.ok) {
+            console.error('Failed to trigger metrics update webhook');
+          } else {
+            console.log('Successfully triggered metrics update webhook for job', job.id);
+          }
+        } catch (webhookError) {
+          console.error('Error triggering metrics webhook:', webhookError);
+        }
       }
     }
 

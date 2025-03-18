@@ -120,6 +120,30 @@ export async function POST(
       },
     });
     
+    // Trigger metrics recalculation for this job if it has an invoice
+    if (updatedJob?.invoiceId) {
+      try {
+        const webhookUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/webhooks/metrics-update`;
+        console.log(`Triggering metrics webhook at ${webhookUrl} for job ${params.id}`);
+        
+        const metricsResponse = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ jobId: params.id }),
+        });
+        
+        if (!metricsResponse.ok) {
+          console.error('Failed to trigger metrics update webhook');
+        } else {
+          console.log('Successfully triggered metrics update webhook for job', params.id);
+        }
+      } catch (webhookError) {
+        console.error('Error triggering metrics webhook:', webhookError);
+      }
+    }
+    
     // Return the updated data
     return NextResponse.json({ 
       message: 'Progress updated successfully',

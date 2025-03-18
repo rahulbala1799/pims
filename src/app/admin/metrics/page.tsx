@@ -192,7 +192,16 @@ export default function MetricsPage() {
       }
     };
     
+    // Initial fetch
     fetchMetrics();
+    
+    // Set up periodic refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      fetchMetrics();
+    }, 30000); // 30 seconds
+    
+    // Clean up interval when component unmounts
+    return () => clearInterval(refreshInterval);
   }, []);
 
   // Generate some demo data if no metrics exist
