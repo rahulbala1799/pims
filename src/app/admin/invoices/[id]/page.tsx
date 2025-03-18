@@ -98,9 +98,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
-      currency: 'GBP',
+      currency: 'EUR',
     }).format(amount);
   };
 
@@ -372,13 +372,13 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                           Description
                         </th>
                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Qty
+                          Quantity
                         </th>
                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dimensions
+                          Unit Price
                         </th>
                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Unit Price
+                          Dimensions
                         </th>
                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total
@@ -398,6 +398,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                             {item.quantity}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                            {formatCurrency(item.unitPrice)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                             {item.length && item.width ? (
                               <span>
                                 {item.length.toFixed(2)}m × {item.width.toFixed(2)}m
@@ -407,9 +410,6 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                             ) : (
                               '-'
                             )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                            {formatCurrency(item.unitPrice)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                             {formatCurrency(item.totalPrice)}
@@ -437,17 +437,17 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           <div className="col-span-1 px-6 py-5 bg-gray-50">
             <h3 className="text-lg font-medium leading-6 text-gray-900">Summary</h3>
             <div className="mt-4 space-y-4">
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Subtotal</p>
-                <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</p>
+              <div className="flex justify-between py-2 border-t border-gray-200">
+                <span className="text-sm text-gray-600">Subtotal:</span>
+                <span className="text-sm font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">Tax ({(invoice.taxRate * 100).toFixed(0)}%)</p>
-                <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.taxAmount)}</p>
+              <div className="flex justify-between py-2">
+                <span className="text-sm text-gray-600">VAT ({(invoice.taxRate * 100).toFixed(0)}%):</span>
+                <span className="text-sm font-medium text-gray-900">{formatCurrency(invoice.taxAmount)}</span>
               </div>
-              <div className="border-t border-gray-200 pt-4 flex justify-between">
-                <p className="text-base font-medium text-gray-900">Total</p>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(invoice.totalAmount)}</p>
+              <div className="flex justify-between py-2 font-medium text-base">
+                <span>Total:</span>
+                <span>{formatCurrency(invoice.totalAmount)}</span>
               </div>
               
               <div className="mt-8 border-t border-gray-200 pt-4">

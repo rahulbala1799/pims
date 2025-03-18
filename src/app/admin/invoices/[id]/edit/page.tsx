@@ -171,6 +171,15 @@ export default function EditInvoicePage() {
     const num = typeof value === 'number' ? value : Number(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
+  
+  // Format currency
+  const formatCurrency = (value: any) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(num);
+  };
 
   // Update item field
   const updateItemField = (index: number, field: string, value: any) => {
@@ -405,19 +414,20 @@ export default function EditInvoicePage() {
               {/* Tax Rate */}
               <div>
                 <label htmlFor="taxRate" className="block text-sm font-medium text-gray-700">
-                  Tax Rate (%)
+                  VAT Rate (%)
                 </label>
-                <input
-                  type="number"
-                  name="taxRate"
+                <select
                   id="taxRate"
+                  name="taxRate"
                   value={taxRate}
                   onChange={(e) => setTaxRate(Number(e.target.value))}
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  className="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                />
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                >
+                  <option value="23">Standard Rate (23%)</option>
+                  <option value="13.5">Reduced Rate (13.5%)</option>
+                  <option value="9">Second Reduced Rate (9%)</option>
+                  <option value="0">Zero Rate (0%)</option>
+                </select>
               </div>
 
               {/* Issue Date */}
@@ -571,7 +581,7 @@ export default function EditInvoicePage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <div className="flex items-center justify-end">
-                        <span className="mr-1">£</span>
+                        <span className="mr-1">€</span>
                         <input
                           type="number"
                           value={item.unitPrice}
@@ -583,7 +593,7 @@ export default function EditInvoicePage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                      £{formatNumber(item.totalPrice)}
+                      {formatCurrency(item.totalPrice)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       <button
@@ -606,15 +616,15 @@ export default function EditInvoicePage() {
               <div className="w-64 text-sm">
                 <div className="flex justify-between py-2 border-b border-gray-200">
                   <span className="font-medium text-gray-500">Subtotal:</span>
-                  <span className="font-medium text-gray-900">£{formatNumber(subtotal)}</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="font-medium text-gray-500">Tax ({taxRate}%):</span>
-                  <span className="font-medium text-gray-900">£{formatNumber(taxAmount)}</span>
+                  <span className="font-medium text-gray-500">VAT ({taxRate}%):</span>
+                  <span className="font-medium text-gray-900">{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between py-2 font-bold">
                   <span className="text-gray-900">Total:</span>
-                  <span className="text-gray-900">£{formatNumber(totalAmount)}</span>
+                  <span className="text-gray-900">{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
             </div>

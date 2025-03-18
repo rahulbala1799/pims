@@ -190,6 +190,15 @@ export default function EditMobileInvoicePage() {
     const num = typeof value === 'number' ? value : Number(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
+  
+  // Format currency
+  const formatCurrency = (value: any) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(num);
+  };
 
   // Toggle item editing mode
   const toggleItemEdit = (index: number) => {
@@ -548,18 +557,20 @@ export default function EditMobileInvoicePage() {
               </select>
             </div>
             
-            <div className="mb-4">
-              <label htmlFor="taxRate" className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
-              <input
-                type="number"
-                id="taxRate"
-                min="0"
-                max="100"
-                step="0.1"
+            <div className="w-full px-4 py-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                VAT Rate (%)
+              </label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                 value={taxRate}
-                onChange={(e) => setTaxRate(parseFloat(e.target.value))}
-                className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              />
+                onChange={(e) => setTaxRate(Number(e.target.value))}
+              >
+                <option value="23">Standard Rate (23%)</option>
+                <option value="13.5">Reduced Rate (13.5%)</option>
+                <option value="9">Second Reduced Rate (9%)</option>
+                <option value="0">Zero Rate (0%)</option>
+              </select>
             </div>
             
             <div>
@@ -596,18 +607,18 @@ export default function EditMobileInvoicePage() {
                         </button>
                       </div>
                       <div className="text-sm text-gray-600 mb-2">
-                        {item.quantity} × £{formatNumber(item.unitPrice)}
-                        {item.area && ` (${formatNumber(item.area)} m²)`}
+                        {item.quantity} × {formatCurrency(item.unitPrice)}
+                        {item.area && ` (${formatCurrency(item.area)} m²)`}
                       </div>
                       
                       {(item.length || item.width) && (
                         <div className="text-xs text-gray-500 mb-2">
-                          Dimensions: {item.length ? `${formatNumber(item.length)}m` : '--'} × {item.width ? `${formatNumber(item.width)}m` : '--'}
+                          Dimensions: {item.length ? `${formatCurrency(item.length)}m` : '--'} × {item.width ? `${formatCurrency(item.width)}m` : '--'}
                         </div>
                       )}
                       
                       <div className="flex justify-end">
-                        <span className="font-medium text-gray-900">£{formatNumber(item.totalPrice)}</span>
+                        <span className="font-medium text-gray-900">{formatCurrency(item.totalPrice)}</span>
                       </div>
                     </div>
                   ) : (
@@ -654,16 +665,21 @@ export default function EditMobileInvoicePage() {
                               className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price (£)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unitPrice}
-                              onChange={(e) => updateItemField(index, 'unitPrice', e.target.value)}
-                              className="w-full p-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                            />
+                          <div className="flex items-center">
+                            <span className="w-24 text-gray-600">Unit Price:</span>
+                            <div className="relative rounded-md shadow-sm flex-1">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="text-gray-500 sm:text-sm">€</span>
+                              </div>
+                              <input
+                                type="number"
+                                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md"
+                                placeholder="0.00"
+                                aria-describedby="price-currency"
+                                value={item.unitPrice}
+                                onChange={(e) => updateItemField(index, 'unitPrice', e.target.value)}
+                              />
+                            </div>
                           </div>
                         </div>
                         
@@ -696,7 +712,7 @@ export default function EditMobileInvoicePage() {
                         {item.length && item.width && (
                           <div className="p-3 bg-indigo-50 rounded-lg">
                             <div className="text-sm font-medium text-indigo-800">
-                              Area: {formatNumber(item.area || (item.length * item.width))} m²
+                              Area: {formatCurrency(item.area || (item.length * item.width))} m²
                             </div>
                           </div>
                         )}
@@ -704,7 +720,7 @@ export default function EditMobileInvoicePage() {
                         <div className="p-3 bg-gray-100 rounded-lg">
                           <div className="flex justify-between text-sm font-medium">
                             <span>Total:</span>
-                            <span>£{formatNumber(item.totalPrice)}</span>
+                            <span>{formatCurrency(item.totalPrice)}</span>
                           </div>
                         </div>
                       </div>
@@ -718,15 +734,15 @@ export default function EditMobileInvoicePage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
-                  <span>£{formatNumber(subtotal)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Tax ({formatNumber(taxRate, 0)}%):</span>
-                  <span>£{formatNumber(taxAmount)}</span>
+                  <span>VAT ({formatNumber(taxRate, 0)}%):</span>
+                  <span>{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg pt-2 border-t border-indigo-100">
                   <span>Total:</span>
-                  <span>£{formatNumber(totalAmount)}</span>
+                  <span>{formatCurrency(totalAmount)}</span>
                 </div>
               </div>
             </div>
@@ -802,7 +818,7 @@ export default function EditMobileInvoicePage() {
                             <span className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-0.5">
                               {product.productClass.replace('_', ' ')}
                             </span>
-                            <span className="text-xs font-medium">£{product.basePrice.toFixed(2)}</span>
+                            <span className="text-xs font-medium">€{product.basePrice.toFixed(2)}</span>
                           </div>
                         </div>
                       ))
@@ -861,7 +877,7 @@ export default function EditMobileInvoicePage() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Base Price (£) *
+                    Base Price (€) *
                   </label>
                   <input
                     type="number"

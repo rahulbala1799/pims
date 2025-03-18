@@ -37,6 +37,7 @@ interface Invoice {
   notes?: string;
   invoiceItems: InvoiceItem[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 export default function MobileInvoiceDetailPage() {
@@ -115,10 +116,19 @@ export default function MobileInvoiceDetailPage() {
     return new Date(dateString).toLocaleDateString();
   };
   
-  // Safely format a number
+  // Format a number for display
   const formatNumber = (value: any, decimals = 2) => {
     const num = typeof value === 'number' ? value : Number(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
+  };
+  
+  // Format currency
+  const formatCurrency = (value: any) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(num);
   };
 
   const handleDeleteInvoice = async () => {
@@ -265,8 +275,8 @@ export default function MobileInvoiceDetailPage() {
               {invoice.invoiceItems.map((item, index) => (
                 <div key={index} className="bg-white border border-gray-200 rounded-md p-4">
                   <div className="font-medium mb-1">{item.description}</div>
-                  <div className="text-sm text-gray-500 mb-2">
-                    {item.quantity} × £{formatNumber(item.unitPrice)}
+                  <div className="text-sm text-gray-600 mb-2">
+                    {item.quantity} × {formatCurrency(item.unitPrice)}
                     {item.area && ` (${formatNumber(item.area)} m²)`}
                   </div>
                   
@@ -278,7 +288,7 @@ export default function MobileInvoiceDetailPage() {
                   )}
                   
                   <div className="flex justify-end">
-                    <span className="font-medium">£{formatNumber(item.totalPrice)}</span>
+                    <span className="font-medium">{formatCurrency(item.totalPrice)}</span>
                   </div>
                 </div>
               ))}
@@ -288,19 +298,20 @@ export default function MobileInvoiceDetailPage() {
           {/* Summary */}
           <div>
             <h2 className="text-lg font-semibold mb-2">Summary</h2>
-            <div className="bg-white border border-gray-200 rounded-md p-4">
-              <div className="space-y-2 mb-3">
+            <div className="bg-white rounded-lg p-4 shadow mb-6">
+              <h3 className="text-lg font-semibold mb-3">Summary</h3>
+              <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>£{formatNumber(invoice.subtotal)}</span>
+                  <span>{formatCurrency(invoice.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax ({formatNumber(invoice.taxRate * 100, 0)}%):</span>
-                  <span>£{formatNumber(invoice.taxAmount)}</span>
+                  <span>VAT ({formatNumber(invoice.taxRate * 100, 0)}%):</span>
+                  <span>{formatCurrency(invoice.taxAmount)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                <div className="flex justify-between pt-2 border-t border-gray-200 font-semibold">
                   <span>Total:</span>
-                  <span>£{formatNumber(invoice.totalAmount)}</span>
+                  <span>{formatCurrency(invoice.totalAmount)}</span>
                 </div>
               </div>
             </div>

@@ -82,7 +82,7 @@ export default function NewMobileInvoicePage() {
   const [formData, setFormData] = useState<InvoiceFormData>({
     customerId: '',
     items: [],
-    taxRate: 20, // Default to 20%
+    taxRate: 23, // Default to 23% (Irish standard rate)
     issueDate: new Date().toISOString().split('T')[0], // Store as YYYY-MM-DD string
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     status: 'PENDING',
@@ -488,6 +488,21 @@ export default function NewMobileInvoicePage() {
     }
   };
 
+  // Format a number for display with currency
+  const formatCurrency = (value: any) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(num);
+  };
+
+  // Format a number for display
+  const formatNumber = (value: any, decimals = 2) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return isNaN(num) ? '0.00' : num.toFixed(decimals);
+  };
+
   return (
     <div className="pb-24">
       {/* Mobile header with progress indicator */}
@@ -878,15 +893,15 @@ export default function NewMobileInvoicePage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>£{subtotal.toFixed(2)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax ({formData.taxRate}%):</span>
-                  <span>£{taxAmount.toFixed(2)}</span>
+                  <span>VAT ({formatNumber(formData.taxRate, 0)}%):</span>
+                  <span>{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
                   <span>Total:</span>
-                  <span>£{total.toFixed(2)}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
               </div>
             </div>
@@ -895,19 +910,20 @@ export default function NewMobileInvoicePage() {
               {/* Tax Rate */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tax Rate (%)
+                  VAT Rate (%)
                 </label>
                 <select
                   value={formData.taxRate}
                   onChange={(e) => setFormData({
                     ...formData,
-                    taxRate: parseFloat(e.target.value)
+                    taxRate: Number(e.target.value)
                   })}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                 >
-                  <option value="0">0% (No Tax)</option>
-                  <option value="5">5% (Reduced Rate)</option>
-                  <option value="20">20% (Standard Rate)</option>
+                  <option value="23">Standard Rate (23%)</option>
+                  <option value="13.5">Reduced Rate (13.5%)</option>
+                  <option value="9">Second Reduced Rate (9%)</option>
+                  <option value="0">Zero Rate (0%)</option>
                 </select>
               </div>
               
@@ -1052,15 +1068,15 @@ export default function NewMobileInvoicePage() {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>£{subtotal.toFixed(2)}</span>
+                    <span>{formatCurrency(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tax ({formData.taxRate}%):</span>
-                    <span>£{taxAmount.toFixed(2)}</span>
+                    <span>VAT ({formatNumber(formData.taxRate, 0)}%):</span>
+                    <span>{formatCurrency(taxAmount)}</span>
                   </div>
                   <div className="flex justify-between font-medium">
                     <span>Total:</span>
-                    <span>£{total.toFixed(2)}</span>
+                    <span>{formatCurrency(total)}</span>
                   </div>
                 </div>
               </div>

@@ -183,9 +183,9 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: Invoice, customer:
 
   // Format currency
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
-      currency: 'GBP'
+      currency: 'EUR'
     }).format(amount);
   };
   
@@ -205,9 +205,9 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: Invoice, customer:
           <View style={styles.companyInfo}>
             <Text>PrintNPack Ltd</Text>
             <Text>123 Print Avenue</Text>
-            <Text>London, W1 1AA</Text>
-            <Text>info@printnpack.co.uk</Text>
-            <Text>+44 20 1234 5678</Text>
+            <Text>Dublin, D02 A123</Text>
+            <Text>info@printnpack.ie</Text>
+            <Text>+353 1 234 5678</Text>
           </View>
         </View>
 
@@ -279,7 +279,7 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: Invoice, customer:
             <Text>{formatCurrency(subtotal)}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text>Tax ({(invoice.taxRate * 100).toFixed(0)}%):</Text>
+            <Text>VAT ({(invoice.taxRate * 100).toFixed(0)}%):</Text>
             <Text>{formatCurrency(invoice.taxAmount)}</Text>
           </View>
           <View style={[styles.summaryRow, styles.summaryTotal]}>
@@ -342,9 +342,9 @@ export const generateInvoicePDF = (invoice: Invoice, customer: Customer, fileNam
     doc.text([
       'PrintNPack Ltd',
       '123 Print Avenue',
-      'London, W1 1AA',
-      'info@printnpack.co.uk',
-      '+44 20 1234 5678'
+      'Dublin, D02 A123',
+      'info@printnpack.ie',
+      '+353 1 234 5678'
     ], 195, 22, { align: 'right' });
     
     // Add invoice title
@@ -397,9 +397,9 @@ export const generateInvoicePDF = (invoice: Invoice, customer: Customer, fileNam
     
     // Format currency
     const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('en-GB', {
+      return new Intl.NumberFormat('en-IE', {
         style: 'currency',
-        currency: 'GBP'
+        currency: 'EUR'
       }).format(amount);
     };
     
@@ -453,7 +453,7 @@ export const generateInvoicePDF = (invoice: Invoice, customer: Customer, fileNam
     doc.text('Subtotal:', 150, finalY);
     doc.text(formatCurrency(subtotal), 195, finalY, { align: 'right' });
     
-    doc.text(`Tax (${(invoice.taxRate * 100).toFixed(0)}%):`, 150, finalY + 5);
+    doc.text(`VAT (${(invoice.taxRate * 100).toFixed(0)}%):`, 150, finalY + 5);
     doc.text(formatCurrency(invoice.taxAmount), 195, finalY + 5, { align: 'right' });
     
     doc.setFont('helvetica', 'bold');

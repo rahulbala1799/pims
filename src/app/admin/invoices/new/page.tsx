@@ -75,7 +75,7 @@ export default function NewInvoicePage() {
   const [formData, setFormData] = useState<InvoiceFormData>({
     customerId: '',
     items: [],
-    taxRate: 20, // Default to 20%
+    taxRate: 23, // Default to 23% (Irish standard rate)
     issueDate: new Date().toISOString().split('T')[0], // Store as YYYY-MM-DD string
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     status: 'PENDING',
@@ -308,9 +308,9 @@ export default function NewInvoicePage() {
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
-      currency: 'GBP',
+      currency: 'EUR',
     }).format(amount);
   };
 
@@ -594,7 +594,7 @@ export default function NewInvoicePage() {
                       
                       <div>
                         <label htmlFor="unit-price" className="block text-sm font-medium text-gray-700 mb-1">
-                          Unit Price (£)
+                          Unit Price (€)
                         </label>
                         <input
                           type="number"
@@ -825,18 +825,19 @@ export default function NewInvoicePage() {
                 
                 <div>
                   <label htmlFor="taxRate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Tax Rate (%)
+                    VAT Rate (%)
                   </label>
-                  <input
-                    type="number"
+                  <select
                     id="taxRate"
-                    min="0"
-                    max="100"
-                    step="0.1"
                     className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                     value={formData.taxRate}
-                    onChange={handleTaxRateChange}
-                  />
+                    onChange={(e) => setFormData({...formData, taxRate: Number(e.target.value)})}
+                  >
+                    <option value="23">Standard Rate (23%)</option>
+                    <option value="13.5">Reduced Rate (13.5%)</option>
+                    <option value="9">Second Reduced Rate (9%)</option>
+                    <option value="0">Zero Rate (0%)</option>
+                  </select>
                 </div>
                 
                 <div>
