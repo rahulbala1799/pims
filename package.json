@@ -9,7 +9,9 @@
     "lint": "next lint",
     "postinstall": "prisma generate && node prisma/seed.js",
     "seed:admin": "node prisma/seed-admin.js",
-    "seed:employee": "node prisma/seed-employee.js"
+    "seed:employee": "node prisma/seed-employee.js",
+    "seed:leaflets": "ts-node prisma/leaflet-seed.ts",
+    "seed:leaflets:js": "node prisma/leaflet-seed.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
