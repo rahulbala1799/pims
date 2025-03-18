@@ -38,9 +38,30 @@ interface Job {
   };
 }
 
+interface JobMetrics {
+  total: number;
+  completed: number;
+  inProgress: number;
+  pending: number;
+  cancelled: number;
+  overdue: number;
+  unassigned: number;
+  highPriority: number;
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState<JobMetrics>({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    cancelled: 0,
+    overdue: 0,
+    unassigned: 0,
+    highPriority: 0
+  });
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -52,6 +73,7 @@ export default function JobsPage() {
         }
         const data = await response.json();
         setJobs(data);
+        calculateMetrics(data);
       } catch (error) {
         console.error('Error fetching jobs:', error);
       } finally {
@@ -61,6 +83,54 @@ export default function JobsPage() {
 
     fetchJobs();
   }, []);
+
+  const calculateMetrics = (jobsData: Job[]) => {
+    const metrics: JobMetrics = {
+      total: jobsData.length,
+      completed: 0,
+      inProgress: 0,
+      pending: 0,
+      cancelled: 0,
+      overdue: 0,
+      unassigned: 0,
+      highPriority: 0
+    };
+
+    jobsData.forEach(job => {
+      // Count by status
+      switch (job.status) {
+        case 'COMPLETED':
+          metrics.completed++;
+          break;
+        case 'IN_PROGRESS':
+          metrics.inProgress++;
+          break;
+        case 'PENDING':
+          metrics.pending++;
+          break;
+        case 'CANCELLED':
+          metrics.cancelled++;
+          break;
+      }
+
+      // Count overdue jobs
+      if (isDueDateOverdue(job.dueDate) && job.status !== 'COMPLETED' && job.status !== 'CANCELLED') {
+        metrics.overdue++;
+      }
+
+      // Count unassigned jobs
+      if (!job.assignedTo && job.status !== 'COMPLETED' && job.status !== 'CANCELLED') {
+        metrics.unassigned++;
+      }
+
+      // Count high priority jobs
+      if (job.priority === 'HIGH' || job.priority === 'URGENT') {
+        metrics.highPriority++;
+      }
+    });
+
+    setMetrics(metrics);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -153,6 +223,91 @@ export default function JobsPage() {
         >
           Create New Job
         </Link>
+      </div>
+
+      {/* Metrics Dashboard */}
+      <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-gray-900">{metrics.total}</div>
+          <div className="text-sm text-gray-500">Total Jobs</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-green-600">{metrics.completed}</div>
+          <div className="text-sm text-gray-500">Completed</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-blue-600">{metrics.inProgress}</div>
+          <div className="text-sm text-gray-500">In Progress</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-gray-600">{metrics.pending}</div>
+          <div className="text-sm text-gray-500">Not Started</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-red-600">{metrics.overdue}</div>
+          <div className="text-sm text-gray-500">Overdue</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-orange-600">{metrics.highPriority}</div>
+          <div className="text-sm text-gray-500">High Priority</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-purple-600">{metrics.unassigned}</div>
+          <div className="text-sm text-gray-500">Unassigned</div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-red-600">{metrics.cancelled}</div>
+          <div className="text-sm text-gray-500">Cancelled</div>
+        </div>
+      </div>
+
+      {/* Job Completion Chart - Visual representation of job statuses */}
+      <div className="mb-6 bg-white shadow rounded-lg p-4">
+        <h2 className="text-lg font-medium text-gray-900 mb-3">Job Status Overview</h2>
+        <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden">
+          {metrics.total > 0 && (
+            <>
+              <div 
+                className="h-6 bg-green-500 float-left"
+                style={{ width: `${(metrics.completed / metrics.total) * 100}%` }}
+                title={`Completed: ${metrics.completed} (${Math.round((metrics.completed / metrics.total) * 100)}%)`}
+              ></div>
+              <div 
+                className="h-6 bg-blue-500 float-left"
+                style={{ width: `${(metrics.inProgress / metrics.total) * 100}%` }}
+                title={`In Progress: ${metrics.inProgress} (${Math.round((metrics.inProgress / metrics.total) * 100)}%)`}
+              ></div>
+              <div 
+                className="h-6 bg-gray-400 float-left"
+                style={{ width: `${(metrics.pending / metrics.total) * 100}%` }}
+                title={`Not Started: ${metrics.pending} (${Math.round((metrics.pending / metrics.total) * 100)}%)`}
+              ></div>
+              <div 
+                className="h-6 bg-red-500 float-left"
+                style={{ width: `${(metrics.cancelled / metrics.total) * 100}%` }}
+                title={`Cancelled: ${metrics.cancelled} (${Math.round((metrics.cancelled / metrics.total) * 100)}%)`}
+              ></div>
+            </>
+          )}
+        </div>
+        <div className="flex justify-between text-xs text-gray-500 mt-2">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
+            <span>Completed</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
+            <span>In Progress</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-gray-400 rounded-full mr-1"></div>
+            <span>Not Started</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
+            <span>Cancelled</span>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
