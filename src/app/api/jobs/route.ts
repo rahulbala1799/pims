@@ -5,6 +5,13 @@ interface JobQuery {
   invoiceId?: string;
 }
 
+// Define a type that includes the invoiceId property
+interface JobWithInvoiceId {
+  id: string;
+  invoiceId?: string | null;
+  [key: string]: any; // Allow other job properties
+}
+
 // GET /api/jobs - Get all jobs
 export async function GET(request: Request) {
   try {
@@ -21,59 +28,118 @@ export async function GET(request: Request) {
         SELECT j.*, 
           c.id as "customer_id", c.name as "customer_name",
           u1.id as "createdBy_id", u1.name as "createdBy_name",
-          u2.id as "assignedTo_id", u2.name as "assignedTo_name"
+          u2.id as "assignedTo_id", u2.name as "assignedTo_name",
+          i.id as "invoice_id", i."invoiceNumber" as "invoice_number"
         FROM "Job" j
         LEFT JOIN "Customer" c ON j."customerId" = c.id
         LEFT JOIN "User" u1 ON j."createdById" = u1.id
         LEFT JOIN "User" u2 ON j."assignedToId" = u2.id
+        LEFT JOIN "Invoice" i ON j."invoiceId" = i.id
         WHERE j."invoiceId" = ${invoiceId}
         ORDER BY j."createdAt" DESC
       `;
       
-      // Transform the raw results to match the structure expected by the frontend
-      const formattedJobs = (jobs as any[]).map(job => ({
-        id: job.id,
-        title: job.title,
-        description: job.description,
-        status: job.status,
-        priority: job.priority,
-        customerId: job.customerId,
-        createdById: job.createdById,
-        assignedToId: job.assignedToId,
-        dueDate: job.dueDate,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt,
-        invoiceId: job.invoiceId,
-        customer: job.customer_id ? {
-          id: job.customer_id,
-          name: job.customer_name
-        } : null,
-        createdBy: job.createdBy_id ? {
-          id: job.createdBy_id,
-          name: job.createdBy_name
-        } : null,
-        assignedTo: job.assignedTo_id ? {
-          id: job.assignedTo_id,
-          name: job.assignedTo_name
-        } : null
+      // Get job products for each job
+      const jobsWithProducts = await Promise.all((jobs as any[]).map(async (job) => {
+        const jobProducts = await prisma.jobProduct.findMany({
+          where: { jobId: job.id },
+          include: { product: true }
+        });
+        
+        return {
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          status: job.status,
+          priority: job.priority,
+          customerId: job.customerId,
+          createdById: job.createdById,
+          assignedToId: job.assignedToId,
+          dueDate: job.dueDate,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          invoiceId: job.invoiceId,
+          customer: job.customer_id ? {
+            id: job.customer_id,
+            name: job.customer_name
+          } : null,
+          createdBy: job.createdBy_id ? {
+            id: job.createdBy_id,
+            name: job.createdBy_name
+          } : null,
+          assignedTo: job.assignedTo_id ? {
+            id: job.assignedTo_id,
+            name: job.assignedTo_name
+          } : null,
+          invoice: job.invoice_id ? {
+            id: job.invoice_id,
+            invoiceNumber: job.invoice_number
+          } : null,
+          jobProducts
+        };
       }));
       
-      return NextResponse.json(formattedJobs);
+      return NextResponse.json(jobsWithProducts);
     }
     
-    // Otherwise use normal Prisma query
+    // Otherwise use normal Prisma query with include for job products
     const jobs = await prisma.job.findMany({
       include: {
         customer: true,
         assignedTo: true,
         createdBy: true,
+        jobProducts: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                productClass: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
     
-    return NextResponse.json(jobs);
+    // Fetch invoice data for each job
+    const enhancedJobs = await Promise.all(
+      jobs.map(async (job) => {
+        // Use raw query to get invoiceId
+        const jobWithInvoiceId = await prisma.$queryRaw`
+          SELECT "invoiceId" FROM "Job" WHERE id = ${job.id}
+        ` as any[];
+        
+        const invoiceId = jobWithInvoiceId[0]?.invoiceId;
+        
+        // If job has invoiceId, fetch the invoice
+        let invoice = null;
+        if (invoiceId) {
+          const invoiceData = await prisma.invoice.findUnique({
+            where: { id: invoiceId },
+            select: {
+              id: true,
+              invoiceNumber: true
+            }
+          });
+          if (invoiceData) {
+            invoice = invoiceData;
+          }
+        }
+        
+        return {
+          ...job,
+          invoiceId,
+          invoice
+        };
+      })
+    );
+    
+    return NextResponse.json(enhancedJobs);
   } catch (error: any) {
     console.error('Error fetching jobs:', error);
     console.error('Error message:', error.message);
