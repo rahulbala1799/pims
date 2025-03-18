@@ -19,13 +19,9 @@ export default function AdminHeader() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const img = new window.Image();
-      img.src = '/images/logo.png?cache=' + new Date().getTime(); // Cache busting
-      img.onload = () => {
-        setLogoExists(true);
-      };
-      img.onerror = () => {
-        setLogoExists(false);
-      };
+      img.onload = () => setLogoExists(true);
+      img.onerror = () => setLogoExists(false);
+      img.src = `/images/logo.png?cache=${new Date().getTime()}`; // Cache busting
     }
   }, []);
 
@@ -41,12 +37,12 @@ export default function AdminHeader() {
           <div className="flex-shrink-0 flex items-center">
             <Link href="/admin/dashboard" className="flex items-center">
               {logoExists ? (
-                <div className="h-10 w-auto mr-2 relative">
+                <div className="h-10 mr-2 relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/images/logo.png"
-                    alt="PrintNPack Ltd Logo"
-                    className="h-10 w-auto"
+                    alt="PrintNPack Ltd"
+                    className="h-10 object-contain"
                   />
                 </div>
               ) : null}
