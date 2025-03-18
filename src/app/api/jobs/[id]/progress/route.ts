@@ -49,20 +49,39 @@ export async function POST(
       );
     }
 
-    // Update job status if all products are completed
+    // Check if all products are completed and if any progress has been made
     const allCompleted = data.jobProducts.every((product) => 
-      product.completedQuantity === product.quantity
+      product.completedQuantity === product.quantity && product.quantity > 0
+    );
+    
+    const anyProgress = data.jobProducts.some((product) => 
+      product.completedQuantity > 0
     );
 
+    // Update job status based on progress
     if (allCompleted && existingJob.status !== 'COMPLETED') {
+      // All products are complete, set status to COMPLETED
       await prisma.job.update({
         where: { id: params.id },
         data: { status: 'COMPLETED' },
       });
-    } else if (!allCompleted && existingJob.status !== 'IN_PROGRESS' && existingJob.status !== 'COMPLETED') {
+    } else if (!allCompleted && existingJob.status === 'COMPLETED') {
+      // Was previously completed but now isn't, set to IN_PROGRESS
       await prisma.job.update({
         where: { id: params.id },
         data: { status: 'IN_PROGRESS' },
+      });
+    } else if (anyProgress && existingJob.status === 'PENDING') {
+      // Has some progress but was in PENDING state, set to IN_PROGRESS
+      await prisma.job.update({
+        where: { id: params.id },
+        data: { status: 'IN_PROGRESS' },
+      });
+    } else if (!anyProgress && existingJob.status === 'IN_PROGRESS') {
+      // Had progress but now has none, set back to PENDING
+      await prisma.job.update({
+        where: { id: params.id },
+        data: { status: 'PENDING' },
       });
     }
 
