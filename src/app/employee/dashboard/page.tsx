@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Hard-coded user ID for demo purposes
-// In a real app, this would come from authentication
-const EMPLOYEE_ID = "employee123"; 
+// Remove hardcoded employee ID
+// const EMPLOYEE_ID = "employee123"; 
 
 interface Attendance {
   id: string;
@@ -33,15 +32,27 @@ export default function EmployeeDashboard() {
     inProgress: 0,
     completed: 0
   });
+  const [userData, setUserData] = useState<any>(null);
+
+  // Get user data from localStorage
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('employeeUser');
+    if (storedUserData) {
+      setUserData(JSON.parse(storedUserData));
+    }
+  }, []);
 
   // Fetch today's attendance and job summary on component mount
   useEffect(() => {
+    // Only fetch data if we have user data
+    if (!userData || !userData.id) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
         // Fetch today's attendance
         const today = new Date().toISOString().split('T')[0];
-        const attendanceResponse = await fetch(`/api/attendance?userId=${EMPLOYEE_ID}&date=${today}`);
+        const attendanceResponse = await fetch(`/api/attendance?userId=${userData.id}&date=${today}`);
         const attendanceData = await attendanceResponse.json();
         
         if (attendanceResponse.ok && attendanceData.length > 0) {
@@ -49,10 +60,10 @@ export default function EmployeeDashboard() {
         }
         
         // Fetch job summary
-        const activeJobsResponse = await fetch(`/api/employee/jobs?userId=${EMPLOYEE_ID}&status=active`);
+        const activeJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=active`);
         const activeJobs = await activeJobsResponse.json();
         
-        const completedJobsResponse = await fetch(`/api/employee/jobs?userId=${EMPLOYEE_ID}&status=completed`);
+        const completedJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=completed`);
         const completedJobs = await completedJobsResponse.json();
         
         setJobSummary({
@@ -68,9 +79,11 @@ export default function EmployeeDashboard() {
     };
     
     fetchData();
-  }, []);
+  }, [userData]);
 
   const handleClockIn = async () => {
+    if (!userData || !userData.id) return;
+    
     setIsClockingIn(true);
     setClockError(null);
     
@@ -80,7 +93,7 @@ export default function EmployeeDashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: EMPLOYEE_ID }),
+        body: JSON.stringify({ userId: userData.id }),
       });
       
       const data = await response.json();
@@ -99,6 +112,8 @@ export default function EmployeeDashboard() {
   };
 
   const handleClockOut = async () => {
+    if (!userData || !userData.id) return;
+    
     setIsClockingOut(true);
     setClockError(null);
     
@@ -108,7 +123,7 @@ export default function EmployeeDashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: EMPLOYEE_ID }),
+        body: JSON.stringify({ userId: userData.id }),
       });
       
       const data = await response.json();
@@ -127,6 +142,7 @@ export default function EmployeeDashboard() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('employeeUser');
     window.location.href = '/';
   };
 

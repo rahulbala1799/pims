@@ -21,22 +21,37 @@ export default function LoginForm({ userType }: LoginFormProps) {
     try {
       console.log(`Attempting to log in as ${userType} with email: ${email}`);
       
-      // Simple hardcoded authentication
-      if (userType === 'admin' && email === 'admin@printpack.com' && password === 'Admin@123') {
-        console.log('Admin login successful');
-        // Use direct navigation
-        window.location.href = '/admin/dashboard';
-      } else if (userType === 'employee' && email === 'employee@example.com' && password === 'employee123') {
-        console.log('Employee login successful');
-        // Use direct navigation
-        window.location.href = '/employee/dashboard';
-      } else {
-        console.error('Authentication failed');
-        setError('Invalid email or password');
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          userType
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Authentication failed');
       }
+      
+      // Store user data in localStorage based on user type
+      if (userType === 'admin') {
+        localStorage.setItem('adminUser', JSON.stringify(data.user));
+      } else {
+        localStorage.setItem('employeeUser', JSON.stringify(data.user));
+      }
+      
+      // Login successful, redirect to appropriate dashboard
+      console.log(`${userType} login successful`);
+      window.location.href = data.redirectUrl || (userType === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
     } catch (error) {
       console.error('Login error:', error);
-      setError('An error occurred during login. Please try again.');
+      setError(error instanceof Error ? error.message : 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
