@@ -10,8 +10,17 @@ interface JobProductProgress {
   inkUsageInMl?: number;
 }
 
+interface RemainingJobProduct {
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: string;
+  notes?: string;
+}
+
 interface ProgressUpdateRequest {
   jobProducts: JobProductProgress[];
+  remainingJobProducts?: RemainingJobProduct[];
 }
 
 // POST /api/jobs/:id/progress - Update job progress and costs
@@ -103,6 +112,31 @@ export async function POST(
     // Execute all updates in parallel
     await Promise.all(updatePromises);
     
+    // Handle creating new job products for remaining quantities
+    if (data.remainingJobProducts && data.remainingJobProducts.length > 0) {
+      console.log('Creating new job products for remaining quantities:', data.remainingJobProducts);
+      
+      // Create the new job products for remaining quantities
+      const createRemainingPromises = data.remainingJobProducts.map(async (remainingProduct) => {
+        return prisma.jobProduct.create({
+          data: {
+            job: {
+              connect: { id: params.id }
+            },
+            product: {
+              connect: { id: remainingProduct.productId }
+            },
+            quantity: parseInt(remainingProduct.quantity.toString(), 10),
+            unitPrice: parseFloat(remainingProduct.unitPrice.toString()),
+            totalPrice: parseFloat(remainingProduct.totalPrice),
+            notes: remainingProduct.notes || null,
+          }
+        });
+      });
+      
+      await Promise.all(createRemainingPromises);
+    }
+    
     // Fetch the updated job with all products
     const updatedJob = await prisma.job.findUnique({
       where: {
@@ -119,30 +153,6 @@ export async function POST(
         createdBy: true,
       },
     });
-    
-    // Trigger metrics recalculation for this job if it has an invoice
-    if (updatedJob?.invoiceId) {
-      try {
-        const webhookUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/webhooks/metrics-update`;
-        console.log(`Triggering metrics webhook at ${webhookUrl} for job ${params.id}`);
-        
-        const metricsResponse = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ jobId: params.id }),
-        });
-        
-        if (!metricsResponse.ok) {
-          console.error('Failed to trigger metrics update webhook');
-        } else {
-          console.log('Successfully triggered metrics update webhook for job', params.id);
-        }
-      } catch (webhookError) {
-        console.error('Error triggering metrics webhook:', webhookError);
-      }
-    }
     
     // Return the updated data
     return NextResponse.json({ 
