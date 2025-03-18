@@ -3,62 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import Image from 'next/image';
 
 export default function AdminHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [logoExists, setLogoExists] = useState(false);
-  const [logoUrl, setLogoUrl] = useState('');
   const pathname = usePathname();
 
   // Close mobile menu when pathname changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
-
-  // Check if logo exists
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const cacheParam = `cache=${Date.now()}`;
-      const isLocalhost = window.location.hostname === 'localhost';
-      
-      // Determine which logo path to use based on environment
-      const logoPath = isLocalhost ? '/images/logo.png' : '/placeholder-logo.png';
-      const url = `${logoPath}?${cacheParam}`;
-      
-      console.log('AdminHeader: Checking for logo at', url);
-      
-      const img = new window.Image();
-      img.onload = () => {
-        console.log('AdminHeader: Logo found');
-        setLogoExists(true);
-        setLogoUrl(url);
-      };
-      img.onerror = () => {
-        console.log('AdminHeader: No logo found at', url);
-        setLogoExists(false);
-        
-        // If we're in production and the specific path failed, try a placeholder
-        if (!isLocalhost) {
-          const placeholderUrl = `/placeholder-logo.png?${cacheParam}`;
-          console.log('AdminHeader: Trying placeholder logo at', placeholderUrl);
-          
-          const placeholderImg = new window.Image();
-          placeholderImg.onload = () => {
-            console.log('AdminHeader: Placeholder logo found');
-            setLogoExists(true);
-            setLogoUrl(placeholderUrl);
-          };
-          placeholderImg.onerror = () => {
-            console.log('AdminHeader: No placeholder logo found');
-            setLogoExists(false);
-          };
-          placeholderImg.src = placeholderUrl;
-        }
-      };
-      img.src = url;
-    }
-  }, []);
 
   const isActive = (path: string) => {
     return pathname?.startsWith(path) ? 'text-indigo-600 font-medium' : 'text-gray-600';
@@ -70,18 +23,8 @@ export default function AdminHeader() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/admin/dashboard" className="flex items-center">
-              {logoExists ? (
-                <div className="h-10 mr-2 relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={logoUrl}
-                    alt="PrintNPack Ltd"
-                    className="h-10 object-contain"
-                  />
-                </div>
-              ) : null}
-              <span className="text-2xl font-bold text-indigo-600">PrintNPack Ltd</span>
+            <Link href="/admin/dashboard" className="text-2xl font-bold text-indigo-600">
+              PrintNPack Ltd
             </Link>
           </div>
           
@@ -123,14 +66,6 @@ export default function AdminHeader() {
             >
               Settings
             </Link>
-            {/* Temporarily commenting out Reports link until the page is created
-            <Link 
-              href="/admin/reports" 
-              className={`hover:text-indigo-600 ${isActive('/admin/reports')}`}
-            >
-              Reports
-            </Link>
-            */}
           </nav>
           
           {/* User menu (desktop) */}
@@ -219,14 +154,6 @@ export default function AdminHeader() {
             >
               Settings
             </Link>
-            {/* Temporarily commenting out Reports link until the page is created
-            <Link
-              href="/admin/reports"
-              className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/reports')} hover:bg-gray-100`}
-            >
-              Reports
-            </Link>
-            */}
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-5">

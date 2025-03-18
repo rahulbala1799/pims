@@ -34,109 +34,60 @@ const styles = StyleSheet.create({
     borderBottom: '1px solid #000',
     paddingBottom: 5,
   },
-  infoContainer: {
+  section: {
+    margin: 10,
+    padding: 10,
+  },
+  invoiceInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
-  clientInfo: {
+  customerInfo: {
     width: '50%',
-    fontSize: 10,
   },
-  invoiceInfo: {
-    width: '40%',
-    fontSize: 10,
+  invoiceDetails: {
+    width: '50%',
     textAlign: 'right',
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  text: {
-    fontSize: 10,
-    marginBottom: 3,
-  },
   table: {
-    display: 'flex' as any,
-    width: '100%',
+    display: 'table',
+    width: 'auto',
     borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#bfbfbf',
-    marginTop: 10,
     marginBottom: 10,
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#bfbfbf',
-    minHeight: 25,
-    alignItems: 'center',
   },
-  tableHeaderRow: {
+  tableHeaderCell: {
     backgroundColor: '#f2f2f2',
     fontWeight: 'bold',
-  },
-  tableCol: {
-    borderRightWidth: 1,
-    borderColor: '#bfbfbf',
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-    textAlign: 'left',
-    fontSize: 9,
+    padding: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#bfbfbf',
   },
   tableCell: {
-    fontSize: 9,
-    textAlign: 'left',
-  },
-  colDescription: { width: '40%' },
-  colQuantity: { width: '10%', textAlign: 'center' },
-  colDimensions: { width: '20%', textAlign: 'center' },
-  colUnitPrice: { width: '15%', textAlign: 'right' },
-  colTotal: { width: '15%', textAlign: 'right' },
-  totals: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginVertical: 10,
-  },
-  totalsTable: {
-    width: '40%',
-  },
-  totalsRow: {
-    flexDirection: 'row',
+    padding: 5,
     borderBottomWidth: 1,
-    borderColor: '#bfbfbf',
-    paddingVertical: 3,
+    borderBottomColor: '#bfbfbf',
   },
-  totalsLabel: {
-    width: '60%',
-    fontSize: 10,
-    textAlign: 'right',
-    paddingRight: 10,
-  },
-  totalsValue: {
-    width: '40%',
-    fontSize: 10,
-    textAlign: 'right',
-  },
-  grandTotal: {
-    fontWeight: 'bold',
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: '#bfbfbf',
   },
   footer: {
-    marginTop: 30,
-    borderTopWidth: 1,
-    borderColor: '#bfbfbf',
-    paddingTop: 10,
-    fontSize: 8,
-    color: '#555555',
+    position: 'absolute',
+    bottom: 30,
+    left: 30,
+    right: 30,
     textAlign: 'center',
-  },
-  notes: {
-    marginTop: 20,
-    fontSize: 9,
-    borderTopWidth: 1,
-    borderColor: '#bfbfbf',
-    paddingTop: 5,
+    fontSize: 8,
+    color: '#666',
   },
 });
 
@@ -163,22 +114,9 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header with logo and company info */}
+        {/* Header with company info */}
         <View style={styles.header}>
           <View>
-            {/* Use an absolute path for the logo with cache busting and fallback */}
-            <Image 
-              style={styles.logo} 
-              src={
-                typeof window !== 'undefined' 
-                  ? `${window.location.origin}${
-                      window.location.hostname === 'localhost' 
-                        ? '/images/logo.png' 
-                        : '/placeholder-logo.png'
-                    }?cache=${Date.now()}` 
-                  : '/images/logo.png'
-              }
-            />
             <Text style={styles.title}>PrintNPack Ltd</Text>
           </View>
           <View style={styles.companyInfo}>
@@ -190,108 +128,69 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
             <Text>VAT Reg: GB123456789</Text>
           </View>
         </View>
-
-        {/* Invoice title */}
+        
+        {/* Invoice Title */}
         <View>
-          <Text style={styles.title}>INVOICE</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>INVOICE</Text>
         </View>
-
-        {/* Customer and Invoice Info */}
-        <View style={styles.infoContainer}>
-          <View style={styles.clientInfo}>
-            <Text style={styles.sectionTitle}>Bill To:</Text>
-            <Text style={styles.text}>{customer.name}</Text>
-            <Text style={styles.text}>{customer.email}</Text>
-            {customer.phone && <Text style={styles.text}>{customer.phone}</Text>}
-            {customer.address && <Text style={styles.text}>{customer.address}</Text>}
+        
+        {/* Customer & Invoice Info */}
+        <View style={styles.invoiceInfo}>
+          <View style={styles.customerInfo}>
+            <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Bill To:</Text>
+            <Text>{customer?.name || 'N/A'}</Text>
+            <Text>{customer?.company || ''}</Text>
+            <Text>{customer?.address?.line1 || ''}</Text>
+            <Text>{customer?.address?.line2 || ''}</Text>
+            <Text>{customer?.address?.city || ''}{customer?.address?.city ? ', ' : ''}{customer?.address?.postcode || ''}</Text>
+            <Text>{customer?.phone || ''}</Text>
+            <Text>{customer?.email || ''}</Text>
           </View>
-          <View style={styles.invoiceInfo}>
-            <Text style={styles.text}>Invoice #: {invoice.invoiceNumber}</Text>
-            <Text style={styles.text}>Invoice Date: {formatDate(invoice.issueDate)}</Text>
-            <Text style={styles.text}>Due Date: {formatDate(invoice.dueDate)}</Text>
-            <Text style={styles.text}>Status: {invoice.status}</Text>
+          <View style={styles.invoiceDetails}>
+            <Text>Invoice #: {invoice.invoiceNumber || 'N/A'}</Text>
+            <Text>Invoice Date: {formatDate(invoice.createdAt || new Date())}</Text>
+            <Text>Due Date: {formatDate(invoice.dueDate || new Date())}</Text>
+            <Text>Status: {invoice.status || 'N/A'}</Text>
           </View>
         </View>
-
-        {/* Invoice Items Table */}
-        <View style={styles.table}>
-          {/* Table Header */}
-          <View style={[styles.tableRow, styles.tableHeaderRow]}>
-            <View style={[styles.tableCol, styles.colDescription]}>
-              <Text style={styles.tableCell}>Description</Text>
-            </View>
-            <View style={[styles.tableCol, styles.colQuantity]}>
-              <Text style={styles.tableCell}>Qty</Text>
-            </View>
-            <View style={[styles.tableCol, styles.colDimensions]}>
-              <Text style={styles.tableCell}>Dimensions</Text>
-            </View>
-            <View style={[styles.tableCol, styles.colUnitPrice]}>
-              <Text style={styles.tableCell}>Unit Price</Text>
-            </View>
-            <View style={[styles.tableCol, styles.colTotal]}>
-              <Text style={styles.tableCell}>Total</Text>
-            </View>
+        
+        {/* Items Table */}
+        <View style={{ marginTop: 20 }}>
+          <View style={[styles.tableRow, { backgroundColor: '#f2f2f2' }]}>
+            <Text style={[styles.tableHeaderCell, { width: '40%' }]}>Description</Text>
+            <Text style={[styles.tableHeaderCell, { width: '10%' }]}>Qty</Text>
+            <Text style={[styles.tableHeaderCell, { width: '20%' }]}>Dimensions</Text>
+            <Text style={[styles.tableHeaderCell, { width: '15%' }]}>Unit Price</Text>
+            <Text style={[styles.tableHeaderCell, { width: '15%' }]}>Total</Text>
           </View>
-
-          {/* Table Rows */}
+          
           {invoiceItems.map((item: any, index: number) => (
             <View key={index} style={styles.tableRow}>
-              <View style={[styles.tableCol, styles.colDescription]}>
-                <Text style={styles.tableCell}>{item.description}</Text>
-              </View>
-              <View style={[styles.tableCol, styles.colQuantity]}>
-                <Text style={styles.tableCell}>{item.quantity}</Text>
-              </View>
-              <View style={[styles.tableCol, styles.colDimensions]}>
-                <Text style={styles.tableCell}>
-                  {item.length && item.width
-                    ? `${item.length.toFixed(2)}m × ${item.width.toFixed(2)}m = ${item.area?.toFixed(2)}m²`
-                    : '-'}
-                </Text>
-              </View>
-              <View style={[styles.tableCol, styles.colUnitPrice]}>
-                <Text style={styles.tableCell}>{formatCurrency(item.unitPrice)}</Text>
-              </View>
-              <View style={[styles.tableCol, styles.colTotal]}>
-                <Text style={styles.tableCell}>{formatCurrency(item.totalPrice)}</Text>
-              </View>
+              <Text style={[styles.tableCell, { width: '40%' }]}>{item.description || 'N/A'}</Text>
+              <Text style={[styles.tableCell, { width: '10%', textAlign: 'center' }]}>{item.quantity || '0'}</Text>
+              <Text style={[styles.tableCell, { width: '20%', textAlign: 'center' }]}>{item.dimensions || 'N/A'}</Text>
+              <Text style={[styles.tableCell, { width: '15%', textAlign: 'right' }]}>{formatCurrency(Number(item.unitPrice) || 0)}</Text>
+              <Text style={[styles.tableCell, { width: '15%', textAlign: 'right' }]}>{formatCurrency(Number(item.totalPrice) || 0)}</Text>
             </View>
           ))}
         </View>
-
+        
         {/* Totals */}
-        <View style={styles.totals}>
-          <View style={styles.totalsTable}>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Subtotal:</Text>
-              <Text style={styles.totalsValue}>
-                {formatCurrency(invoice.subtotalAmount)}
-              </Text>
-            </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Tax ({(invoice.taxRate * 100).toFixed(0)}%):</Text>
-              <Text style={styles.totalsValue}>
-                {formatCurrency(invoice.taxAmount)}
-              </Text>
-            </View>
-            <View style={[styles.totalsRow, styles.grandTotal]}>
-              <Text style={styles.totalsLabel}>Total:</Text>
-              <Text style={styles.totalsValue}>
-                {formatCurrency(invoice.totalAmount)}
-              </Text>
-            </View>
+        <View style={{ marginTop: 20, marginLeft: 'auto', width: '40%' }}>
+          <View style={styles.tableRow}>
+            <Text style={{ width: '60%', textAlign: 'right', padding: 5 }}>Subtotal:</Text>
+            <Text style={{ width: '40%', textAlign: 'right', padding: 5 }}>{formatCurrency(Number(invoice.subtotalAmount || invoice.subtotal) || 0)}</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={{ width: '60%', textAlign: 'right', padding: 5 }}>VAT (20%):</Text>
+            <Text style={{ width: '40%', textAlign: 'right', padding: 5 }}>{formatCurrency(Number(invoice.vatAmount || invoice.vat) || 0)}</Text>
+          </View>
+          <View style={[styles.tableRow, { fontWeight: 'bold' }]}>
+            <Text style={{ width: '60%', textAlign: 'right', padding: 5 }}>Total:</Text>
+            <Text style={{ width: '40%', textAlign: 'right', padding: 5 }}>{formatCurrency(Number(invoice.totalAmount || invoice.total) || 0)}</Text>
           </View>
         </View>
-
-        {/* Notes */}
-        {invoice.notes && (
-          <View style={styles.notes}>
-            <Text style={styles.sectionTitle}>Notes:</Text>
-            <Text style={styles.text}>{invoice.notes}</Text>
-          </View>
-        )}
-
+        
         {/* Footer */}
         <View style={styles.footer}>
           <Text>Thank you for your business! Payment is due within 30 days of issue.</Text>
@@ -303,26 +202,33 @@ const InvoicePDFDocument = ({ invoice, customer }: { invoice: any, customer: any
   );
 };
 
-interface InvoicePDFProps {
-  invoice: any;
-  customer: any;
-  fileName?: string;
-}
-
-// Main component with download button
-export const InvoicePDFDownloadButton = ({ invoice, customer, fileName = 'invoice.pdf' }: InvoicePDFProps) => {
+// InvoicePDF component with download link
+export default function InvoicePDF({ invoice, customer }: { invoice: any, customer: any }) {
+  const [isClient, setIsClient] = useState(false);
+  
+  // Use useEffect to ensure we're on the client side before rendering PDFDownloadLink
+  useState(() => {
+    setIsClient(true);
+  });
+  
+  if (!isClient) {
+    return <div>Loading PDF...</div>;
+  }
+  
   return (
-    <PDFDownloadLink
-      document={<InvoicePDFDocument invoice={invoice} customer={customer} />}
-      fileName={fileName}
-      className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-    >
-      {({ blob, url, loading, error }) =>
-        loading ? 'Preparing PDF...' : 'Download PDF'
-      }
-    </PDFDownloadLink>
+    <div className="mt-4">
+      <PDFDownloadLink 
+        document={<InvoicePDFDocument invoice={invoice} customer={customer} />} 
+        fileName={`invoice-${invoice.invoiceNumber || 'download'}.pdf`}
+        className="py-2 px-4 bg-indigo-600 text-white rounded hover:bg-indigo-700 inline-block"
+      >
+        {({ blob, url, loading, error }) =>
+          loading ? 'Generating PDF...' : 'Download PDF'
+        }
+      </PDFDownloadLink>
+    </div>
   );
-};
+}
 
 // Function to directly generate and download PDF using jsPDF
 export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invoice.pdf') => {
@@ -334,31 +240,11 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Add autotable functionality to jsPDF instance
     autoTable(doc, {}); // Initialize the plugin
     
-    // Add logo (if available)
-    try {
-      // Try to add logo with correct path based on environment
-      // In browser environment, we need to use the absolute URL path
-      const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-      const logoPath = isLocalhost ? '/images/logo.png' : '/placeholder-logo.png';
-      const logoUrl = `${window.location.origin}${logoPath}?cache=${Date.now()}`;
-      
-      console.log('Loading logo from:', logoUrl);
-      doc.addImage(logoUrl, 'PNG', 14, 10, 70, 28);
-      
-      // If logo is successfully added, adjust the company name position
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PrintNPack Ltd', 14, 45);
-    } catch (logoError) {
-      console.warn('Could not add logo to PDF, using text header only:', logoError);
-      
-      // If logo fails, place company name at original position
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PrintNPack Ltd', 14, 22);
-    }
-    
     // Add company info
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('PrintNPack Ltd', 14, 22);
+    
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text([
@@ -373,83 +259,66 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Add invoice title
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 14, 60);
+    doc.text('INVOICE', 14, 45);
     doc.setLineWidth(0.5);
-    doc.line(14, 63, 195, 63);
+    doc.line(14, 48, 195, 48);
     
     // Add customer info
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 14, 75);
+    doc.text('Bill To:', 14, 60);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    
+    // Format customer info safely
     const customerInfo = [
-      customer?.name || 'Customer',
-      customer?.email || '',
+      customer?.name || 'N/A',
+      customer?.company || '',
+      customer?.address?.line1 || '',
+      customer?.address?.line2 || '',
+      `${customer?.address?.city || ''}${customer?.address?.city ? ', ' : ''}${customer?.address?.postcode || ''}`,
       customer?.phone || '',
-      customer?.address || ''
+      customer?.email || ''
     ].filter(line => line.trim() !== '');
     
-    doc.text(customerInfo, 14, 80);
+    doc.text(customerInfo, 14, 65);
     
     // Format date safely
     const formatDate = (dateString: string) => {
-      try {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        });
-      } catch (e) {
-        console.error('Error formatting date:', e);
-        return 'Invalid Date';
-      }
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
     };
     
-    // Add invoice info with fallbacks
-    doc.setFontSize(10);
+    // Add invoice details
     doc.text([
       `Invoice #: ${invoice.invoiceNumber || 'N/A'}`,
-      `Invoice Date: ${formatDate(invoice.issueDate)}`,
+      `Invoice Date: ${formatDate(invoice.createdAt)}`,
       `Due Date: ${formatDate(invoice.dueDate)}`,
       `Status: ${invoice.status || 'N/A'}`
-    ], 195, 75, { align: 'right' });
+    ], 195, 60, { align: 'right' });
     
     // Ensure we have items to map over (handle different data structures)
     const invoiceItems = invoice.items || invoice.invoiceItems || [];
     console.log('Invoice items for PDF:', invoiceItems);
     
-    // Safe formatter functions
-    const safeToFixed = (num: any, decimals = 2) => {
-      if (num === undefined || num === null) return '0.00';
-      const parsedNum = parseFloat(num);
-      return isNaN(parsedNum) ? '0.00' : parsedNum.toFixed(decimals);
-    };
-    
-    // Prepare table data with error handling
-    const tableData = invoiceItems.map((item: any) => {
-      try {
-        return [
-          item.description || 'No description',
-          item.quantity || 0,
-          item.length && item.width
-            ? `${safeToFixed(item.length)}m × ${safeToFixed(item.width)}m = ${safeToFixed(item.area)}m²`
-            : '-',
-          `£${safeToFixed(item.unitPrice)}`,
-          `£${safeToFixed(item.totalPrice)}`
-        ];
-      } catch (e) {
-        console.error('Error processing invoice item:', e, item);
-        return ['Error processing item', '', '', '', ''];
-      }
-    });
+    // Prepare table data
+    const tableData = invoiceItems.map((item: any) => [
+      item.description || 'N/A',
+      item.quantity || '0',
+      item.dimensions || 'N/A',
+      `£${Number(item.unitPrice || 0).toFixed(2)}`,
+      `£${Number(item.totalPrice || 0).toFixed(2)}`
+    ]);
     
     // Add invoice items table - use the proper autoTable syntax
     autoTable(doc, {
-      startY: 90,
+      startY: 85,
       head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
       body: tableData,
       theme: 'grid',
@@ -476,46 +345,24 @@ export const generateInvoicePDF = (invoice: any, customer: any, fileName = 'invo
     // Get the final position using proper docs
     const finalY = (doc as any).lastAutoTable.finalY + 10;
     
-    // Handle different invoice data structures for amounts
-    const subtotal = invoice.subtotalAmount || invoice.subtotal || 0;
-    const taxRate = invoice.taxRate || 0;
-    const taxAmount = invoice.taxAmount || 0;
-    const totalAmount = invoice.totalAmount || invoice.total || 0;
-    
-    // Add totals
+    // Add total section
     doc.setFontSize(10);
-    doc.text('Subtotal:', 150, finalY);
-    doc.text(`£${safeToFixed(subtotal)}`, 195, finalY, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
     
-    doc.text(`Tax (${(taxRate * 100).toFixed(0)}%):`, 150, finalY + 6);
-    doc.text(`£${safeToFixed(taxAmount)}`, 195, finalY + 6, { align: 'right' });
+    doc.text('Subtotal:', 150, finalY);
+    doc.text(`£${Number(invoice.subtotalAmount || invoice.subtotal || 0).toFixed(2)}`, 195, finalY, { align: 'right' });
+    
+    doc.text('VAT (20%):', 150, finalY + 5);
+    doc.text(`£${Number(invoice.vatAmount || invoice.vat || 0).toFixed(2)}`, 195, finalY + 5, { align: 'right' });
     
     doc.setFont('helvetica', 'bold');
-    doc.text('Total:', 150, finalY + 14);
-    doc.text(`£${safeToFixed(totalAmount)}`, 195, finalY + 14, { align: 'right' });
+    doc.text('Total:', 150, finalY + 10);
+    doc.text(`£${Number(invoice.totalAmount || invoice.total || 0).toFixed(2)}`, 195, finalY + 10, { align: 'right' });
     
-    // Add line
-    doc.setLineWidth(0.5);
-    doc.line(150, finalY + 8, 195, finalY + 8);
-    
-    // Add notes if any
-    if (invoice.notes) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Notes:', 14, finalY + 25);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      
-      const splitNotes = doc.splitTextToSize(invoice.notes.toString(), 180);
-      doc.text(splitNotes, 14, finalY + 30);
-    }
-    
-    // Save the PDF
+    // Save PDF
     doc.save(fileName);
-    console.log('PDF generated successfully');
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Please check the console for details.');
   }
-};
-
-export default InvoicePDFDocument; 
+}; 
