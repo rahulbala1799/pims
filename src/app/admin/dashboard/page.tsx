@@ -36,6 +36,10 @@ export default function AdminDashboard() {
         const customerResponse = await fetch('/api/customers');
         const customers = await customerResponse.json();
         
+        // Fetch job count
+        const jobResponse = await fetch('/api/jobs');
+        const jobs = await jobResponse.json();
+        
         // Fetch invoice count
         const invoiceResponse = await fetch('/api/invoices');
         const invoices = await invoiceResponse.json();
@@ -46,6 +50,7 @@ export default function AdminDashboard() {
           ...prev,
           products: products.length,
           customers: customers.length,
+          jobs: jobs.length || 0,
           invoices: invoices.length || 0
         }));
       } catch (error) {
@@ -135,7 +140,7 @@ export default function AdminDashboard() {
                   title="Jobs" 
                   count={stats.jobs.toString()} 
                   description="Schedule and track print jobs"
-                  link="#"
+                  link="/admin/jobs"
                   icon={<JobIcon />}
                 />
                 <DashboardCard 

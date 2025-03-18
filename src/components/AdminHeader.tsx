@@ -43,6 +43,12 @@ export default function AdminHeader() {
               Customers
             </Link>
             <Link 
+              href="/admin/jobs" 
+              className={`hover:text-indigo-600 ${isActive('/admin/jobs')}`}
+            >
+              Jobs
+            </Link>
+            <Link 
               href="/admin/products" 
               className={`hover:text-indigo-600 ${isActive('/admin/products')}`}
             >
@@ -129,6 +135,12 @@ export default function AdminHeader() {
               className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/customers')} hover:bg-gray-100`}
             >
               Customers
+            </Link>
+            <Link
+              href="/admin/jobs"
+              className={`block px-3 py-2 rounded-md text-base ${isActive('/admin/jobs')} hover:bg-gray-100`}
+            >
+              Jobs
             </Link>
             <Link
               href="/admin/products"
