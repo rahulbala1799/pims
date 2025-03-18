@@ -100,9 +100,9 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   // Format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-IE', {
       style: 'currency',
-      currency: 'GBP'
+      currency: 'EUR'
     }).format(amount);
   };
 
