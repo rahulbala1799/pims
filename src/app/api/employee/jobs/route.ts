@@ -54,53 +54,62 @@ export async function GET(req: NextRequest) {
         }
       }
     });
+
+    // Define the type for jobsFromAssignments to match the type of directlyAssignedJobs
+    let jobsFromAssignments: typeof directlyAssignedJobs = [];
     
-    // Build the query for jobs assigned through JobAssignment
-    const jobAssignmentQuery: any = {
-      jobAssignments: {
-        some: {
-          userId: userId
-        }
-      }
-    };
-    
-    // Add status filter if provided
-    if (status) {
-      if (status === 'active') {
-        jobAssignmentQuery.status = {
-          in: ['PENDING', 'IN_PROGRESS']
-        };
-      } else if (status === 'completed') {
-        jobAssignmentQuery.status = 'COMPLETED';
-      } else if (status !== 'all') {
-        jobAssignmentQuery.status = status;
-      }
-    }
-    
-    // Get all jobs assigned to the employee through JobAssignment
-    const jobsFromAssignments = await prisma.job.findMany({
-      where: jobAssignmentQuery,
-      orderBy: [
-        { status: 'asc' },
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-        { createdAt: 'desc' }
-      ],
-      include: {
-        customer: true,
-        jobProducts: {
-          include: {
-            product: true
+    try {
+      // Build the query for jobs assigned through JobAssignment
+      // Check if JobAssignment table exists
+      const jobAssignmentQuery: any = {
+        jobAssignments: {
+          some: {
+            userId: userId
           }
-        },
-        progressUpdates: {
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 1
+        }
+      };
+      
+      // Add status filter if provided
+      if (status) {
+        if (status === 'active') {
+          jobAssignmentQuery.status = {
+            in: ['PENDING', 'IN_PROGRESS']
+          };
+        } else if (status === 'completed') {
+          jobAssignmentQuery.status = 'COMPLETED';
+        } else if (status !== 'all') {
+          jobAssignmentQuery.status = status;
         }
       }
-    });
+      
+      // Get all jobs assigned to the employee through JobAssignment
+      jobsFromAssignments = await prisma.job.findMany({
+        where: jobAssignmentQuery,
+        orderBy: [
+          { status: 'asc' },
+          { priority: 'desc' },
+          { dueDate: 'asc' },
+          { createdAt: 'desc' }
+        ],
+        include: {
+          customer: true,
+          jobProducts: {
+            include: {
+              product: true
+            }
+          },
+          progressUpdates: {
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 1
+          }
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching jobs from assignments:', err);
+      // Continue with directly assigned jobs only
+    }
     
     // Combine both sets of jobs and remove duplicates
     const allJobs = [...directlyAssignedJobs];

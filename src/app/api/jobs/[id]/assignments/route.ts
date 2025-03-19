@@ -46,11 +46,22 @@ export async function POST(
 ) {
   try {
     const jobId = params.id;
+    if (!jobId) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
+    }
+    
     const data = await req.json();
     const { userIds } = data;
     
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json({ error: 'User IDs are required' }, { status: 400 });
+    }
+    
+    // Ensure all userIds are valid strings
+    const validUserIds = userIds.filter(id => id && typeof id === 'string');
+    
+    if (validUserIds.length === 0) {
+      return NextResponse.json({ error: 'No valid user IDs provided' }, { status: 400 });
     }
     
     // Check if job exists
@@ -63,7 +74,7 @@ export async function POST(
     }
     
     // Assign the job to all specified users
-    const assignmentPromises = userIds.map(userId => 
+    const assignmentPromises = validUserIds.map(userId => 
       prisma.jobAssignment.upsert({
         where: {
           jobId_userId: {
@@ -82,10 +93,10 @@ export async function POST(
     await Promise.all(assignmentPromises);
     
     // Also update the primary assignee if it's not already set
-    if (!job.assignedToId && userIds.length > 0) {
+    if (!job.assignedToId && validUserIds.length > 0) {
       await prisma.job.update({
         where: { id: jobId },
-        data: { assignedToId: userIds[0] }
+        data: { assignedToId: validUserIds[0] }
       });
     }
     
@@ -117,6 +128,10 @@ export async function DELETE(
 ) {
   try {
     const jobId = params.id;
+    if (!jobId) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
+    }
+    
     const url = new URL(req.url);
     const userId = url.searchParams.get('userId');
     
@@ -129,7 +144,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
     
-    if (userId) {
+    if (userId && typeof userId === 'string') {
       // Delete specific assignment
       await prisma.jobAssignment.deleteMany({
         where: {

@@ -40,18 +40,40 @@ export default function EmployeeDashboard() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Fetch job summary
-        const activeJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=active`);
-        const activeJobs = await activeJobsResponse.json();
+        // Fetch job summary with proper error handling
+        let activeJobs = [];
+        let completedJobs = [];
         
-        const completedJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=completed`);
-        const completedJobs = await completedJobsResponse.json();
+        try {
+          const activeJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=active`);
+          if (activeJobsResponse.ok) {
+            activeJobs = await activeJobsResponse.json();
+          } else {
+            console.error('Failed to fetch active jobs:', await activeJobsResponse.text());
+          }
+        } catch (activeError) {
+          console.error('Error fetching active jobs:', activeError);
+        }
         
-        setJobSummary({
-          total: activeJobs.length + completedJobs.length,
-          inProgress: activeJobs.length,
-          completed: completedJobs.length
-        });
+        try {
+          const completedJobsResponse = await fetch(`/api/employee/jobs?userId=${userData.id}&status=completed`);
+          if (completedJobsResponse.ok) {
+            completedJobs = await completedJobsResponse.json();
+          } else {
+            console.error('Failed to fetch completed jobs:', await completedJobsResponse.text());
+          }
+        } catch (completedError) {
+          console.error('Error fetching completed jobs:', completedError);
+        }
+        
+        // If both arrays are valid, update the summary
+        if (Array.isArray(activeJobs) && Array.isArray(completedJobs)) {
+          setJobSummary({
+            total: activeJobs.length + completedJobs.length,
+            inProgress: activeJobs.length,
+            completed: completedJobs.length
+          });
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {

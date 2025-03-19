@@ -117,7 +117,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     const fetchEmployees = async () => {
       setIsLoadingEmployees(true);
       try {
-        const response = await fetch('/api/employees');
+        const response = await fetch('/api/employees?forDropdown=true');
         if (!response.ok) {
           throw new Error('Failed to fetch employees');
         }
