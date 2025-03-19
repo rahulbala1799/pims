@@ -33,12 +33,27 @@ interface JobProduct {
   product: Product;
   quantity: number;
   completedQuantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  inkCostPerUnit?: number;
+  inkUsageInMl?: number;
+  timeTaken?: number;
 }
 
 interface ProgressUpdate {
   id: string;
   content: string;
   createdAt: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
 }
 
 interface Job {
@@ -53,6 +68,10 @@ interface Job {
   updatedAt: string;
   jobProducts: JobProduct[];
   progressUpdates: ProgressUpdate[];
+  assignedTo: User | null;
+  assignedToId: string | null;
+  createdBy: User;
+  invoice: Invoice | null;
 }
 
 export default function JobDetailPage({ params }: { params: { id: string } }) {
@@ -72,6 +91,8 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
   // Update product quantity
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [completedQuantity, setCompletedQuantity] = useState<number>(0);
+  const [timeTaken, setTimeTaken] = useState<number>(0);
+  const [inkUsage, setInkUsage] = useState<number>(0);
   const [isUpdatingQuantity, setIsUpdatingQuantity] = useState(false);
   const [showQuantityForm, setShowQuantityForm] = useState(false);
   
@@ -92,7 +113,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
       setError(null);
       
       try {
-        const response = await fetch(`/api/employee/jobs/${id}?userId=${userData.id}`);
+        const response = await fetch(`/api/jobs/${id}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch job details');
@@ -190,7 +211,11 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ completedQuantity }),
+        body: JSON.stringify({ 
+          completedQuantity,
+          timeTaken,
+          inkUsageInMl: inkUsage > 0 ? inkUsage : undefined
+        }),
       });
       
       if (!response.ok) {
@@ -203,13 +228,20 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
       setJob({
         ...job,
         jobProducts: job.jobProducts.map(product => 
-          product.id === selectedProduct ? {...product, completedQuantity } : product
+          product.id === selectedProduct ? {
+            ...product, 
+            completedQuantity,
+            timeTaken: timeTaken > 0 ? timeTaken : product.timeTaken,
+            inkUsageInMl: inkUsage > 0 ? inkUsage : product.inkUsageInMl
+          } : product
         )
       });
       
       // Reset form
       setSelectedProduct(null);
       setCompletedQuantity(0);
+      setTimeTaken(0);
+      setInkUsage(0);
       setShowQuantityForm(false);
     } catch (error) {
       console.error('Error updating product quantity:', error);
@@ -277,6 +309,27 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     const dueDate = parseISO(job.dueDate);
     const today = new Date();
     return isAfter(today, dueDate);
+  };
+  
+  // Calculate total time spent on job
+  const getTotalTime = (job: Job) => {
+    if (!job.jobProducts || job.jobProducts.length === 0) return 0;
+    
+    return job.jobProducts.reduce((sum, product) => sum + (product.timeTaken || 0), 0);
+  };
+  
+  // Format time in hours and minutes
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (hours === 0) return `${mins} min`;
+    return `${hours}h ${mins}m`;
+  };
+  
+  // Is job assigned to current user
+  const isAssignedToMe = (job: Job) => {
+    return job.assignedToId === userData?.id;
   };
 
   if (isLoading) {
@@ -390,6 +443,44 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               </dd>
             </div>
             
+            <div className="sm:col-span-1">
+              <dt className="text-sm font-medium text-gray-500 flex items-center">
+                <UserIcon className="h-5 w-5 mr-1 text-gray-400" />
+                Assigned To
+              </dt>
+              <dd className="mt-1 text-base text-gray-900">
+                {job.assignedTo ? (
+                  <span className={isAssignedToMe(job) ? 'font-medium text-indigo-600' : ''}>
+                    {job.assignedTo.name}
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Unassigned</span>
+                )}
+              </dd>
+            </div>
+            
+            <div className="sm:col-span-1">
+              <dt className="text-sm font-medium text-gray-500 flex items-center">
+                <ClockIcon className="h-5 w-5 mr-1 text-gray-400" />
+                Time Spent
+              </dt>
+              <dd className="mt-1 text-base text-gray-900">
+                {getTotalTime(job) > 0 ? formatTime(getTotalTime(job)) : 'None recorded'}
+              </dd>
+            </div>
+            
+            {job.invoice && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                  <DocumentTextIcon className="h-5 w-5 mr-1 text-gray-400" />
+                  Invoice
+                </dt>
+                <dd className="mt-1 text-base text-gray-900">
+                  Invoice #{job.invoice.invoiceNumber}
+                </dd>
+              </div>
+            )}
+            
             <div className="sm:col-span-2">
               <dt className="text-sm font-medium text-gray-500 flex items-center">
                 <DocumentTextIcon className="h-5 w-5 mr-1 text-gray-400" />
@@ -477,6 +568,8 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                     const product = job.jobProducts.find(p => p.id === e.target.value);
                     if (product) {
                       setCompletedQuantity(product.completedQuantity);
+                      setTimeTaken(product.timeTaken || 0);
+                      setInkUsage(product.inkUsageInMl || 0);
                     }
                   }}
                   className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 h-12 sm:h-10 text-base"
@@ -492,21 +585,51 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               </div>
               
               {selectedProduct && (
-                <div>
-                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                    Completed Quantity
-                  </label>
-                  <input
-                    type="number"
-                    id="quantity"
-                    value={completedQuantity}
-                    onChange={(e) => setCompletedQuantity(parseInt(e.target.value, 10))}
-                    min="0"
-                    max={job.jobProducts.find(p => p.id === selectedProduct)?.quantity || 0}
-                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 h-12 sm:h-10 text-base"
-                    required
-                  />
-                </div>
+                <>
+                  <div>
+                    <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                      Completed Quantity
+                    </label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      value={completedQuantity}
+                      onChange={(e) => setCompletedQuantity(parseInt(e.target.value, 10))}
+                      min="0"
+                      max={job.jobProducts.find(p => p.id === selectedProduct)?.quantity || 0}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 h-12 sm:h-10 text-base"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="timeTaken" className="block text-sm font-medium text-gray-700 mb-1">
+                      Time Taken (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      id="timeTaken"
+                      value={timeTaken}
+                      onChange={(e) => setTimeTaken(parseInt(e.target.value, 10))}
+                      min="0"
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 h-12 sm:h-10 text-base"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="inkUsage" className="block text-sm font-medium text-gray-700 mb-1">
+                      Ink Usage (ml)
+                    </label>
+                    <input
+                      type="number"
+                      id="inkUsage"
+                      value={inkUsage}
+                      onChange={(e) => setInkUsage(parseInt(e.target.value, 10))}
+                      min="0"
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 h-12 sm:h-10 text-base"
+                    />
+                  </div>
+                </>
               )}
               
               <div className="flex justify-end">
@@ -533,11 +656,18 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                       {product.completedQuantity} of {product.quantity} completed
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
                     <div 
                       className="bg-indigo-600 h-2.5 rounded-full" 
                       style={{ width: `${(product.completedQuantity / product.quantity) * 100}%` }}
                     ></div>
+                  </div>
+                  <div className="flex flex-wrap justify-between text-xs text-gray-500 gap-y-1">
+                    <span>Unit price: ${product.unitPrice?.toFixed(2) || 'N/A'}</span>
+                    <span>Total: ${product.totalPrice?.toFixed(2) || 'N/A'}</span>
+                    {product.inkCostPerUnit && <span>Ink cost per unit: ${product.inkCostPerUnit?.toFixed(2)}</span>}
+                    {product.inkUsageInMl && <span>Ink usage: {product.inkUsageInMl}ml</span>}
+                    {product.timeTaken && <span>Time spent: {formatTime(product.timeTaken)}</span>}
                   </div>
                 </li>
               ))}
