@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { ClockIcon, CalendarDaysIcon, PencilIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface HourLog {
   id: string;
@@ -263,22 +264,21 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
   
   if (error || !hourLog) {
     return (
-      <div className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex justify-between items-center">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Hour Log Details</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Hour Log Details</h1>
           </div>
-          <div className="flex space-x-3">
-            <Link 
-              href="/employee/hours" 
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              Back to Hour Logs
-            </Link>
-          </div>
+          <Link 
+            href="/employee/hours" 
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center"
+          >
+            <ArrowLeftIcon className="h-5 w-5 mr-1" />
+            Back
+          </Link>
         </div>
         
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-lg bg-red-50 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -298,26 +298,22 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
   }
   
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Hour Log Details</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            View and manage your time log.
-          </p>
+          <h1 className="text-xl font-semibold text-gray-900">Hour Log Details</h1>
         </div>
-        <div className="flex space-x-3">
-          <Link 
-            href="/employee/hours" 
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            Back to Hour Logs
-          </Link>
-        </div>
+        <Link 
+          href="/employee/hours" 
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center"
+        >
+          <ArrowLeftIcon className="h-5 w-5 mr-1" />
+          Back
+        </Link>
       </div>
       
       {error && (
-        <div className="rounded-md bg-red-50 p-4 mb-6">
+        <div className="rounded-lg bg-red-50 p-4 mb-6">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -335,94 +331,110 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
       )}
       
       {isEditing ? (
-        <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Edit Hour Log</h3>
+        <div className="mb-6 bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <div className="flex items-center">
+              <ClockIcon className="h-6 w-6 text-indigo-500 mr-2" />
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Edit Hour Log</h3>
+            </div>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
               Update your working hours for this log.
             </p>
           </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
+          <div className="px-4 py-5 sm:p-6">
             <form onSubmit={handleUpdateLog} className="space-y-6">
-              <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="date" className="block text-base font-medium text-gray-700 mb-1">
                     Date
                   </label>
-                  <div className="mt-1">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
+                    </div>
                     <input
                       type="date"
                       name="date"
                       id="date"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="sm:col-span-3"></div>
-
-                <div className="sm:col-span-3">
-                  <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
+                <div>
+                  <label htmlFor="startTime" className="block text-base font-medium text-gray-700 mb-1">
                     Start Time
                   </label>
-                  <div className="mt-1">
-                    <select
-                      id="startTime"
-                      name="startTime"
-                      value={selectedStartTime}
-                      onChange={(e) => setSelectedStartTime(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      required
-                    >
-                      {generateTimeOptions().map((time) => (
-                        <option key={`start-${time}`} value={time}>
-                          {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    id="startTime"
+                    name="startTime"
+                    value={selectedStartTime}
+                    onChange={(e) => setSelectedStartTime(e.target.value)}
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
+                    required
+                  >
+                    {generateTimeOptions().map((time) => (
+                      <option key={`start-${time}`} value={time} className="py-2">
+                        {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="sm:col-span-3">
-                  <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
-                    End Time
+                <div className="flex items-center h-12">
+                  <input
+                    id="includeEndTime"
+                    name="includeEndTime"
+                    type="checkbox"
+                    checked={includeEndTime}
+                    onChange={(e) => setIncludeEndTime(e.target.checked)}
+                    className="focus:ring-indigo-500 h-6 w-6 text-indigo-600 border-gray-300 rounded"
+                  />
+                  <label htmlFor="includeEndTime" className="ml-3 block text-base font-medium text-gray-700">
+                    Include end time (Complete entry)
                   </label>
-                  <div className="mt-1">
+                </div>
+
+                {includeEndTime && (
+                  <div>
+                    <label htmlFor="endTime" className="block text-base font-medium text-gray-700 mb-1">
+                      End Time
+                    </label>
                     <select
                       id="endTime"
                       name="endTime"
                       value={selectedEndTime}
                       onChange={(e) => setSelectedEndTime(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      required
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
+                      required={includeEndTime}
                     >
                       {generateTimeOptions().map((time) => (
-                        <option key={`end-${time}`} value={time}>
+                        <option key={`end-${time}`} value={time} className="py-2">
                           {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
+                )}
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="w-full sm:w-auto py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-75"
+                  className="w-full sm:w-auto py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-75"
                 >
-                  {isUpdating ? 'Saving...' : 'Save'}
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -431,95 +443,127 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
       ) : (
         <>
           {/* Hour log details */}
-          <div className="overflow-hidden bg-white shadow sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg font-medium leading-6 text-gray-900">
-                Time Log - {formatDate(hourLog.date)}
-              </h3>
+          <div className="overflow-hidden bg-white shadow-lg rounded-lg">
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <CalendarDaysIcon className="h-6 w-6 text-indigo-500 mr-2" />
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">
+                    {formatDate(hourLog.date)}
+                  </h3>
+                </div>
+                <div>
+                  {hourLog.isPaid ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      Paid
+                    </span>
+                  ) : !hourLog.endTime ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                      Incomplete
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      Unpaid
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="border-t border-gray-200">
-              <dl>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Start time</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                    {formatTime(hourLog.startTime)}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">End time</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                    {hourLog.endTime ? formatTime(hourLog.endTime) : 'In progress'}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Duration</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                    {hourLog.hours ? `${hourLog.hours.toFixed(2)} hours` : 'In progress'}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                    {isEditingNotes ? (
-                      <div className="flex flex-col gap-2">
-                        <textarea
-                          value={editNotes}
-                          onChange={(e) => setEditNotes(e.target.value)}
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          rows={3}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditNotes(hourLog.notes || '');
-                              setIsEditingNotes(false);
-                            }}
-                            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleUpdateNotes}
-                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between">
-                        <div>{hourLog.notes || 'No notes added'}</div>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingNotes(true)}
-                          className="text-sm text-indigo-600 hover:text-indigo-900"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    )}
-                  </dd>
+            <div className="border-b border-gray-200">
+              <dl className="py-4 px-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <dt className="text-sm font-medium text-gray-500">Start time</dt>
+                    <dd className="mt-1 text-lg font-medium text-gray-900">
+                      {formatTime(hourLog.startTime)}
+                    </dd>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <dt className="text-sm font-medium text-gray-500">End time</dt>
+                    <dd className="mt-1 text-lg font-medium text-gray-900">
+                      {hourLog.endTime ? formatTime(hourLog.endTime) : 'Not completed'}
+                    </dd>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <dt className="text-sm font-medium text-gray-500">Duration</dt>
+                    <dd className="mt-1 text-lg font-medium text-gray-900">
+                      {hourLog.hours ? `${hourLog.hours.toFixed(2)} hours` : 'Not calculated'}
+                    </dd>
+                  </div>
                 </div>
               </dl>
             </div>
-            <div className="px-4 py-4 sm:px-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-              >
-                Edit Times
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteLog}
-                disabled={isDeleting}
-                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Log'}
-              </button>
+            <div className="px-4 py-4">
+              <div className="mb-3">
+                <h4 className="text-base font-medium text-gray-700 mb-2">Notes</h4>
+                {isEditingNotes ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-base py-3 px-4"
+                      rows={4}
+                      placeholder="Add notes about this time log..."
+                    />
+                    <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditNotes(hourLog.notes || '');
+                          setIsEditingNotes(false);
+                        }}
+                        className="w-full sm:w-auto py-2 px-4 border border-gray-300 rounded-lg text-base font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleUpdateNotes}
+                        className="w-full sm:w-auto py-2 px-4 border border-transparent rounded-lg text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        Save Notes
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="text-base text-gray-900 whitespace-pre-wrap">
+                        {hourLog.notes || 'No notes added'}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingNotes(true)}
+                        className="ml-2 inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        <PencilIcon className="h-4 w-4 mr-1" />
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-4 sm:px-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center justify-center w-full sm:w-auto py-3 px-4 border border-gray-300 rounded-lg text-base font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                >
+                  <PencilIcon className="h-5 w-5 mr-2" />
+                  Edit Times
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteLog}
+                  disabled={isDeleting}
+                  className="inline-flex items-center justify-center w-full sm:w-auto py-3 px-4 border border-transparent rounded-lg text-base font-medium text-white bg-red-600 hover:bg-red-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+                >
+                  <TrashIcon className="h-5 w-5 mr-2" />
+                  {isDeleting ? 'Deleting...' : 'Delete Log'}
+                </button>
+              </div>
             </div>
           </div>
         </>

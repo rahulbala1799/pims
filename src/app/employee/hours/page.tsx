@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { ClockIcon, PlusIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
 
 interface HourLog {
   id: string;
@@ -22,7 +23,7 @@ export default function HourLogsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [filter, setFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [filter, setFilter] = useState<'all' | 'week' | 'month'>('week');
   const [isCreating, setIsCreating] = useState(false);
   
   // Form state for new log
@@ -89,7 +90,7 @@ export default function HourLogsList() {
   
   // Format date for display
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'EEEE, MMMM d, yyyy');
+    return format(new Date(dateString), 'EEE, MMM d');
   };
 
   // Format time for display
@@ -204,24 +205,35 @@ export default function HourLogsList() {
   }
   
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Hour Logs</h1>
-          <p className="mt-2 text-sm text-gray-700">
+          <p className="mt-1 text-sm text-gray-700">
             View and manage your working hours.
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
           <button
             onClick={toggleNewLogForm}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+            className={`w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-base sm:text-sm font-medium shadow-sm flex items-center justify-center ${
+              showNewLogForm 
+                ? "bg-gray-200 text-gray-800 hover:bg-gray-300" 
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
           >
-            {showNewLogForm ? 'Cancel' : 'Log Hours'}
+            {showNewLogForm ? (
+              'Cancel'
+            ) : (
+              <>
+                <PlusIcon className="h-5 w-5 mr-1" />
+                <span>Log Hours</span>
+              </>
+            )}
           </button>
           <Link 
             href="/employee/dashboard" 
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            className="w-full sm:w-auto rounded-lg border border-gray-300 bg-white px-4 py-3 sm:py-2 text-base sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center justify-center"
           >
             Back to Dashboard
           </Link>
@@ -229,7 +241,7 @@ export default function HourLogsList() {
       </div>
       
       {error && (
-        <div className="mb-6 rounded-md bg-red-50 p-4">
+        <div className="mb-4 sm:mb-6 rounded-lg bg-red-50 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -248,129 +260,119 @@ export default function HourLogsList() {
       
       {/* New Log Form */}
       {showNewLogForm && (
-        <div className="mb-8 bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Log Hours</h3>
+        <div className="mb-6 bg-white shadow-lg rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <div className="flex items-center">
+              <ClockIcon className="h-6 w-6 text-indigo-500 mr-2" />
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Log Hours</h3>
+            </div>
             <p className="mt-1 max-w-2xl text-sm text-gray-500">
               Enter your working hours for a specific day.
             </p>
           </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
+          <div className="px-4 py-5 sm:p-6">
             <form onSubmit={handleCreateLog} className="space-y-6">
-              <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="date" className="block text-base font-medium text-gray-700 mb-1">
                     Date
                   </label>
-                  <div className="mt-1">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <CalendarDaysIcon className="h-5 w-5 text-gray-400" />
+                    </div>
                     <input
                       type="date"
                       name="date"
                       id="date"
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                      className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="sm:col-span-3"></div>
-
-                <div className="sm:col-span-3">
-                  <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
+                <div>
+                  <label htmlFor="startTime" className="block text-base font-medium text-gray-700 mb-1">
                     Start Time
                   </label>
-                  <div className="mt-1">
+                  <select
+                    id="startTime"
+                    name="startTime"
+                    value={selectedStartTime}
+                    onChange={(e) => setSelectedStartTime(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
+                    required
+                  >
+                    {generateTimeOptions().map((time) => (
+                      <option key={`start-${time}`} value={time} className="py-2">
+                        {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center h-12">
+                  <input
+                    id="includeEndTime"
+                    name="includeEndTime"
+                    type="checkbox"
+                    checked={includeEndTime}
+                    onChange={(e) => setIncludeEndTime(e.target.checked)}
+                    className="focus:ring-indigo-500 h-6 w-6 text-indigo-600 border-gray-300 rounded"
+                  />
+                  <label htmlFor="includeEndTime" className="ml-3 block text-base font-medium text-gray-700">
+                    Include end time (Complete entry)
+                  </label>
+                </div>
+
+                {includeEndTime && (
+                  <div>
+                    <label htmlFor="endTime" className="block text-base font-medium text-gray-700 mb-1">
+                      End Time
+                    </label>
                     <select
-                      id="startTime"
-                      name="startTime"
-                      value={selectedStartTime}
-                      onChange={(e) => setSelectedStartTime(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      required
+                      id="endTime"
+                      name="endTime"
+                      value={selectedEndTime}
+                      onChange={(e) => setSelectedEndTime(e.target.value)}
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm h-12 sm:h-10 text-base"
+                      required={includeEndTime}
                     >
+                      <option value="">Select end time</option>
                       {generateTimeOptions().map((time) => (
-                        <option key={`start-${time}`} value={time}>
+                        <option key={`end-${time}`} value={time} className="py-2">
                           {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
-
-                <div className="sm:col-span-3">
-                  <div className="flex items-center h-5 mt-5">
-                    <input
-                      id="includeEndTime"
-                      name="includeEndTime"
-                      type="checkbox"
-                      checked={includeEndTime}
-                      onChange={(e) => setIncludeEndTime(e.target.checked)}
-                      className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                    />
-                    <label htmlFor="includeEndTime" className="ml-2 block text-sm text-gray-700">
-                      Include end time (Complete entry)
-                    </label>
-                  </div>
-                </div>
-
-                {includeEndTime && (
-                  <div className="sm:col-span-3">
-                    <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
-                      End Time
-                    </label>
-                    <div className="mt-1">
-                      <select
-                        id="endTime"
-                        name="endTime"
-                        value={selectedEndTime}
-                        onChange={(e) => setSelectedEndTime(e.target.value)}
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        required={includeEndTime}
-                      >
-                        <option value="">Select end time</option>
-                        {generateTimeOptions().map((time) => (
-                          <option key={`end-${time}`} value={time}>
-                            {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
                 )}
 
-                <div className="sm:col-span-6">
-                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+                <div>
+                  <label htmlFor="notes" className="block text-base font-medium text-gray-700 mb-1">
                     Notes
                   </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="notes"
-                      name="notes"
-                      rows={3}
-                      value={logNotes}
-                      onChange={(e) => setLogNotes(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                    />
-                  </div>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    value={logNotes}
+                    onChange={(e) => setLogNotes(e.target.value)}
+                    className="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-base py-3 px-4"
+                    placeholder="What did you work on?"
+                  />
                 </div>
               </div>
 
               <div className="flex justify-end">
                 <button
-                  type="button"
-                  onClick={() => setShowNewLogForm(false)}
-                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Cancel
-                </button>
-                <button
                   type="submit"
                   disabled={isCreating}
-                  className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-75"
+                  className="w-full sm:w-auto inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-75"
                 >
-                  {isCreating ? 'Saving...' : 'Save'}
+                  {isCreating ? 'Saving...' : 'Save Hours'}
                 </button>
               </div>
             </form>
@@ -379,114 +381,122 @@ export default function HourLogsList() {
       )}
       
       {/* Filter controls */}
-      <div className="mb-6 flex items-center space-x-4">
-        <span className="text-sm text-gray-700">View:</span>
-        <div className="flex rounded-md shadow-sm" role="group">
-          <button
-            onClick={() => setFilter('all')}
-            className={`py-2 px-4 text-sm font-medium rounded-l-md ${
-              filter === 'all'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilter('week')}
-            className={`py-2 px-4 text-sm font-medium border-t border-b ${
-              filter === 'week'
-                ? 'bg-indigo-600 border-indigo-600 text-white'
-                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Last Week
-          </button>
-          <button
-            onClick={() => setFilter('month')}
-            className={`py-2 px-4 text-sm font-medium rounded-r-md ${
-              filter === 'month'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            Last Month
-          </button>
+      <div className="mb-4 sm:mb-6">
+        <div className="bg-white shadow overflow-hidden rounded-lg">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h3 className="text-base font-medium leading-6 text-gray-900">View Period</h3>
+          </div>
+          <div className="px-4 py-4">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'all'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('week')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'week'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Week
+              </button>
+              <button
+                onClick={() => setFilter('month')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'month'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Month
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       
-      {/* Hour logs table */}
+      {/* Hour logs list */}
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div>
         </div>
       ) : hourLogs.length === 0 ? (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6 text-center">
-            <p className="text-sm text-gray-500">No hour logs found.</p>
+        <div className="bg-white shadow rounded-lg p-6 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <ClockIcon className="h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-base font-medium text-gray-900">No hour logs found</h3>
+            <p className="mt-1 text-sm text-gray-500">Get started by logging your hours.</p>
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-300">
-            <thead>
-              <tr>
-                <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Date</th>
-                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Start Time</th>
-                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">End Time</th>
-                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Hours</th>
-                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Notes</th>
-                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                  <span className="sr-only">View</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {hourLogs.map((log) => (
-                <tr key={log.id}>
-                  <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                    {formatDate(log.date)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {formatTime(log.startTime)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {log.endTime ? formatTime(log.endTime) : 'Not completed'}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {log.hours ? `${log.hours.toFixed(2)}` : '-'}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm">
-                    {log.isPaid ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Paid
-                      </span>
-                    ) : !log.endTime ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Incomplete
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Unpaid
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {log.notes ? log.notes.substring(0, 30) + (log.notes.length > 30 ? '...' : '') : '-'}
-                  </td>
-                  <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+        <div className="space-y-4">
+          {hourLogs.map((log) => (
+            <div key={log.id} className="bg-white shadow overflow-hidden rounded-lg">
+              <div className="px-4 py-4 sm:px-6 flex justify-between items-center border-b border-gray-200">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <CalendarDaysIcon className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-base font-medium text-gray-900">{formatDate(log.date)}</h3>
+                  </div>
+                </div>
+                <div>
+                  {log.isPaid ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      Paid
+                    </span>
+                  ) : !log.endTime ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                      Incomplete
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      Unpaid
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="px-4 py-4 sm:px-6">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500">Start</dt>
+                    <dd className="mt-1 text-base text-gray-900">{formatTime(log.startTime)}</dd>
+                  </div>
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500">End</dt>
+                    <dd className="mt-1 text-base text-gray-900">{log.endTime ? formatTime(log.endTime) : 'Not set'}</dd>
+                  </div>
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500">Hours</dt>
+                    <dd className="mt-1 text-base text-gray-900">{log.hours ? `${log.hours.toFixed(2)}` : '-'}</dd>
+                  </div>
+                  <div className="col-span-1 flex items-end justify-end">
                     <Link
                       href={`/employee/hours/${log.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
+                      className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-indigo-600 shadow-sm hover:bg-gray-50"
                     >
-                      View
+                      View Details
                     </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </dl>
+                {log.notes && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                    <dd className="mt-1 text-sm text-gray-900 line-clamp-2">{log.notes}</dd>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
