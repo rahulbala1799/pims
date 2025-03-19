@@ -12,7 +12,7 @@ interface HourLog {
   hours: number | null;
   date: string;
   isActive: boolean;
-  autoStopped: boolean;
+  isPaid: boolean;
   notes: string | null;
   user: {
     id: string;
@@ -38,6 +38,7 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedStartTime, setSelectedStartTime] = useState('');
   const [selectedEndTime, setSelectedEndTime] = useState('');
+  const [includeEndTime, setIncludeEndTime] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Get user data from localStorage
@@ -69,11 +70,17 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
         
         // Initialize edit form values from the hour log
         const startDate = new Date(data[0].startTime);
-        const endDate = data[0].endTime ? new Date(data[0].endTime) : new Date();
-        
         setSelectedDate(format(startDate, 'yyyy-MM-dd'));
         setSelectedStartTime(format(startDate, 'HH:mm'));
-        setSelectedEndTime(format(endDate, 'HH:mm'));
+        
+        if (data[0].endTime) {
+          const endDate = new Date(data[0].endTime);
+          setSelectedEndTime(format(endDate, 'HH:mm'));
+          setIncludeEndTime(true);
+        } else {
+          setSelectedEndTime('17:00'); // Default end time
+          setIncludeEndTime(false);
+        }
       } else {
         throw new Error('Hour log not found');
       }
@@ -132,7 +139,7 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
     setError(null);
     
     try {
-      const response = await fetch('/api/hour-logs/notes', {
+      const response = await fetch('/api/hour-logs', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -149,10 +156,7 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
         throw new Error(data.error || 'Failed to update notes');
       }
       
-      setHourLog({
-        ...hourLog,
-        notes: editNotes
-      });
+      setHourLog(data);
       setIsEditingNotes(false);
     } catch (err) {
       console.error('Error updating notes:', err);
@@ -187,19 +191,25 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
     try {
       // Construct datetime strings with selected date and times
       const startDateTime = `${selectedDate}T${selectedStartTime}:00`;
-      const endDateTime = `${selectedDate}T${selectedEndTime}:00`;
+      let endDateTime = null;
+      let hours = null;
       
-      // Calculate hours between start and end time
-      const startMs = new Date(startDateTime).getTime();
-      const endMs = new Date(endDateTime).getTime();
-      const diffMs = endMs - startMs;
-      
-      // Don't allow negative hours
-      if (diffMs <= 0) {
-        throw new Error('End time must be after start time');
+      // Only calculate hours if end time is included
+      if (includeEndTime && selectedEndTime) {
+        endDateTime = `${selectedDate}T${selectedEndTime}:00`;
+        
+        // Calculate hours between start and end time
+        const startMs = new Date(startDateTime).getTime();
+        const endMs = new Date(endDateTime).getTime();
+        const diffMs = endMs - startMs;
+        
+        // Don't allow negative hours
+        if (diffMs <= 0) {
+          throw new Error('End time must be after start time');
+        }
+        
+        hours = diffMs / (1000 * 60 * 60);
       }
-      
-      const hours = diffMs / (1000 * 60 * 60);
       
       const response = await fetch('/api/hour-logs', {
         method: 'PATCH',
@@ -240,7 +250,7 @@ export default function HourLogDetailPage({ params }: { params: { id: string } }
   
   // Format time for display
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), 'h:mm:ss a');
+    return format(new Date(dateString), 'h:mm a');
   };
   
   if (isLoading) {

@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const isPaid = searchParams.get('isPaid');
     
     // Query filters
     const filters: any = {};
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
     
     if (userId) {
       filters.userId = userId;
+    }
+
+    if (isPaid !== null) {
+      filters.isPaid = isPaid === 'true';
     }
     
     // Date range filtering
@@ -67,10 +72,11 @@ export async function POST(request: Request) {
     const { 
       userId, 
       startTime, 
-      endTime, 
-      hours,
+      endTime = null, 
+      hours = null,
       date,
       isActive = false,
+      isPaid = false,
       notes 
     } = body;
     
@@ -95,15 +101,28 @@ export async function POST(request: Request) {
       );
     }
     
+    // Calculate hours if both start and end time are provided
+    let calculatedHours = hours;
+    if (endTime && !calculatedHours) {
+      const startMs = new Date(startTime).getTime();
+      const endMs = new Date(endTime).getTime();
+      const diffMs = endMs - startMs;
+      
+      if (diffMs > 0) {
+        calculatedHours = diffMs / (1000 * 60 * 60);
+      }
+    }
+    
     // Create the hour log
     const hourLog = await prisma.hourLog.create({
       data: {
         userId,
         startTime,
         endTime,
-        hours,
+        hours: calculatedHours,
         date,
         isActive,
+        isPaid,
         notes,
       },
       include: {
@@ -138,6 +157,7 @@ export async function PATCH(request: Request) {
       hours,
       date,
       isActive,
+      isPaid,
       notes 
     } = body;
     
@@ -166,10 +186,29 @@ export async function PATCH(request: Request) {
     // Only update fields that are provided
     if (startTime !== undefined) updateData.startTime = startTime;
     if (endTime !== undefined) updateData.endTime = endTime;
-    if (hours !== undefined) updateData.hours = hours;
     if (date !== undefined) updateData.date = date;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (isPaid !== undefined) updateData.isPaid = isPaid;
     if (notes !== undefined) updateData.notes = notes;
+    
+    // Calculate hours if both start and end time are provided
+    if (endTime !== undefined || (startTime !== undefined && existingLog.endTime)) {
+      const start = startTime !== undefined ? new Date(startTime) : new Date(existingLog.startTime);
+      const end = endTime !== undefined ? new Date(endTime) : existingLog.endTime ? new Date(existingLog.endTime) : null;
+      
+      if (end) {
+        const diffMs = end.getTime() - start.getTime();
+        
+        if (diffMs > 0) {
+          updateData.hours = diffMs / (1000 * 60 * 60);
+        }
+      } else {
+        // If end time is set to null, clear hours
+        updateData.hours = null;
+      }
+    } else if (hours !== undefined) {
+      updateData.hours = hours;
+    }
     
     // Update the hour log
     const updatedLog = await prisma.hourLog.update({

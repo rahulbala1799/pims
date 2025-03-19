@@ -12,18 +12,15 @@ interface HourLog {
   hours: number | null;
   date: string;
   isActive: boolean;
-  autoStopped: boolean;
+  isPaid: boolean;
   notes: string | null;
 }
 
 export default function HourLogsList() {
   const router = useRouter();
   const [hourLogs, setHourLogs] = useState<HourLog[]>([]);
-  const [activeLog, setActiveLog] = useState<HourLog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isStartingLog, setIsStartingLog] = useState(false);
-  const [notes, setNotes] = useState<string>('');
   const [userData, setUserData] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'week' | 'month'>('all');
   const [isCreating, setIsCreating] = useState(false);
@@ -32,7 +29,8 @@ export default function HourLogsList() {
   const [showNewLogForm, setShowNewLogForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedStartTime, setSelectedStartTime] = useState('09:00');
-  const [selectedEndTime, setSelectedEndTime] = useState('17:00');
+  const [selectedEndTime, setSelectedEndTime] = useState('');
+  const [includeEndTime, setIncludeEndTime] = useState(false);
   const [logNotes, setLogNotes] = useState('');
 
   // Get user data from localStorage
@@ -74,10 +72,6 @@ export default function HourLogsList() {
       // Sort logs by date (newest first)
       const sortedLogs = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setHourLogs(sortedLogs);
-      
-      // Check if there's an active log
-      const active = sortedLogs.find((log: HourLog) => log.isActive);
-      setActiveLog(active || null);
     } catch (err) {
       console.error('Error fetching hour logs:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -100,7 +94,7 @@ export default function HourLogsList() {
 
   // Format time for display
   const formatTime = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Pending';
     return format(new Date(dateString), 'h:mm a');
   };
   
@@ -117,7 +111,7 @@ export default function HourLogsList() {
     return options;
   };
   
-  // Create a new hour log with start and end time
+  // Create a new hour log with start and optional end time
   const handleCreateLog = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,19 +123,25 @@ export default function HourLogsList() {
     try {
       // Construct datetime strings with selected date and times
       const startDateTime = `${selectedDate}T${selectedStartTime}:00`;
-      const endDateTime = `${selectedDate}T${selectedEndTime}:00`;
+      let endDateTime = null;
+      let hours = null;
       
-      // Calculate hours between start and end time
-      const startMs = new Date(startDateTime).getTime();
-      const endMs = new Date(endDateTime).getTime();
-      const diffMs = endMs - startMs;
-      
-      // Don't allow negative hours
-      if (diffMs <= 0) {
-        throw new Error('End time must be after start time');
+      // Only calculate hours if end time is included
+      if (includeEndTime && selectedEndTime) {
+        endDateTime = `${selectedDate}T${selectedEndTime}:00`;
+        
+        // Calculate hours between start and end time
+        const startMs = new Date(startDateTime).getTime();
+        const endMs = new Date(endDateTime).getTime();
+        const diffMs = endMs - startMs;
+        
+        // Don't allow negative hours
+        if (diffMs <= 0) {
+          throw new Error('End time must be after start time');
+        }
+        
+        hours = diffMs / (1000 * 60 * 60);
       }
-      
-      const hours = diffMs / (1000 * 60 * 60);
       
       const response = await fetch('/api/hour-logs', {
         method: 'POST',
@@ -154,7 +154,7 @@ export default function HourLogsList() {
           endTime: endDateTime,
           hours: hours,
           date: selectedDate,
-          isActive: false, // Not active since we provide end time
+          isActive: false,
           notes: logNotes,
         }),
       });
@@ -169,7 +169,8 @@ export default function HourLogsList() {
       setShowNewLogForm(false);
       setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
       setSelectedStartTime('09:00');
-      setSelectedEndTime('17:00');
+      setSelectedEndTime('');
+      setIncludeEndTime(false);
       setLogNotes('');
       
       // Refresh logs
@@ -181,6 +182,17 @@ export default function HourLogsList() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  // Toggle showing the new log form
+  const toggleNewLogForm = () => {
+    setShowNewLogForm(!showNewLogForm);
+    // Set default values
+    setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+    setSelectedStartTime('09:00');
+    setSelectedEndTime('17:00');
+    setIncludeEndTime(false);
+    setLogNotes('');
   };
   
   if (isLoading && !userData) {
@@ -201,6 +213,12 @@ export default function HourLogsList() {
           </p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={toggleNewLogForm}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+          >
+            {showNewLogForm ? 'Cancel' : 'Log Hours'}
+          </button>
           <Link 
             href="/employee/dashboard" 
             className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
@@ -282,26 +300,45 @@ export default function HourLogsList() {
                 </div>
 
                 <div className="sm:col-span-3">
-                  <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
-                    End Time
-                  </label>
-                  <div className="mt-1">
-                    <select
-                      id="endTime"
-                      name="endTime"
-                      value={selectedEndTime}
-                      onChange={(e) => setSelectedEndTime(e.target.value)}
-                      className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      required
-                    >
-                      {generateTimeOptions().map((time) => (
-                        <option key={`end-${time}`} value={time}>
-                          {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex items-center h-5 mt-5">
+                    <input
+                      id="includeEndTime"
+                      name="includeEndTime"
+                      type="checkbox"
+                      checked={includeEndTime}
+                      onChange={(e) => setIncludeEndTime(e.target.checked)}
+                      className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                    />
+                    <label htmlFor="includeEndTime" className="ml-2 block text-sm text-gray-700">
+                      Include end time (Complete entry)
+                    </label>
                   </div>
                 </div>
+
+                {includeEndTime && (
+                  <div className="sm:col-span-3">
+                    <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
+                      End Time
+                    </label>
+                    <div className="mt-1">
+                      <select
+                        id="endTime"
+                        name="endTime"
+                        value={selectedEndTime}
+                        onChange={(e) => setSelectedEndTime(e.target.value)}
+                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        required={includeEndTime}
+                      >
+                        <option value="">Select end time</option>
+                        {generateTimeOptions().map((time) => (
+                          <option key={`end-${time}`} value={time}>
+                            {format(new Date(`2000-01-01T${time}:00`), 'h:mm a')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 <div className="sm:col-span-6">
                   <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
@@ -398,6 +435,7 @@ export default function HourLogsList() {
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Start Time</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">End Time</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Hours</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Notes</th>
                 <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                   <span className="sr-only">View</span>
@@ -414,10 +452,25 @@ export default function HourLogsList() {
                     {formatTime(log.startTime)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                    {log.endTime ? formatTime(log.endTime) : 'In progress'}
+                    {log.endTime ? formatTime(log.endTime) : 'Not completed'}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {log.hours ? `${log.hours.toFixed(2)}` : '-'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-sm">
+                    {log.isPaid ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Paid
+                      </span>
+                    ) : !log.endTime ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Incomplete
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        Unpaid
+                      </span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                     {log.notes ? log.notes.substring(0, 30) + (log.notes.length > 30 ? '...' : '') : '-'}
