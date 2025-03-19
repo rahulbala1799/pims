@@ -128,7 +128,7 @@ export async function PUT(
 ) {
   try {
     const data = await request.json() as InvoiceUpdateRequest;
-
+    
     // Check if invoice exists
     const existingInvoice = await prisma.invoice.findUnique({
       where: {
@@ -138,14 +138,14 @@ export async function PUT(
         invoiceItems: true
       }
     });
-
+    
     if (!existingInvoice) {
       return NextResponse.json(
         { error: 'Invoice not found' },
         { status: 404 }
       );
     }
-
+    
     // Update the invoice data
     const updatedInvoice = await prisma.invoice.update({
       where: {
@@ -191,16 +191,16 @@ export async function PUT(
       // Update existing invoice items
       for (const item of itemsToUpdate) {
         await prisma.invoiceItem.update({
-          where: { id: item.id },
-          data: {
+            where: { id: item.id },
+            data: {
             productId: item.productId,
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
+              description: item.description,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
             area: item.area,
-            length: item.length,
-            width: item.width,
+              length: item.length,
+              width: item.width,
           }
         });
       }
@@ -215,7 +215,7 @@ export async function PUT(
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice,
-            area: item.area,
+              area: item.area,
             length: item.length,
             width: item.width,
           }

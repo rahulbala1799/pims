@@ -13,12 +13,13 @@ import {
   UserIcon,
   CalendarIcon,
   TagIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  XMarkIcon,
+  DocumentTextIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
-
-// Hard-coded user ID for demo purposes
-// In a real app, this would come from authentication
-const EMPLOYEE_ID = "employee123";
 
 // Define job interfaces
 interface Customer {
@@ -36,12 +37,27 @@ interface JobProduct {
   product: Product;
   quantity: number;
   completedQuantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  inkCostPerUnit?: number;
+  inkUsageInMl?: number;
+  timeTaken?: number;
 }
 
 interface ProgressUpdate {
   id: string;
   content: string;
   createdAt: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
 }
 
 interface Job {
@@ -56,6 +72,10 @@ interface Job {
   updatedAt: string;
   jobProducts: JobProduct[];
   progressUpdates: ProgressUpdate[];
+  assignedTo: User | null;
+  assignedToId: string | null;
+  createdBy: User;
+  invoice: Invoice | null;
 }
 
 export default function EmployeeJobsPage() {
@@ -64,7 +84,16 @@ export default function EmployeeJobsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
-  const [filter, setFilter] = useState<'all' | 'inProgress' | 'pending'>('all');
+  const [filterOpen, setFilterOpen] = useState(false);
+  
+  // Tab navigation
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
+  
+  // Advanced filters
+  const [filter, setFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'inProgress' | 'completed'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'urgent' | 'high' | 'medium' | 'low'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Get user data from localStorage
   useEffect(() => {
@@ -83,7 +112,8 @@ export default function EmployeeJobsPage() {
       setError(null);
       
       try {
-        const response = await fetch(`/api/employee/jobs?userId=${userData.id}&status=active`);
+        // Fetch all jobs, not just those assigned to the user
+        const response = await fetch('/api/jobs');
         
         if (!response.ok) {
           throw new Error('Failed to fetch jobs');
@@ -102,11 +132,37 @@ export default function EmployeeJobsPage() {
     fetchJobs();
   }, [userData]);
   
-  // Get filtered jobs based on current filter
+  // Get filtered jobs based on current filters and active tab
   const filteredJobs = jobs.filter(job => {
-    if (filter === 'all') return true;
-    if (filter === 'inProgress') return job.status === 'IN_PROGRESS';
-    if (filter === 'pending') return job.status === 'PENDING';
+    // First filter by tab
+    if (activeTab === 'active' && job.status === 'COMPLETED') return false;
+    if (activeTab === 'completed' && job.status !== 'COMPLETED') return false;
+    
+    // Filter by assignment
+    if (filter === 'assigned' && job.assignedToId !== userData?.id) return false;
+    if (filter === 'unassigned' && job.assignedToId !== null) return false;
+    
+    // Filter by status
+    if (statusFilter === 'pending' && job.status !== 'PENDING') return false;
+    if (statusFilter === 'inProgress' && job.status !== 'IN_PROGRESS') return false;
+    if (statusFilter === 'completed' && job.status !== 'COMPLETED') return false;
+    
+    // Filter by priority
+    if (priorityFilter === 'urgent' && job.priority !== 'URGENT') return false;
+    if (priorityFilter === 'high' && job.priority !== 'HIGH') return false;
+    if (priorityFilter === 'medium' && job.priority !== 'MEDIUM') return false;
+    if (priorityFilter === 'low' && job.priority !== 'LOW') return false;
+    
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const titleMatch = job.title.toLowerCase().includes(query);
+      const customerMatch = job.customer.name.toLowerCase().includes(query);
+      const descriptionMatch = job.description ? job.description.toLowerCase().includes(query) : false;
+      
+      if (!titleMatch && !customerMatch && !descriptionMatch) return false;
+    }
+    
     return true;
   });
   
@@ -125,14 +181,55 @@ export default function EmployeeJobsPage() {
         throw new Error('Failed to update job status');
       }
       
-      // Update the job in the local state
-      setJobs(jobs.map(job => 
-        job.id === jobId ? { ...job, status } : job
-      ));
+      // Refresh jobs from the API to ensure proper syncing
+      const refreshResponse = await fetch('/api/jobs');
+      if (refreshResponse.ok) {
+        const refreshedData = await refreshResponse.json();
+        setJobs(refreshedData);
+      } else {
+        // If refresh fails, just update the local state
+        setJobs(jobs.map(job => 
+          job.id === jobId ? { ...job, status } : job
+        ));
+      }
     } catch (error) {
       console.error('Error updating job status:', error);
       setError('An error occurred while updating the job status.');
     }
+  };
+  
+  // Calculate total count based on filters for showing counts
+  const getFilteredCounts = () => {
+    const total = jobs.length;
+    const active = jobs.filter(job => job.status !== 'COMPLETED').length;
+    const completed = jobs.filter(job => job.status === 'COMPLETED').length;
+    const assigned = jobs.filter(job => job.assignedToId === userData?.id).length;
+    const unassigned = jobs.filter(job => job.assignedToId === null).length;
+    const pending = jobs.filter(job => job.status === 'PENDING').length;
+    const inProgress = jobs.filter(job => job.status === 'IN_PROGRESS').length;
+    const urgent = jobs.filter(job => job.priority === 'URGENT').length;
+    const high = jobs.filter(job => job.priority === 'HIGH').length;
+    
+    return {
+      total,
+      active,
+      completed,
+      assigned,
+      unassigned,
+      pending,
+      inProgress,
+      urgent,
+      high
+    };
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setFilter('all');
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setSearchQuery('');
+    setFilterOpen(false);
   };
   
   // Function to get class for job priority
@@ -190,6 +287,29 @@ export default function EmployeeJobsPage() {
     const today = new Date();
     return isAfter(today, dueDate);
   };
+  
+  // Calculate total time spent on job
+  const getTotalTime = (job: Job) => {
+    if (!job.jobProducts || job.jobProducts.length === 0) return 0;
+    
+    return job.jobProducts.reduce((sum, product) => sum + (product.timeTaken || 0), 0);
+  };
+  
+  // Format time in hours and minutes
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    
+    if (hours === 0) return `${mins} min`;
+    return `${hours}h ${mins}m`;
+  };
+  
+  // Is job assigned to current user
+  const isAssignedToMe = (job: Job) => {
+    return job.assignedToId === userData?.id;
+  };
+  
+  const counts = getFilteredCounts();
 
   if (isLoading && !userData) {
     return (
@@ -203,9 +323,9 @@ export default function EmployeeJobsPage() {
     <div className="px-4 py-4 sm:px-6 lg:px-8">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">My Jobs</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Jobs</h1>
           <p className="mt-1 text-sm text-gray-700">
-            View and manage your assigned jobs
+            View and manage all printing jobs
           </p>
         </div>
         <Link 
@@ -216,13 +336,58 @@ export default function EmployeeJobsPage() {
         </Link>
       </div>
       
+      {/* Tab Navigation */}
+      <div className="mb-4 sm:mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`${
+              activeTab === 'all'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            } whitespace-nowrap border-b-2 py-4 px-1 text-base font-medium`}
+          >
+            All Jobs
+            <span className="ml-2 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+              {counts.total}
+            </span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`${
+              activeTab === 'active'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            } whitespace-nowrap border-b-2 py-4 px-1 text-base font-medium`}
+          >
+            Active
+            <span className="ml-2 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+              {counts.active}
+            </span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('completed')}
+            className={`${
+              activeTab === 'completed'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            } whitespace-nowrap border-b-2 py-4 px-1 text-base font-medium`}
+          >
+            Completed
+            <span className="ml-2 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+              {counts.completed}
+            </span>
+          </button>
+        </nav>
+      </div>
+      
       {error && (
         <div className="mb-4 sm:mb-6 rounded-lg bg-red-50 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-              </svg>
+              <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">Error</h3>
@@ -234,46 +399,195 @@ export default function EmployeeJobsPage() {
         </div>
       )}
       
-      {/* Filter controls */}
-      <div className="mb-4 sm:mb-6">
-        <div className="bg-white shadow overflow-hidden rounded-lg">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h3 className="text-base font-medium leading-6 text-gray-900">Filter Jobs</h3>
-          </div>
-          <div className="px-4 py-4">
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
-                  filter === 'all'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilter('inProgress')}
-                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
-                  filter === 'inProgress'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                In Progress
-              </button>
-              <button
-                onClick={() => setFilter('pending')}
-                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
-                  filter === 'pending'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                Pending
-              </button>
+      {/* Stats overview */}
+      <div className="mb-4 sm:mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="bg-white rounded-lg p-4 shadow">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
+              <BriefcaseIcon className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div className="ml-4">
+              <div className="text-sm text-gray-500">
+                {activeTab === 'completed' ? 'Completed Jobs' : 'Total Jobs'}
+              </div>
+              <div className="text-xl font-semibold">
+                {activeTab === 'completed' ? counts.completed : counts.total}
+              </div>
             </div>
           </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
+              <CheckCircleIcon className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <div className="text-sm text-gray-500">
+                {activeTab === 'completed' ? 'Your Completed' : 'My Jobs'}
+              </div>
+              <div className="text-xl font-semibold">
+                {activeTab === 'completed' 
+                  ? jobs.filter(j => j.status === 'COMPLETED' && j.assignedToId === userData?.id).length 
+                  : counts.assigned}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
+              {activeTab === 'completed' 
+                ? <ClockIcon className="h-6 w-6 text-blue-600" />
+                : <ArrowPathIcon className="h-6 w-6 text-blue-600" />
+              }
+            </div>
+            <div className="ml-4">
+              <div className="text-sm text-gray-500">
+                {activeTab === 'completed' ? 'This Month' : 'In Progress'}
+              </div>
+              <div className="text-xl font-semibold">
+                {activeTab === 'completed' 
+                  ? jobs.filter(j => {
+                      if (j.status !== 'COMPLETED') return false;
+                      const date = new Date(j.updatedAt);
+                      const now = new Date();
+                      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                    }).length
+                  : counts.inProgress}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
+              {activeTab === 'completed' 
+                ? <CalendarIcon className="h-6 w-6 text-red-600" />
+                : <ExclamationCircleIcon className="h-6 w-6 text-red-600" />
+              }
+            </div>
+            <div className="ml-4">
+              <div className="text-sm text-gray-500">
+                {activeTab === 'completed' ? 'Last Month' : 'Urgent'}
+              </div>
+              <div className="text-xl font-semibold">
+                {activeTab === 'completed' 
+                  ? jobs.filter(j => {
+                      if (j.status !== 'COMPLETED') return false;
+                      const date = new Date(j.updatedAt);
+                      const now = new Date();
+                      const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+                      const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+                      return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+                    }).length
+                  : counts.urgent + counts.high}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Search and filter */}
+      <div className="mb-4 sm:mb-6 bg-white shadow rounded-lg overflow-hidden">
+        <div className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative rounded-md shadow-sm flex-1">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full rounded-md border-0 py-3 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                placeholder={`Search ${activeTab === 'completed' ? 'completed' : ''} jobs by title, customer or description`}
+              />
+            </div>
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              className="inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-3 sm:py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+            >
+              <FunnelIcon className="-ml-0.5 h-5 w-5 text-gray-400" />
+              Filters
+              {(filter !== 'all' || statusFilter !== 'all' || priorityFilter !== 'all') && 
+                <span className="ml-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs font-medium text-white">
+                  Active
+                </span>
+              }
+            </button>
+          </div>
+          
+          {filterOpen && (
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="assignment-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Assignment
+                  </label>
+                  <select
+                    id="assignment-filter"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value as any)}
+                    className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+                  >
+                    <option value="all">All Jobs</option>
+                    <option value="assigned">Assigned to Me ({activeTab === 'completed' 
+                      ? jobs.filter(j => j.status === 'COMPLETED' && j.assignedToId === userData?.id).length 
+                      : counts.assigned})</option>
+                    {activeTab !== 'completed' && (
+                      <option value="unassigned">Unassigned ({counts.unassigned})</option>
+                    )}
+                  </select>
+                </div>
+                
+                {activeTab !== 'completed' && (
+                  <div>
+                    <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      id="status-filter"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending">Not Started ({counts.pending})</option>
+                      <option value="inProgress">In Progress ({counts.inProgress})</option>
+                    </select>
+                  </div>
+                )}
+                
+                <div>
+                  <label htmlFor="priority-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    id="priority-filter"
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value as any)}
+                    className="block w-full rounded-md border-0 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="urgent">Urgent ({counts.urgent})</option>
+                    <option value="high">High ({counts.high})</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                >
+                  <XMarkIcon className="-ml-0.5 h-5 w-5 text-gray-400" />
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -287,13 +601,16 @@ export default function EmployeeJobsPage() {
           <div className="flex flex-col items-center justify-center">
             <BriefcaseIcon className="h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-base font-medium text-gray-900">No jobs found</h3>
-            <p className="mt-1 text-sm text-gray-500">You don't have any {filter !== 'all' ? filter : ''} jobs assigned.</p>
+            <p className="mt-1 text-sm text-gray-500">No jobs match your current filter criteria.</p>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredJobs.map((job) => (
-            <div key={job.id} className="bg-white shadow overflow-hidden rounded-lg">
+            <div 
+              key={job.id} 
+              className={`bg-white shadow overflow-hidden rounded-lg ${isAssignedToMe(job) ? 'ring-2 ring-indigo-500' : ''}`}
+            >
               <div className="px-4 py-4 sm:px-6 flex justify-between items-center border-b border-gray-200">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -335,6 +652,32 @@ export default function EmployeeJobsPage() {
                   
                   <div className="col-span-1">
                     <dt className="text-sm font-medium text-gray-500 flex items-center">
+                      <UserIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      Assigned To
+                    </dt>
+                    <dd className="mt-1 text-base text-gray-900">
+                      {job.assignedTo ? (
+                        <span className={job.assignedToId === userData?.id ? 'font-medium text-indigo-600' : ''}>
+                          {job.assignedTo.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Unassigned</span>
+                      )}
+                    </dd>
+                  </div>
+                  
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center">
+                      <ClockIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      Time Spent
+                    </dt>
+                    <dd className="mt-1 text-base text-gray-900">
+                      {getTotalTime(job) > 0 ? formatTime(getTotalTime(job)) : 'Not started'}
+                    </dd>
+                  </div>
+                  
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center">
                       <TagIcon className="h-4 w-4 mr-1 text-gray-400" />
                       Completion
                     </dt>
@@ -353,40 +696,52 @@ export default function EmployeeJobsPage() {
                 </dl>
                 
                 <div className="mt-4 border-t border-gray-200 pt-4">
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">Products</h4>
-                  <ul className="space-y-2">
-                    {job.jobProducts.map((product) => (
-                      <li key={product.id} className="text-sm text-gray-900 flex justify-between items-center bg-gray-50 rounded-lg p-2">
-                        <span className="font-medium">{product.product.name}</span>
-                        <span>
-                          {product.completedQuantity} of {product.quantity} completed
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2 flex items-center">
+                    <DocumentTextIcon className="h-4 w-4 mr-1 text-gray-400" />
+                    Products ({job.jobProducts.length})
+                  </h4>
+                  <div className="overflow-hidden">
+                    <ul className="space-y-2 max-h-36 overflow-y-auto">
+                      {job.jobProducts.map((product) => (
+                        <li key={product.id} className="text-sm text-gray-900 flex justify-between items-center bg-gray-50 rounded-lg p-2">
+                          <span className="font-medium">{product.product.name}</span>
+                          <span>
+                            {product.completedQuantity} of {product.quantity} completed
+                          </span>
+                        </li>
+                      )).slice(0, 3)}
+                      {job.jobProducts.length > 3 && (
+                        <li className="text-xs text-center text-gray-500 italic">
+                          + {job.jobProducts.length - 3} more products
+                        </li>
+                      )}
+                    </ul>
+                  </div>
                 </div>
                 
                 <div className="mt-4 pt-3 border-t border-gray-200">
                   <div className="flex justify-between items-center">
                     <div className="flex space-x-2">
-                      {job.status !== 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => handleStatusChange(job.id, 'IN_PROGRESS')}
-                          className="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-2 text-sm font-medium text-blue-700"
-                        >
-                          <ArrowPathIcon className="h-4 w-4 mr-1" />
-                          Start
-                        </button>
-                      )}
-                      
-                      {job.status !== 'COMPLETED' && (
-                        <button
-                          onClick={() => handleStatusChange(job.id, 'COMPLETED')}
-                          className="inline-flex items-center rounded-lg bg-green-50 px-2.5 py-2 text-sm font-medium text-green-700"
-                        >
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          Complete
-                        </button>
+                      {isAssignedToMe(job) && job.status !== 'COMPLETED' && (
+                        <>
+                          {job.status !== 'IN_PROGRESS' && (
+                            <button
+                              onClick={() => handleStatusChange(job.id, 'IN_PROGRESS')}
+                              className="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-2 text-sm font-medium text-blue-700"
+                            >
+                              <ArrowPathIcon className="h-4 w-4 mr-1" />
+                              Start
+                            </button>
+                          )}
+                          
+                          <button
+                            onClick={() => handleStatusChange(job.id, 'COMPLETED')}
+                            className="inline-flex items-center rounded-lg bg-green-50 px-2.5 py-2 text-sm font-medium text-green-700"
+                          >
+                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                            Complete
+                          </button>
+                        </>
                       )}
                     </div>
                     
