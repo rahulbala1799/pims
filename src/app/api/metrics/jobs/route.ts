@@ -101,7 +101,7 @@ export async function GET(request: Request) {
       // Calculate ink costs from inkUsageInMl
       const inkCosts = job.jobProducts.reduce((total, product) => {
         const inkUsage = product.inkUsageInMl || 0;
-        const inkCostPerMl = 0.5; // Assume $0.50 per ml of ink
+        const inkCostPerMl = 0.16; // 0.16€ per ml of ink
         return total + (inkUsage * inkCostPerMl);
       }, 0);
 

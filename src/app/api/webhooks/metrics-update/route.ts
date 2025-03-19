@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { JobStatus, JobPriority, Job as PrismaJob, Invoice, InvoiceItem, Product, JobProduct } from '@prisma/client';
+import { JobStatus, JobPriority, Job as PrismaJob, Invoice, InvoiceItem, Product, JobProduct, ProductClass } from '@prisma/client';
 
 // Define TypeScript types to avoid linter errors
-interface ProductWithDetails extends Product {
+interface ProductWithDetails extends Omit<Product, 'productClass'> {
   costPerSqMeter?: any;
   defaultLength?: number;
   defaultWidth?: number;
   productClass: string;
 }
 
-interface InvoiceItemWithProduct extends InvoiceItem {
+interface InvoiceItemWithProduct extends Omit<InvoiceItem, 'area'> {
   product: ProductWithDetails;
-  area?: any;
+  area?: number | null;
 }
 
 interface InvoiceWithItems extends Invoice {
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       // Calculate ink costs from inkUsageInMl
       const inkCosts = job.jobProducts.reduce((total, product) => {
         const inkUsage = product.inkUsageInMl || 0;
-        const inkCostPerMl = 0.5; // Assume $0.50 per ml of ink
+        const inkCostPerMl = 0.16; // 0.16€ per ml of ink
         return total + (inkUsage * inkCostPerMl);
       }, 0);
 
@@ -262,7 +262,7 @@ export async function POST(request: Request) {
       // Calculate ink costs from inkUsageInMl
       const inkCosts = job.jobProducts.reduce((total, product) => {
         const inkUsage = product.inkUsageInMl || 0;
-        const inkCostPerMl = 0.5; // Assume $0.50 per ml of ink
+        const inkCostPerMl = 0.16; // 0.16€ per ml of ink
         return total + (inkUsage * inkCostPerMl);
       }, 0);
 
@@ -308,10 +308,10 @@ export async function POST(request: Request) {
       message: `Successfully recalculated metrics for ${jobs.length} jobs` 
     });
     
-  } catch (error) {
-    console.error('Error in metrics webhook:', error);
+  } catch (error: any) {
+    console.error('Error processing metrics webhook:', error);
     return NextResponse.json(
-      { error: 'Failed to process metrics update webhook', details: error.message },
+      { error: 'Failed to process metrics webhook', details: error.message },
       { status: 500 }
     );
   }

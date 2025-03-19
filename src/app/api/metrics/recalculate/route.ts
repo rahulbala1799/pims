@@ -84,7 +84,7 @@ export async function POST() {
       // Calculate ink costs from inkUsageInMl
       const inkCosts = job.jobProducts.reduce((total, product) => {
         const inkUsage = product.inkUsageInMl || 0;
-        const inkCostPerMl = 0.5; // Assume $0.50 per ml of ink
+        const inkCostPerMl = 0.16; // 0.16€ per ml of ink
         return total + (inkUsage * inkCostPerMl);
       }, 0);
 
@@ -132,7 +132,7 @@ export async function POST() {
       message: `Successfully recalculated metrics for ${metrics.length} jobs` 
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error recalculating job metrics:', error);
     return NextResponse.json(
       { error: 'Failed to recalculate job metrics', details: error.message },
