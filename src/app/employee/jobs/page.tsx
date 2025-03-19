@@ -3,6 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { format, isAfter } from 'date-fns';
+import { 
+  BriefcaseIcon, 
+  ClockIcon, 
+  CheckCircleIcon, 
+  ExclamationCircleIcon,
+  ArrowPathIcon,
+  UserIcon,
+  CalendarIcon,
+  TagIcon,
+  ChevronRightIcon
+} from '@heroicons/react/24/outline';
 
 // Hard-coded user ID for demo purposes
 // In a real app, this would come from authentication
@@ -51,15 +63,27 @@ export default function EmployeeJobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [filter, setFilter] = useState<'all' | 'inProgress' | 'pending'>('all');
+  
+  // Get user data from localStorage
+  useEffect(() => {
+    const storedUserData = localStorage.getItem('employeeUser');
+    if (storedUserData) {
+      setUserData(JSON.parse(storedUserData));
+    }
+  }, []);
   
   // Fetch jobs on component mount
   useEffect(() => {
+    if (!userData || !userData.id) return;
+    
     const fetchJobs = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        const response = await fetch(`/api/employee/jobs?userId=${EMPLOYEE_ID}&status=active`);
+        const response = await fetch(`/api/employee/jobs?userId=${userData.id}&status=active`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch jobs');
@@ -76,7 +100,15 @@ export default function EmployeeJobsPage() {
     };
     
     fetchJobs();
-  }, []);
+  }, [userData]);
+  
+  // Get filtered jobs based on current filter
+  const filteredJobs = jobs.filter(job => {
+    if (filter === 'all') return true;
+    if (filter === 'inProgress') return job.status === 'IN_PROGRESS';
+    if (filter === 'pending') return job.status === 'PENDING';
+    return true;
+  });
   
   // Handle status change
   const handleStatusChange = async (jobId: string, status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED') => {
@@ -135,151 +167,243 @@ export default function EmployeeJobsPage() {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'No date set';
     const date = new Date(dateString);
-    return date.toLocaleDateString();
+    return format(date, 'EEE, MMM d');
+  };
+  
+  // Calculate completion percentage
+  const calculateCompletion = (job: Job) => {
+    if (!job.jobProducts || job.jobProducts.length === 0) return 0;
+    
+    const totalQuantity = job.jobProducts.reduce((sum, product) => sum + product.quantity, 0);
+    const completedQuantity = job.jobProducts.reduce((sum, product) => sum + product.completedQuantity, 0);
+    
+    if (totalQuantity === 0) return 0;
+    return Math.round((completedQuantity / totalQuantity) * 100);
+  };
+  
+  // Check if job is overdue
+  const isJobOverdue = (job: Job) => {
+    if (!job.dueDate) return false;
+    if (job.status === 'COMPLETED') return false;
+    
+    const dueDate = new Date(job.dueDate);
+    const today = new Date();
+    return isAfter(today, dueDate);
   };
 
-  if (isLoading) {
+  if (isLoading && !userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="flex h-48 items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">My Jobs</h1>
-          <Link
-            href="/employee/dashboard"
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Back to Dashboard
-          </Link>
+    <div className="px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">My Jobs</h1>
+          <p className="mt-1 text-sm text-gray-700">
+            View and manage your assigned jobs
+          </p>
         </div>
-      </header>
-      <main className="py-6">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
+        <Link 
+          href="/employee/dashboard" 
+          className="w-full sm:w-auto rounded-lg border border-gray-300 bg-white px-4 py-3 sm:py-2 text-base sm:text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center justify-center"
+        >
+          Back to Dashboard
+        </Link>
+      </div>
+      
+      {error && (
+        <div className="mb-4 sm:mb-6 rounded-lg bg-red-50 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
               </div>
             </div>
-          )}
-          
-          {jobs.length === 0 ? (
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:p-6 text-center">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">No jobs assigned</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">You currently don't have any active jobs assigned to you.</p>
-              </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Filter controls */}
+      <div className="mb-4 sm:mb-6">
+        <div className="bg-white shadow overflow-hidden rounded-lg">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h3 className="text-base font-medium leading-6 text-gray-900">Filter Jobs</h3>
+          </div>
+          <div className="px-4 py-4">
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'all'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('inProgress')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'inProgress'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                In Progress
+              </button>
+              <button
+                onClick={() => setFilter('pending')}
+                className={`py-3 px-4 text-center text-base font-medium rounded-lg ${
+                  filter === 'pending'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Pending
+              </button>
             </div>
-          ) : (
-            <div className="space-y-6">
-              {jobs.map((job) => (
-                <div key={job.id} className="bg-white shadow overflow-hidden sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                    <div>
-                      <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        {job.title}
-                      </h3>
-                      <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                        Customer: {job.customer.name}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityClass(job.priority)}`}>
-                        {job.priority}
-                      </span>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(job.status)}`}>
-                        {job.status.replace('_', ' ')}
-                      </span>
-                    </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Jobs list */}
+      {isLoading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500"></div>
+        </div>
+      ) : filteredJobs.length === 0 ? (
+        <div className="bg-white shadow rounded-lg p-6 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <BriefcaseIcon className="h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-base font-medium text-gray-900">No jobs found</h3>
+            <p className="mt-1 text-sm text-gray-500">You don't have any {filter !== 'all' ? filter : ''} jobs assigned.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredJobs.map((job) => (
+            <div key={job.id} className="bg-white shadow overflow-hidden rounded-lg">
+              <div className="px-4 py-4 sm:px-6 flex justify-between items-center border-b border-gray-200">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <BriefcaseIcon className="h-6 w-6 text-gray-400" />
                   </div>
-                  <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-                    <dl className="sm:divide-y sm:divide-gray-200">
-                      {job.description && (
-                        <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                          <dt className="text-sm font-medium text-gray-500">Description</dt>
-                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{job.description}</dd>
+                  <div className="ml-3 flex-grow">
+                    <h3 className="text-base font-medium text-gray-900 line-clamp-1">{job.title}</h3>
+                  </div>
+                </div>
+                <div className="flex flex-shrink-0 space-x-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getPriorityClass(job.priority)}`}>
+                    {job.priority}
+                  </span>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(job.status)}`}>
+                    {job.status.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="px-4 py-4 sm:px-6">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="col-span-2">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center">
+                      <UserIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      Customer
+                    </dt>
+                    <dd className="mt-1 text-base text-gray-900">{job.customer.name}</dd>
+                  </div>
+                  
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center">
+                      <CalendarIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      Due Date
+                    </dt>
+                    <dd className={`mt-1 text-base ${isJobOverdue(job) ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                      {formatDate(job.dueDate)}
+                    </dd>
+                  </div>
+                  
+                  <div className="col-span-1">
+                    <dt className="text-sm font-medium text-gray-500 flex items-center">
+                      <TagIcon className="h-4 w-4 mr-1 text-gray-400" />
+                      Completion
+                    </dt>
+                    <dd className="mt-1 text-base text-gray-900">
+                      <div className="flex items-center">
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                          <div 
+                            className="bg-indigo-600 h-2.5 rounded-full" 
+                            style={{ width: `${calculateCompletion(job)}%` }}
+                          ></div>
                         </div>
-                      )}
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(job.dueDate)}</dd>
+                        <span>{calculateCompletion(job)}%</span>
                       </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Products</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
-                            {job.jobProducts.map((jobProduct) => (
-                              <li key={jobProduct.id} className="pl-3 pr-4 py-3 flex items-center justify-between text-sm">
-                                <div className="w-0 flex-1 flex items-center">
-                                  <span className="ml-2 flex-1 w-0 truncate">
-                                    {jobProduct.product.name} ({jobProduct.completedQuantity} of {jobProduct.quantity} completed)
-                                  </span>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Status</dt>
-                        <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                          <div className="flex space-x-2">
-                            {job.status !== 'PENDING' && job.status !== 'CANCELLED' && (
-                              <button
-                                onClick={() => handleStatusChange(job.id, 'PENDING')}
-                                className="px-2 py-1 border border-gray-300 rounded-md shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
-                              >
-                                Set as Pending
-                              </button>
-                            )}
-                            {job.status !== 'IN_PROGRESS' && job.status !== 'CANCELLED' && (
-                              <button
-                                onClick={() => handleStatusChange(job.id, 'IN_PROGRESS')}
-                                className="px-2 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700"
-                              >
-                                Start Working
-                              </button>
-                            )}
-                            {job.status !== 'COMPLETED' && job.status !== 'CANCELLED' && (
-                              <button
-                                onClick={() => handleStatusChange(job.id, 'COMPLETED')}
-                                className="px-2 py-1 border border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-green-600 hover:bg-green-700"
-                              >
-                                Mark Complete
-                              </button>
-                            )}
-                          </div>
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:px-6">
-                        <Link
-                          href={`/employee/jobs/${job.id}`}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                    </dd>
+                  </div>
+                </dl>
+                
+                <div className="mt-4 border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Products</h4>
+                  <ul className="space-y-2">
+                    {job.jobProducts.map((product) => (
+                      <li key={product.id} className="text-sm text-gray-900 flex justify-between items-center bg-gray-50 rounded-lg p-2">
+                        <span className="font-medium">{product.product.name}</span>
+                        <span>
+                          {product.completedQuantity} of {product.quantity} completed
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-2">
+                      {job.status !== 'IN_PROGRESS' && (
+                        <button
+                          onClick={() => handleStatusChange(job.id, 'IN_PROGRESS')}
+                          className="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-2 text-sm font-medium text-blue-700"
                         >
-                          View Details
-                        </Link>
-                      </div>
-                    </dl>
+                          <ArrowPathIcon className="h-4 w-4 mr-1" />
+                          Start
+                        </button>
+                      )}
+                      
+                      {job.status !== 'COMPLETED' && (
+                        <button
+                          onClick={() => handleStatusChange(job.id, 'COMPLETED')}
+                          className="inline-flex items-center rounded-lg bg-green-50 px-2.5 py-2 text-sm font-medium text-green-700"
+                        >
+                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                    
+                    <Link
+                      href={`/employee/jobs/${job.id}`}
+                      className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                    >
+                      Details
+                      <ChevronRightIcon className="h-4 w-4 ml-1" />
+                    </Link>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          )}
+          ))}
         </div>
-      </main>
+      )}
     </div>
   );
 } 
