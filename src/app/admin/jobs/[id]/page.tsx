@@ -61,6 +61,19 @@ interface Job {
   invoice: Invoice | null;
   invoiceId: string | null;
   jobProducts: JobProduct[];
+  jobAssignments?: JobAssignment[];
+}
+
+interface JobAssignment {
+  id: string;
+  jobId: string;
+  userId: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export default function JobDetailPage({ params }: { params: { id: string } }) {
@@ -70,6 +83,12 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [jobProducts, setJobProducts] = useState<JobProduct[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [employees, setEmployees] = useState<User[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+  const [assignedEmployees, setAssignedEmployees] = useState<User[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -82,7 +101,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
         const data = await response.json();
         setJob(data);
         setJobProducts(data.jobProducts || []);
-          setIsLoading(false);
+        setIsLoading(false);
       } catch (err) {
         console.error('Error fetching job:', err);
         setError('Failed to load job details');
@@ -92,6 +111,109 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
 
     fetchJob();
   }, [params.id]);
+
+  // Fetch employees
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setIsLoadingEmployees(true);
+      try {
+        const response = await fetch('/api/employees');
+        if (!response.ok) {
+          throw new Error('Failed to fetch employees');
+        }
+        const data = await response.json();
+        setEmployees(data);
+      } catch (err) {
+        console.error('Error fetching employees:', err);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
+  // Fetch job assignments
+  useEffect(() => {
+    if (!job) return;
+    
+    const fetchAssignments = async () => {
+      try {
+        const response = await fetch(`/api/jobs/${job.id}/assignments`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch job assignments');
+        }
+        const data = await response.json();
+        const assigned = data.map((assignment: JobAssignment) => assignment.user);
+        setAssignedEmployees(assigned);
+      } catch (err) {
+        console.error('Error fetching job assignments:', err);
+      }
+    };
+
+    fetchAssignments();
+  }, [job]);
+
+  // Handle employee assignment
+  const handleAssignEmployee = async () => {
+    if (!selectedEmployeeId || !job) return;
+    
+    setIsAssigning(true);
+    setAssignmentError(null);
+    
+    try {
+      // Check if employee is already assigned
+      if (assignedEmployees.some(emp => emp.id === selectedEmployeeId)) {
+        setAssignmentError('This employee is already assigned to this job');
+        setIsAssigning(false);
+        return;
+      }
+      
+      const response = await fetch(`/api/jobs/${job.id}/assignments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds: [selectedEmployeeId]
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to assign employee');
+      }
+      
+      const data = await response.json();
+      const assigned = data.map((assignment: JobAssignment) => assignment.user);
+      setAssignedEmployees(assigned);
+      setSelectedEmployeeId('');
+    } catch (err) {
+      console.error('Error assigning employee:', err);
+      setAssignmentError('Failed to assign employee');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  // Handle employee unassignment
+  const handleUnassignEmployee = async (userId: string) => {
+    if (!job) return;
+    
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/assignments?userId=${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to unassign employee');
+      }
+      
+      setAssignedEmployees(assignedEmployees.filter(emp => emp.id !== userId));
+    } catch (err) {
+      console.error('Error unassigning employee:', err);
+      setAssignmentError('Failed to unassign employee');
+    }
+  };
 
   const handleUpdateProgress = (productIndex: number, completedQuantity: number) => {
     const newJobProducts = [...jobProducts];
@@ -368,6 +490,85 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
               </p>
             </div>
             </div>
+        </div>
+      </div>
+
+      {/* Job assignment section */}
+      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+        <div className="px-4 py-5 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Job Assignments</h3>
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            Assign this job to one or more employees.
+          </p>
+        </div>
+        
+        <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+          {/* Current assignments */}
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Currently Assigned</h4>
+            {assignedEmployees.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {assignedEmployees.map(employee => (
+                  <div key={employee.id} className="flex items-center bg-gray-100 rounded-full py-1 pl-3 pr-1">
+                    <span className="text-sm font-medium text-gray-700 mr-1">{employee.name}</span>
+                    <button
+                      onClick={() => handleUnassignEmployee(employee.id)}
+                      className="p-1 rounded-full text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No employees assigned yet</p>
+            )}
+          </div>
+          
+          {/* Assignment form */}
+          <div className="mt-4">
+            <div className="flex space-x-2">
+              <select
+                id="employee"
+                name="employee"
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              >
+                <option value="">-- Select an employee --</option>
+                {employees.map(employee => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={handleAssignEmployee}
+                disabled={!selectedEmployeeId || isAssigning}
+              >
+                {isAssigning ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Assigning...
+                  </>
+                ) : 'Assign Employee'}
+              </button>
+            </div>
+            {assignmentError && (
+              <p className="mt-2 text-sm text-red-600">{assignmentError}</p>
+            )}
+          </div>
         </div>
       </div>
 

@@ -20,6 +20,7 @@ model User {
   createdJobs     Job[]            @relation("CreatedBy")
   createdProducts Product[]        @relation("ProductCreatedBy")
   progressUpdates ProgressUpdate[]
+  jobAssignments  JobAssignment[]
 }
 
 model Customer {
@@ -55,6 +56,7 @@ model Job {
   metrics         JobMetrics?
   jobProducts     JobProduct[]
   progressUpdates ProgressUpdate[]
+  jobAssignments  JobAssignment[]
 }
 
 model ProgressUpdate {
@@ -212,6 +214,19 @@ model HourLog {
   user        User      @relation(fields: [userId], references: [id])
 
   @@index([userId, date])
+}
+
+model JobAssignment {
+  id        String   @id @default(cuid())
+  jobId     String
+  userId    String
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, userId])
+  @@index([userId])
+  @@index([jobId])
 }
 
 enum Role {

@@ -92,4 +92,28 @@ export async function POST(req: NextRequest) {
     console.error('Error creating employee:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+// GET - Get all employees (for assignment dropdowns, etc.)
+export async function GETAllEmployees(req: NextRequest) {
+  try {
+    const employees = await prisma.user.findMany({
+      where: {
+        role: 'EMPLOYEE'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+    
+    return NextResponse.json(employees);
+  } catch (error: any) {
+    console.error('Error fetching employees:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 } 
