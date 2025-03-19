@@ -665,7 +665,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                   <div className="flex flex-wrap justify-between text-xs text-gray-500 gap-y-1">
                     <span>Unit price: ${product.unitPrice?.toFixed(2) || 'N/A'}</span>
                     <span>Total: ${product.totalPrice?.toFixed(2) || 'N/A'}</span>
-                    {product.inkCostPerUnit && <span>Ink cost per unit: ${product.inkCostPerUnit?.toFixed(2)}</span>}
+                    {product.inkCostPerUnit && <span>Ink cost per unit: ${product.inkCostPerUnit?.toFixed(2) || 'N/A'}</span>}
                     {product.inkUsageInMl && <span>Ink usage: {product.inkUsageInMl}ml</span>}
                     {product.timeTaken && <span>Time spent: {formatTime(product.timeTaken)}</span>}
                   </div>
