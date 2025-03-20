@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import EmployeeHoursSummary from './components/EmployeeHoursSummary';
 
 interface DashboardStats {
   products: number;
@@ -150,6 +151,11 @@ export default function AdminDashboard() {
                   link="/admin/customers"
                   icon={<CustomerIcon />}
                 />
+              </div>
+              
+              {/* Employee Hours Summary */}
+              <div className="mt-8 mb-4">
+                <EmployeeHoursSummary />
               </div>
               
               <h3 className="text-xl font-semibold mb-4 mt-8">Invoicing</h3>
