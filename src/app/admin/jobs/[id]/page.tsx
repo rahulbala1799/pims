@@ -86,9 +86,11 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
   const [employees, setEmployees] = useState<User[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
   const [assignedEmployees, setAssignedEmployees] = useState<User[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -156,18 +158,32 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
 
   // Handle employee assignment
   const handleAssignEmployee = async () => {
-    if (!selectedEmployeeId || !job) return;
+    if (selectedEmployeeIds.length === 0 || !job) return;
     
     setIsAssigning(true);
     setAssignmentError(null);
     
     try {
-      // Check if employee is already assigned
-      if (assignedEmployees.some(emp => emp.id === selectedEmployeeId)) {
-        setAssignmentError('This employee is already assigned to this job');
+      // Check if any selected employees are already assigned
+      const alreadyAssignedIds = selectedEmployeeIds.filter(id => 
+        assignedEmployees.some(emp => emp.id === id)
+      );
+      
+      if (alreadyAssignedIds.length > 0) {
+        const alreadyAssignedNames = employees
+          .filter(emp => alreadyAssignedIds.includes(emp.id))
+          .map(emp => emp.name)
+          .join(', ');
+        
+        setAssignmentError(`These employees are already assigned: ${alreadyAssignedNames}`);
         setIsAssigning(false);
         return;
       }
+      
+      console.log('Sending assignment request with data:', {
+        jobId: job.id,
+        userIds: selectedEmployeeIds
+      });
       
       const response = await fetch(`/api/jobs/${job.id}/assignments`, {
         method: 'POST',
@@ -175,21 +191,33 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userIds: [selectedEmployeeId]
+          userIds: selectedEmployeeIds
         }),
       });
       
+      console.log('Assignment response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to assign employee');
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || 'Failed to assign employee');
+        } catch (parseError) {
+          throw new Error(`Failed to assign employee: ${errorText}`);
+        }
       }
       
       const data = await response.json();
+      console.log('Assignment response data:', data);
+      
       const assigned = data.map((assignment: JobAssignment) => assignment.user);
       setAssignedEmployees(assigned);
-      setSelectedEmployeeId('');
+      setSelectedEmployeeIds([]);
     } catch (err) {
       console.error('Error assigning employee:', err);
-      setAssignmentError('Failed to assign employee');
+      setAssignmentError(err instanceof Error ? err.message : 'Failed to assign employee');
     } finally {
       setIsAssigning(false);
     }
@@ -372,6 +400,17 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Handle selecting/unselecting employees in the multi-select
+  const handleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployeeIds(prev => {
+      if (prev.includes(employeeId)) {
+        return prev.filter(id => id !== employeeId);
+      } else {
+        return [...prev, employeeId];
+      }
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -533,26 +572,39 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           
           {/* Assignment form */}
           <div className="mt-4">
-            <div className="flex space-x-2">
-              <select
-                id="employee"
-                name="employee"
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                value={selectedEmployeeId}
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              >
-                <option value="">-- Select an employee --</option>
-                {employees.map(employee => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="employees" className="block text-sm font-medium text-gray-700 mb-1">
+                  Select employees to assign
+                </label>
+                <select
+                  id="employees"
+                  name="employees"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  multiple
+                  size={Math.min(5, employees.length)}
+                  value={selectedEmployeeIds}
+                  onChange={(e) => {
+                    const options = Array.from(e.target.selectedOptions).map(option => option.value);
+                    setSelectedEmployeeIds(options);
+                  }}
+                >
+                  {employees.map(employee => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Hold Ctrl (or Cmd on Mac) to select multiple employees
+                </p>
+              </div>
+              
               <button
                 type="button"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 onClick={handleAssignEmployee}
-                disabled={!selectedEmployeeId || isAssigning}
+                disabled={selectedEmployeeIds.length === 0 || isAssigning}
               >
                 {isAssigning ? (
                   <>
@@ -562,7 +614,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                     </svg>
                     Assigning...
                   </>
-                ) : 'Assign Employee'}
+                ) : 'Assign Employee(s)'}
               </button>
             </div>
             {assignmentError && (
