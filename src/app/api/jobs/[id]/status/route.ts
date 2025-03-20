@@ -47,7 +47,20 @@ export async function PATCH(
     if (status === 'IN_PROGRESS' && job.status !== 'IN_PROGRESS') {
       await prisma.progressUpdate.create({
         data: {
-          content: 'Job started by employee',
+          content: job.status === 'COMPLETED' 
+            ? 'Job reopened and resumed by employee' 
+            : 'Job started by employee',
+          jobId,
+          userId: job.assignedToId || job.createdById
+        }
+      });
+    }
+    
+    // If the job is being changed from completed to pending, add a progress update
+    if (status === 'PENDING' && job.status === 'COMPLETED') {
+      await prisma.progressUpdate.create({
+        data: {
+          content: 'Job reopened and marked as pending by employee',
           jobId,
           userId: job.assignedToId || job.createdById
         }

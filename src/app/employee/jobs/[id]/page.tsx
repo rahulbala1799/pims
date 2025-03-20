@@ -511,13 +511,23 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
           </dl>
           
           <div className="mt-5 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-            {job.status !== 'IN_PROGRESS' && job.status !== 'COMPLETED' && (
+            {job.status !== 'IN_PROGRESS' && (
               <button
                 onClick={() => handleStatusChange('IN_PROGRESS')}
                 className="inline-flex justify-center items-center rounded-lg bg-blue-50 px-4 py-3 text-base font-medium text-blue-700"
               >
                 <ArrowPathIcon className="h-5 w-5 mr-2" />
-                Start Working
+                {job.status === 'COMPLETED' ? 'Resume Working' : 'Start Working'}
+              </button>
+            )}
+            
+            {job.status !== 'PENDING' && job.status !== 'COMPLETED' && (
+              <button
+                onClick={() => handleStatusChange('PENDING')}
+                className="inline-flex justify-center items-center rounded-lg bg-gray-50 px-4 py-3 text-base font-medium text-gray-700"
+              >
+                <ArrowPathIcon className="h-5 w-5 mr-2" />
+                Mark as Pending
               </button>
             )}
             
