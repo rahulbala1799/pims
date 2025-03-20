@@ -28,7 +28,7 @@ export default function CostCalculator() {
   // Calculator state
   const [length, setLength] = useState<number | ''>('');
   const [width, setWidth] = useState<number | ''>('');
-  const [quantity, setQuantity] = useState<number>(100);
+  const [quantity, setQuantity] = useState<number | ''>('');
   const [inkCostPerUnit, setInkCostPerUnit] = useState<number>(0.04); // 4 cents default for packaging
   const [inkCostPerSqm, setInkCostPerSqm] = useState<number>(0.16); // 16 cents default for wide format
   const [inkCostPerPage, setInkCostPerPage] = useState<number>(0.004); // 0.4 cents default for leaflets
@@ -93,27 +93,29 @@ export default function CostCalculator() {
     let labor = 0;
     let consumables = 0;
     
+    const qty = typeof quantity === 'number' ? quantity : 0;
+    
     if (selectedProduct.productClass === 'PACKAGING') {
       // Packaging calculation
-      material = parseFloat(selectedProduct.basePrice.toString()) * quantity;
-      ink = inkCostPerUnit * quantity;
-      labor = LABOR_PACKAGING * quantity;
-      consumables = CONSUMABLES_PACKAGING * quantity;
+      material = parseFloat(selectedProduct.basePrice.toString()) * qty;
+      ink = inkCostPerUnit * qty;
+      labor = LABOR_PACKAGING * qty;
+      consumables = CONSUMABLES_PACKAGING * qty;
     } else if (selectedProduct.productClass === 'WIDE_FORMAT') {
       // Wide format calculation
       const area = typeof length === 'number' && typeof width === 'number' 
         ? length * width 
         : (selectedProduct.defaultLength || 1) * (selectedProduct.defaultWidth || 1);
       
-      material = (selectedProduct.costPerSqMeter || 0) * area * quantity;
-      ink = inkCostPerSqm * area * quantity;
-      labor = LABOR_WIDE_FORMAT;
+      material = (selectedProduct.costPerSqMeter || 0) * area * qty;
+      ink = inkCostPerSqm * area * qty;
+      labor = LABOR_WIDE_FORMAT * qty; // Multiply by quantity
       consumables = 0; // No consumables for wide format
     } else if (selectedProduct.productClass === 'LEAFLETS') {
       // Leaflets calculation
-      material = parseFloat(selectedProduct.basePrice.toString()) * quantity;
-      ink = inkCostPerPage * quantity;
-      labor = LABOR_LEAFLETS * quantity;
+      material = parseFloat(selectedProduct.basePrice.toString()) * qty;
+      ink = inkCostPerPage * qty;
+      labor = LABOR_LEAFLETS * qty;
       consumables = 0; // No additional consumables for leaflets
     }
     
@@ -131,6 +133,7 @@ export default function CostCalculator() {
     setSearchQuery(product.name);
     setShowResults(false);
     setSelectedMargin(null);
+    setQuantity(100); // Set default quantity
     
     // Set default values based on product type
     if (product.productClass === 'PACKAGING') {
@@ -171,7 +174,7 @@ export default function CostCalculator() {
     setSelectedProduct(null);
     setSearchQuery('');
     setSelectedMargin(null);
-    setQuantity(100);
+    setQuantity('');
     setLength('');
     setWidth('');
     setInkCostPerUnit(0.04);
@@ -258,7 +261,11 @@ export default function CostCalculator() {
                   min="1"
                   className="block w-full p-4 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-lg shadow-sm"
                   value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuantity(val === '' ? '' : parseInt(val));
+                  }}
+                  placeholder="Enter quantity..."
                 />
               </div>
               
