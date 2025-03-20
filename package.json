@@ -16,7 +16,8 @@
     "railway:seed:run": "node prisma/railway-seed.js",
     "manual:seed": "node prisma/manual-seed.js",
     "seed:pizza-boxes": "node prisma/pizza-boxes-seed.js",
-    "fix:jobs": "node scripts/railway-fix.js"
+    "fix:jobs": "node scripts/railway-fix.js",
+    "migrate:hourlog": "node scripts/run-migration.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
