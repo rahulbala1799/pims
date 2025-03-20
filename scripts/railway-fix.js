@@ -27,26 +27,8 @@ async function fixJobAssignmentTable() {
     // Execute each SQL statement separately
     for (let i = 0; i < statements.length; i++) {
       const stmt = statements[i];
-      if (stmt.includes('DO $$')) {
-        // Handle PL/pgSQL blocks differently - they need to be executed as a whole
-        // Find the end of the block
-        let plpgsqlBlock = '';
-        let j = i;
-        while (j < statements.length && !statements[j].includes('$$;')) {
-          plpgsqlBlock += statements[j] + ';';
-          j++;
-        }
-        if (j < statements.length) {
-          plpgsqlBlock += statements[j];
-          i = j; // Skip processed statements
-          
-          console.log('Executing PL/pgSQL block...');
-          await prisma.$executeRawUnsafe(plpgsqlBlock);
-        }
-      } else {
-        console.log(`Executing statement ${i + 1}/${statements.length}`);
-        await prisma.$executeRawUnsafe(stmt);
-      }
+      console.log(`Executing statement ${i + 1}/${statements.length}`);
+      await prisma.$executeRawUnsafe(stmt);
     }
     
     console.log('All SQL statements executed successfully');
@@ -56,6 +38,7 @@ async function fixJobAssignmentTable() {
     await prisma.$disconnect();
   } catch (error) {
     console.error('Error fixing JobAssignment table:', error);
+    console.error('Failed statement:', error.meta?.statement || 'Unknown');
     
     // Disconnect from the database
     await prisma.$disconnect();
