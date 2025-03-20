@@ -62,14 +62,25 @@ export default function LoginForm({ userType }: LoginFormProps) {
         localStorage.setItem('employeeUser', JSON.stringify(data.user));
       }
       
+      // Check if cookies were set properly
+      try {
+        const cookieCheckResponse = await fetch('/api/auth/check', {
+          credentials: 'include'
+        });
+        const cookieData = await cookieCheckResponse.json();
+        setDebug(prev => `${prev}\n\nCookie check: ${JSON.stringify(cookieData, null, 2)}`);
+      } catch (cookieError) {
+        console.error('Error checking cookies:', cookieError);
+      }
+      
       // Login successful, redirect to appropriate dashboard using router
       const redirectUrl = data.redirectUrl || (userType === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
-      setDebug(`Redirecting to: ${redirectUrl}`);
+      setDebug(prev => `${prev}\n\nRedirecting to: ${redirectUrl}`);
       
       // Small delay to ensure cookies are set before redirect
       setTimeout(() => {
         router.push(redirectUrl);
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'Invalid email or password');
