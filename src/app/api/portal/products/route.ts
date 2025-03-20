@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { authMiddleware } from '../middleware';
 
 const prisma = new PrismaClient();
@@ -40,51 +40,47 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get customer-specific catalog first
-    const customerCatalog = await customPrisma.customerProductCatalog.findMany({
-      where: {
-        customerId: customerId,
-        isVisible: true,
-      },
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            sku: true,
-            description: true,
-            productClass: true,
-            basePrice: true,
-            unit: true,
-            dimensions: true,
-            material: true,
-            finishOptions: true,
-            minOrderQuantity: true,
-            leadTime: true,
-            isActive: true,
-          },
-        },
-      },
-    });
+    // Get customer-specific catalog by using direct queries
+    const customerCatalog = await prisma.$queryRaw`
+      SELECT 
+        cpc.*, 
+        p.id as "productId", 
+        p.name as "productName", 
+        p.sku, 
+        p.description, 
+        p."productClass", 
+        p."basePrice", 
+        p.unit, 
+        p.dimensions, 
+        p.material, 
+        p."finishOptions", 
+        p."minOrderQuantity", 
+        p."leadTime", 
+        p."isActive"
+      FROM customer_product_catalog cpc
+      JOIN product p ON cpc."productId" = p.id
+      WHERE cpc."customerId" = ${customerId}
+      AND cpc."isVisible" = true
+    `;
 
     // Transform into customer-specific format
-    const products = customerCatalog.map((catalog: any) => {
+    const products = Array.isArray(customerCatalog) ? customerCatalog.map((catalog: any) => {
       return {
-        id: catalog.product.id,
-        name: catalog.customerProductName || catalog.product.name,
-        sku: catalog.customerProductCode || catalog.product.sku,
-        description: catalog.product.description,
-        productClass: catalog.product.productClass,
-        price: catalog.customPrice || catalog.product.basePrice,
-        unit: catalog.product.unit,
-        dimensions: catalog.product.dimensions,
-        material: catalog.product.material,
-        finishOptions: catalog.product.finishOptions,
-        minOrderQuantity: catalog.product.minOrderQuantity,
-        leadTime: catalog.product.leadTime,
+        id: catalog.productId,
+        name: catalog.customerProductName || catalog.productName,
+        sku: catalog.customerProductCode || catalog.sku,
+        description: catalog.description,
+        productClass: catalog.productClass,
+        price: catalog.customPrice || catalog.basePrice,
+        unit: catalog.unit,
+        dimensions: catalog.dimensions,
+        material: catalog.material,
+        finishOptions: catalog.finishOptions,
+        minOrderQuantity: catalog.minOrderQuantity,
+        leadTime: catalog.leadTime,
         isCustomPriced: catalog.customPrice !== null,
       };
-    });
+    }) : [];
 
     return NextResponse.json({ products });
   } catch (error) {
@@ -138,25 +134,45 @@ export async function GET_PRODUCT_BY_ID(request: NextRequest, { params }: { para
       );
     }
 
-    // Get the customer-specific product catalog entry
-    const catalogEntry = await customPrisma.customerProductCatalog.findFirst({
+    // Get the customer-specific product catalog entry with raw SQL
+    const catalogEntries = await prisma.$queryRaw`
+      SELECT 
+        cpc.*, 
+        p.id as "productId", 
+        p.name as "productName", 
+        p.sku, 
+        p.description, 
+        p."productClass", 
+        p."basePrice", 
+        p.unit, 
+        p.dimensions, 
+        p.material, 
+        p."finishOptions", 
+        p."minOrderQuantity", 
+        p."leadTime", 
+        p."isActive"
+      FROM customer_product_catalog cpc
+      JOIN product p ON cpc."productId" = p.id
+      WHERE cpc."customerId" = ${customerId}
+      AND cpc."productId" = ${productId}
+      AND cpc."isVisible" = true
+    `;
+
+    // Get product variants
+    const variants = await prisma.productVariant.findMany({
       where: {
-        customerId: customerId,
         productId: productId,
-        isVisible: true,
+        isActive: true,
       },
-      include: {
-        product: {
-          include: {
-            productVariants: {
-              where: {
-                isActive: true,
-              },
-            },
-          },
-        },
-      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        priceAdjustment: true
+      }
     });
+
+    const catalogEntry = Array.isArray(catalogEntries) && catalogEntries.length > 0 ? catalogEntries[0] : null;
 
     if (!catalogEntry) {
       return NextResponse.json(
@@ -167,20 +183,20 @@ export async function GET_PRODUCT_BY_ID(request: NextRequest, { params }: { para
 
     // Transform into customer-specific format
     const product = {
-      id: catalogEntry.product.id,
-      name: catalogEntry.customerProductName || catalogEntry.product.name,
-      sku: catalogEntry.customerProductCode || catalogEntry.product.sku,
-      description: catalogEntry.product.description,
-      productClass: catalogEntry.product.productClass,
-      price: catalogEntry.customPrice || catalogEntry.product.basePrice,
-      unit: catalogEntry.product.unit,
-      dimensions: catalogEntry.product.dimensions,
-      material: catalogEntry.product.material,
-      finishOptions: catalogEntry.product.finishOptions,
-      minOrderQuantity: catalogEntry.product.minOrderQuantity,
-      leadTime: catalogEntry.product.leadTime,
+      id: catalogEntry.productId,
+      name: catalogEntry.customerProductName || catalogEntry.productName,
+      sku: catalogEntry.customerProductCode || catalogEntry.sku,
+      description: catalogEntry.description,
+      productClass: catalogEntry.productClass,
+      price: catalogEntry.customPrice || catalogEntry.basePrice,
+      unit: catalogEntry.unit,
+      dimensions: catalogEntry.dimensions,
+      material: catalogEntry.material,
+      finishOptions: catalogEntry.finishOptions,
+      minOrderQuantity: catalogEntry.minOrderQuantity,
+      leadTime: catalogEntry.leadTime,
       isCustomPriced: catalogEntry.customPrice !== null,
-      variants: catalogEntry.product.productVariants.map((variant: any) => ({
+      variants: variants.map((variant) => ({
         id: variant.id,
         name: variant.name,
         description: variant.description,
