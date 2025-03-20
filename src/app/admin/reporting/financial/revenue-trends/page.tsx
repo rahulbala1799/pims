@@ -4,62 +4,85 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Mock data for revenue trends
-const generateMockMonthlyData = () => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentYear = new Date().getFullYear();
-  const prevYear = currentYear - 1;
-  
-  return months.map((month, index) => {
-    // Generate somewhat realistic data with seasonal variations
-    const baseValue = 30000 + Math.random() * 20000;
-    const seasonalFactor = index >= 9 || index <= 1 ? 1.5 : // Higher in Nov-Jan (holiday season)
-                          index >= 5 && index <= 7 ? 1.3 : // Higher in Jun-Aug (summer)
-                          1;
-    
-    return {
-      month,
-      [currentYear]: Math.round(baseValue * seasonalFactor * (1 + Math.random() * 0.3)),
-      [prevYear]: Math.round(baseValue * seasonalFactor * (0.7 + Math.random() * 0.2)),
-      change: Math.round((Math.random() * 40) - 10) // -10% to +30% change
-    };
-  });
-};
+interface RevenueData {
+  month?: string;
+  quarter?: string;
+  [year: number]: number;
+  change: number;
+}
 
-// Mock data for quarterly revenue
-const generateMockQuarterlyData = () => {
-  const currentYear = new Date().getFullYear();
-  const prevYear = currentYear - 1;
-  
-  return [
-    { quarter: 'Q1', [currentYear]: 120000 + Math.round(Math.random() * 30000), [prevYear]: 100000 + Math.round(Math.random() * 20000) },
-    { quarter: 'Q2', [currentYear]: 135000 + Math.round(Math.random() * 40000), [prevYear]: 110000 + Math.round(Math.random() * 25000) },
-    { quarter: 'Q3', [currentYear]: 155000 + Math.round(Math.random() * 35000), [prevYear]: 125000 + Math.round(Math.random() * 30000) },
-    { quarter: 'Q4', [currentYear]: 180000 + Math.round(Math.random() * 50000), [prevYear]: 150000 + Math.round(Math.random() * 40000) }
-  ].map(q => ({
-    ...q,
-    change: Math.round(((q[currentYear] - q[prevYear]) / q[prevYear]) * 100)
-  }));
-};
+interface RevenueSummary {
+  totalRevenue: number;
+  averageRevenue: number;
+  yearOverYearGrowth: number;
+}
+
+interface ApiResponse {
+  data: RevenueData[];
+  summary: RevenueSummary;
+}
 
 export default function RevenueTrendsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [viewType, setViewType] = useState<'monthly' | 'quarterly'>('monthly');
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [quarterlyData, setQuarterlyData] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<RevenueData[]>([]);
+  const [quarterlyData, setQuarterlyData] = useState<RevenueData[]>([]);
   const [timeRange, setTimeRange] = useState<'1year' | '2years' | 'ytd'>('1year');
+  const [summary, setSummary] = useState<RevenueSummary>({
+    totalRevenue: 0,
+    averageRevenue: 0,
+    yearOverYearGrowth: 0
+  });
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    // In a real app, this would fetch data from the API
-    const timer = setTimeout(() => {
-      setMonthlyData(generateMockMonthlyData());
-      setQuarterlyData(generateMockQuarterlyData());
-      setIsLoading(false);
-    }, 1000);
+    fetchRevenueData();
+  }, [viewType, timeRange]);
+
+  const fetchRevenueData = async () => {
+    setIsLoading(true);
+    setError(null);
     
-    return () => clearTimeout(timer);
-  }, []);
+    try {
+      // Fetch monthly data if viewing monthly or if no quarterly data exists yet
+      if (viewType === 'monthly' || quarterlyData.length === 0) {
+        const monthlyResponse = await fetch(`/api/metrics/revenue?groupBy=month&timeRange=${timeRange}`);
+        
+        if (!monthlyResponse.ok) {
+          throw new Error(`Failed to fetch monthly data: ${monthlyResponse.statusText}`);
+        }
+        
+        const monthlyResult: ApiResponse = await monthlyResponse.json();
+        setMonthlyData(monthlyResult.data);
+        
+        if (viewType === 'monthly') {
+          setSummary(monthlyResult.summary);
+        }
+      }
+      
+      // Fetch quarterly data if viewing quarterly or if no quarterly data exists yet
+      if (viewType === 'quarterly' || monthlyData.length === 0) {
+        const quarterlyResponse = await fetch(`/api/metrics/revenue?groupBy=quarter&timeRange=${timeRange}`);
+        
+        if (!quarterlyResponse.ok) {
+          throw new Error(`Failed to fetch quarterly data: ${quarterlyResponse.statusText}`);
+        }
+        
+        const quarterlyResult: ApiResponse = await quarterlyResponse.json();
+        setQuarterlyData(quarterlyResult.data);
+        
+        if (viewType === 'quarterly') {
+          setSummary(quarterlyResult.summary);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching revenue data:', err);
+      setError(err.message || 'Failed to fetch revenue data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -70,40 +93,6 @@ export default function RevenueTrendsPage() {
     }).format(amount);
   };
 
-  const getTotalRevenue = () => {
-    const currentYear = new Date().getFullYear();
-    
-    if (viewType === 'monthly') {
-      return monthlyData.reduce((sum, item) => sum + item[currentYear], 0);
-    } else {
-      return quarterlyData.reduce((sum, item) => sum + item[currentYear], 0);
-    }
-  };
-
-  const getAverageRevenue = () => {
-    const total = getTotalRevenue();
-    const count = viewType === 'monthly' ? monthlyData.length : quarterlyData.length;
-    return total / count;
-  };
-
-  const getGrowthRate = () => {
-    const currentYear = new Date().getFullYear();
-    const prevYear = currentYear - 1;
-    
-    let currentTotal = 0;
-    let prevTotal = 0;
-    
-    if (viewType === 'monthly') {
-      currentTotal = monthlyData.reduce((sum, item) => sum + item[currentYear], 0);
-      prevTotal = monthlyData.reduce((sum, item) => sum + item[prevYear], 0);
-    } else {
-      currentTotal = quarterlyData.reduce((sum, item) => sum + item[currentYear], 0);
-      prevTotal = quarterlyData.reduce((sum, item) => sum + item[prevYear], 0);
-    }
-    
-    return ((currentTotal - prevTotal) / prevTotal) * 100;
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,6 +100,27 @@ export default function RevenueTrendsPage() {
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-50 p-6 rounded-lg shadow-md max-w-lg">
+          <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Data</h2>
+          <p className="text-red-700">{error}</p>
+          <button
+            onClick={fetchRevenueData}
+            className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentYear = new Date().getFullYear();
+  const prevYear = currentYear - 1;
+  const currentData = viewType === 'monthly' ? monthlyData : quarterlyData;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,20 +168,20 @@ export default function RevenueTrendsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900">Total Revenue</h3>
-              <p className="text-3xl font-bold text-indigo-600 mt-2">{formatCurrency(getTotalRevenue())}</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">{formatCurrency(summary.totalRevenue)}</p>
               <p className="text-sm text-gray-500 mt-1">Current year to date</p>
             </div>
             
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900">Average {viewType === 'monthly' ? 'Monthly' : 'Quarterly'} Revenue</h3>
-              <p className="text-3xl font-bold text-indigo-600 mt-2">{formatCurrency(getAverageRevenue())}</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">{formatCurrency(summary.averageRevenue)}</p>
               <p className="text-sm text-gray-500 mt-1">Current year</p>
             </div>
             
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900">Year-over-Year Growth</h3>
-              <p className={`text-3xl font-bold mt-2 ${getGrowthRate() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {getGrowthRate() >= 0 ? '+' : ''}{getGrowthRate().toFixed(1)}%
+              <p className={`text-3xl font-bold mt-2 ${summary.yearOverYearGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {summary.yearOverYearGrowth >= 0 ? '+' : ''}{summary.yearOverYearGrowth.toFixed(1)}%
               </p>
               <p className="text-sm text-gray-500 mt-1">Compared to previous year</p>
             </div>
@@ -241,31 +251,26 @@ export default function RevenueTrendsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {(viewType === 'monthly' ? monthlyData : quarterlyData).map((item, index) => {
-                    const currentYear = new Date().getFullYear();
-                    const prevYear = currentYear - 1;
-                    
-                    return (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.month || item.quarter}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(item[currentYear])}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(item[prevYear])}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {item.change >= 0 ? '+' : ''}{item.change}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {currentData.map((item, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.month || item.quarter}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatCurrency(item[currentYear])}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatCurrency(item[prevYear])}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          item.change >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.change >= 0 ? '+' : ''}{item.change}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
