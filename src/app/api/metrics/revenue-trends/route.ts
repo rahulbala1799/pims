@@ -49,7 +49,8 @@ async function fetchLastThirtyDaysSales(formattedThirtyDaysAgo: string) {
         gte: new Date(formattedThirtyDaysAgo)
       },
       status: {
-        in: ['PENDING', 'PAID']
+        in: ['PENDING', 'PAID'],
+        not: 'CANCELLED'
       }
     },
     select: {
@@ -110,6 +111,10 @@ async function fetchTopProducts() {
       invoice: {
         issueDate: {
           gte: new Date(new Date().setDate(new Date().getDate() - 90)) // Last 90 days
+        },
+        status: {
+          in: ['PENDING', 'PAID'],
+          not: 'CANCELLED'
         }
       }
     }
@@ -167,7 +172,8 @@ async function calculateWeeklyGrowth() {
         gte: currentWeekStart
       },
       status: {
-        in: ['PENDING', 'PAID']
+        in: ['PENDING', 'PAID'],
+        not: 'CANCELLED'
       }
     }
   });
@@ -183,7 +189,8 @@ async function calculateWeeklyGrowth() {
         lt: currentWeekStart
       },
       status: {
-        in: ['PENDING', 'PAID']
+        in: ['PENDING', 'PAID'],
+        not: 'CANCELLED'
       }
     }
   });
