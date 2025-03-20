@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET - Get all hour logs for a user with optional date filtering
+// GET - Get all hour logs for a user with basic filtering
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const userId = searchParams.get('userId');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const isPaid = searchParams.get('isPaid');
     
-    console.log('Fetching hour logs with params:', {
-      id, userId, startDate, endDate, isPaid
-    });
+    console.log('Fetching hour logs with params:', { id, userId });
     
-    // Query filters
+    // Simple filter that just looks for userId
     const filters: any = {};
     
     if (id) {
@@ -25,80 +20,26 @@ export async function GET(request: NextRequest) {
     if (userId) {
       filters.userId = userId;
     }
-
-    if (isPaid !== null) {
-      filters.isPaid = isPaid === 'true';
-    }
     
-    // Date range filtering - handle with more care
-    if (startDate || endDate) {
-      filters.date = {};
-      
-      if (startDate) {
-        try {
-          // Parse the date safely
-          const parsedStartDate = new Date(startDate);
-          if (!isNaN(parsedStartDate.getTime())) {
-            filters.date.gte = parsedStartDate;
-          } else {
-            console.warn('Invalid startDate format:', startDate);
-          }
-        } catch (error) {
-          console.error('Error parsing startDate:', error);
-          // Don't add invalid date filter
-        }
-      }
-      
-      if (endDate) {
-        try {
-          // Parse the date safely
-          const parsedEndDate = new Date(endDate);
-          if (!isNaN(parsedEndDate.getTime())) {
-            filters.date.lte = parsedEndDate;
-          } else {
-            console.warn('Invalid endDate format:', endDate);
-          }
-        } catch (error) {
-          console.error('Error parsing endDate:', error);
-          // Don't add invalid date filter
-        }
-      }
-      
-      // If no valid dates were added, remove the empty date filter
-      if (Object.keys(filters.date).length === 0) {
-        delete filters.date;
-      }
-    }
-    
-    console.log('Using filters:', JSON.stringify(filters));
-    
-    // Fetch hour logs with better error handling
-    try {
-      const hourLogs = await prisma.hourLog.findMany({
-        where: filters,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+    // Simple fetch all logs for the user
+    const hourLogs = await prisma.hourLog.findMany({
+      where: filters,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
-        orderBy: {
-          date: 'desc',
-        },
-      });
-      
-      console.log(`Successfully fetched ${hourLogs.length} hour logs`);
-      return NextResponse.json(hourLogs);
-    } catch (dbError) {
-      console.error('Database error fetching hour logs:', dbError);
-      return NextResponse.json(
-        { error: 'Database error while fetching hour logs' },
-        { status: 500 }
-      );
-    }
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+    
+    console.log(`Successfully fetched ${hourLogs.length} hour logs`);
+    return NextResponse.json(hourLogs);
   } catch (error) {
     console.error('Error in hour logs GET route:', error);
     return NextResponse.json(
@@ -121,13 +62,11 @@ export async function POST(request: Request) {
       hours = null,
       date,
       isActive = false,
-      isPaid = false,
       notes 
     } = body;
     
-    // Validate required fields with better error messages
+    // Basic validation
     if (!userId) {
-      console.error('Missing userId in hour log creation');
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -135,7 +74,6 @@ export async function POST(request: Request) {
     }
     
     if (!startTime) {
-      console.error('Missing startTime in hour log creation');
       return NextResponse.json(
         { error: 'Start time is required' },
         { status: 400 }
@@ -143,74 +81,42 @@ export async function POST(request: Request) {
     }
     
     if (!date) {
-      console.error('Missing date in hour log creation');
       return NextResponse.json(
         { error: 'Date is required' },
         { status: 400 }
       );
     }
     
-    // Parse the date from the request - we need to handle both ISO string dates and YYYY-MM-DD format
-    let parsedDate;
-    try {
-      // First check if it's a date object already
-      if (date instanceof Date) {
-        parsedDate = date;
-      } else if (typeof date === 'string') {
-        // If it's a simple YYYY-MM-DD format, we need to convert it properly
-        if (date.length === 10 && date.includes('-')) {
-          parsedDate = new Date(date);
-        } else {
-          // Otherwise assume it's an ISO string or some other valid date format
-          parsedDate = new Date(date);
-        }
-      } else {
-        throw new Error('Invalid date format');
-      }
-      
-      // Make sure the date is valid
-      if (isNaN(parsedDate.getTime())) {
-        throw new Error('Invalid date');
-      }
-    } catch (error) {
-      console.error('Error parsing date:', error, 'Date value was:', date);
-      return NextResponse.json(
-        { error: 'Invalid date format' },
-        { status: 400 }
-      );
-    }
-    
-    // Calculate hours if both start and end time are provided
+    // Calculate hours if end time is provided
     let calculatedHours = hours;
     if (endTime && !calculatedHours) {
-      try {
-        const startMs = new Date(startTime).getTime();
-        const endMs = new Date(endTime).getTime();
-        const diffMs = endMs - startMs;
-        
-        if (diffMs > 0) {
-          calculatedHours = diffMs / (1000 * 60 * 60);
-        }
-      } catch (error) {
-        console.error('Error calculating hours:', error, 'Start:', startTime, 'End:', endTime);
-        return NextResponse.json(
-          { error: 'Invalid start or end time format' },
-          { status: 400 }
-        );
+      const startMs = new Date(startTime).getTime();
+      const endMs = new Date(endTime).getTime();
+      const diffMs = endMs - startMs;
+      
+      // Default to 6 hours if calculation is negative or invalid
+      if (diffMs <= 0) {
+        calculatedHours = 6;
+      } else {
+        calculatedHours = diffMs / (1000 * 60 * 60);
       }
+    }
+    
+    // Default to 6 hours if no end time and no hours specified
+    if (!endTime && !calculatedHours) {
+      calculatedHours = 6;
+    }
+    
+    // Parse the date string
+    let parsedDate;
+    try {
+      parsedDate = new Date(date);
+    } catch (error) {
+      // If date parsing fails, use current date
+      parsedDate = new Date();
     }
     
     // Create the hour log
-    console.log('Creating hour log with parsed data:', {
-      userId,
-      startTime,
-      endTime,
-      hours: calculatedHours,
-      date: parsedDate,
-      isActive,
-      isPaid
-    });
-    
     const hourLog = await prisma.hourLog.create({
       data: {
         userId,
@@ -219,7 +125,6 @@ export async function POST(request: Request) {
         hours: calculatedHours,
         date: parsedDate,
         isActive,
-        isPaid,
         notes,
       },
       include: {
@@ -255,7 +160,6 @@ export async function PATCH(request: Request) {
       hours,
       date,
       isActive,
-      isPaid,
       notes 
     } = body;
     
@@ -282,30 +186,27 @@ export async function PATCH(request: Request) {
     const updateData: any = {};
     
     // Only update fields that are provided
-    if (startTime !== undefined) updateData.startTime = startTime;
-    if (endTime !== undefined) updateData.endTime = endTime;
-    if (date !== undefined) updateData.date = date;
+    if (startTime !== undefined) updateData.startTime = new Date(startTime);
+    if (endTime !== undefined) updateData.endTime = endTime ? new Date(endTime) : null;
+    if (date !== undefined) updateData.date = new Date(date);
     if (isActive !== undefined) updateData.isActive = isActive;
-    if (isPaid !== undefined) updateData.isPaid = isPaid;
     if (notes !== undefined) updateData.notes = notes;
     
     // Calculate hours if both start and end time are provided
-    if (endTime !== undefined || (startTime !== undefined && existingLog.endTime)) {
-      const start = startTime !== undefined ? new Date(startTime) : new Date(existingLog.startTime);
-      const end = endTime !== undefined ? new Date(endTime) : existingLog.endTime ? new Date(existingLog.endTime) : null;
-      
-      if (end) {
-        const diffMs = end.getTime() - start.getTime();
-        
-        if (diffMs > 0) {
-          updateData.hours = diffMs / (1000 * 60 * 60);
-        }
-      } else {
-        // If end time is set to null, clear hours
-        updateData.hours = null;
-      }
-    } else if (hours !== undefined) {
+    // or if hours are explicitly provided
+    if (hours !== undefined) {
       updateData.hours = hours;
+    } else if (endTime) {
+      const start = startTime ? new Date(startTime) : new Date(existingLog.startTime);
+      const end = new Date(endTime);
+      const diffMs = end.getTime() - start.getTime();
+      
+      // Default to 6 hours if calculation is negative or invalid
+      if (diffMs <= 0) {
+        updateData.hours = 6;
+      } else {
+        updateData.hours = diffMs / (1000 * 60 * 60);
+      }
     }
     
     // Update the hour log

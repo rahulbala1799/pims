@@ -50,27 +50,10 @@ export default function HourLogsList() {
     setError(null);
     
     try {
-      // Build the query URL based on filter
-      let queryUrl = `/api/hour-logs?userId=${userData.id}`;
+      // Simple query without date filtering
+      const queryUrl = `/api/hour-logs?userId=${userData.id}`;
       
-      // Use current date for all calculations
-      const currentDate = new Date();
-      
-      if (filter === 'week') {
-        // Last 7 days from now
-        const startDate = format(startOfDay(subDays(currentDate, 7)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        const endDate = format(endOfDay(currentDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        queryUrl += `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-        console.log('Fetching week logs with date range:', { startDate, endDate });
-      } else if (filter === 'month') {
-        // Last 30 days from now
-        const startDate = format(startOfDay(subDays(currentDate, 30)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        const endDate = format(endOfDay(currentDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        queryUrl += `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-        console.log('Fetching month logs with date range:', { startDate, endDate });
-      }
-      
-      console.log('Fetching logs with URL:', queryUrl);
+      console.log('Fetching all hour logs for user');
       const response = await fetch(queryUrl);
       
       if (!response.ok) {
