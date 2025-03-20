@@ -306,7 +306,7 @@ export default function NewInvoicePage() {
   const taxAmount = subtotal * (formData.taxRate / 100);
   const total = subtotal + taxAmount;
 
-  // Format currency
+  // Format currency - ensure it uses EUR
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IE', {
       style: 'currency',

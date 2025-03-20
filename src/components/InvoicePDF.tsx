@@ -390,8 +390,7 @@ export const generateInvoicePDF = (invoice: Invoice, customer: Customer, fileNam
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat('en-IE', {
         style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2
+        currency: 'EUR'
       }).format(amount);
     };
     

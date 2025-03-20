@@ -608,11 +608,11 @@ export default function NewMobileInvoicePage() {
                       <div className="flex-1">
                         <div className="text-sm font-medium">{item.description}</div>
                         <div className="text-xs text-gray-500">
-                          {item.quantity} × £{item.unitPrice.toFixed(2)}
+                          {item.quantity} × €{item.unitPrice.toFixed(2)}
                           {item.area && ` (${item.area} m²)`}
                         </div>
                       </div>
-                      <div className="font-medium">£{item.totalPrice.toFixed(2)}</div>
+                      <div className="font-medium">€{item.totalPrice.toFixed(2)}</div>
                       <div className="flex ml-2">
                         <button 
                           onClick={() => editItem(index)}
@@ -635,7 +635,7 @@ export default function NewMobileInvoicePage() {
                   ))}
                 </div>
                 <div className="mt-2 text-right text-sm font-medium">
-                  Subtotal: £{formData.items.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
+                  Subtotal: €{formData.items.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
                 </div>
               </div>
             )}
@@ -760,7 +760,7 @@ export default function NewMobileInvoicePage() {
                            product.productClass === 'WIDE_FORMAT' ? 'Wide Format' :
                            product.productClass === 'LEAFLETS' ? 'Leaflets' : 'Finished'}
                         </span>
-                        <span className="text-sm font-medium">£{product.basePrice.toFixed(2)}</span>
+                        <span className="text-sm font-medium">€{product.basePrice.toFixed(2)}</span>
                       </div>
                     </div>
                   ))
@@ -860,7 +860,7 @@ export default function NewMobileInvoicePage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-700">Total Price</label>
                     <div className="mt-1 text-sm font-medium">
-                      £{currentItem.totalPrice.toFixed(2)}
+                      €{currentItem.totalPrice.toFixed(2)}
                     </div>
                   </div>
                   
@@ -1026,9 +1026,9 @@ export default function NewMobileInvoicePage() {
                     <div key={index} className="text-sm">
                       <div className="font-medium">{item.description}</div>
                       <div className="text-gray-500">
-                        {item.quantity} × £{item.unitPrice.toFixed(2)}
+                        {item.quantity} × €{item.unitPrice.toFixed(2)}
                         {item.area && ` (${item.area} m²)`}
-                        <span className="float-right">£{item.totalPrice.toFixed(2)}</span>
+                        <span className="float-right">€{item.totalPrice.toFixed(2)}</span>
                       </div>
                     </div>
                   ))}
@@ -1221,7 +1221,7 @@ export default function NewMobileInvoicePage() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Base Price (£) *
+                    Base Price (€) *
                   </label>
                   <input
                     type="number"

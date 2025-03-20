@@ -172,7 +172,7 @@ export default function MobileInvoicesPage() {
                     {formatDate(invoice.issueDate)} - {formatDate(invoice.dueDate)}
                   </div>
                   <div className="text-lg font-bold">
-                    £{formatNumber(invoice.totalAmount)}
+                    €{formatNumber(invoice.totalAmount)}
                   </div>
                 </div>
               </div>

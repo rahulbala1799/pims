@@ -225,11 +225,11 @@ export default function NewProductPage() {
               </div>
               <div>
                 <label htmlFor="costPerSqMeter" className="block text-sm font-medium text-gray-700">
-                  Cost Per Sq Meter (£)
+                  Cost Per Sq Meter (€)
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">£</span>
+                    <span className="text-gray-500 sm:text-sm">€</span>
                   </div>
                   <input
                     type="number"
@@ -489,7 +489,7 @@ export default function NewProductPage() {
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">£</span>
+                    <span className="text-gray-500 sm:text-sm">€</span>
                   </div>
                   <input
                     type="number"
@@ -503,6 +503,9 @@ export default function NewProductPage() {
                     className="block w-full rounded-md border-gray-300 pl-7 pr-12 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     placeholder="0.00"
                   />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">/ {formData.unit}</span>
+                  </div>
                 </div>
               </div>
               
