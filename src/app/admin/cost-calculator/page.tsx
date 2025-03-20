@@ -144,13 +144,13 @@ export default function CostCalculator() {
     }
   };
   
-  // Format currency to euros
+  // Format currency to euros with 2 decimal places using period as separator
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('de-DE', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 4
+      maximumFractionDigits: 2
     }).format(value);
   };
   
@@ -164,6 +164,19 @@ export default function CostCalculator() {
   const handleSelectMargin = (margin: number) => {
     setSelectedMargin(margin);
     setSelectedPrice(calculatePriceWithMargin(margin));
+  };
+  
+  // Handle resetting the calculator for a new product
+  const handleResetCalculator = () => {
+    setSelectedProduct(null);
+    setSearchQuery('');
+    setSelectedMargin(null);
+    setQuantity(100);
+    setLength('');
+    setWidth('');
+    setInkCostPerUnit(0.04);
+    setInkCostPerSqm(0.16);
+    setInkCostPerPage(0.004);
   };
   
   return (
@@ -193,12 +206,12 @@ export default function CostCalculator() {
                 {filteredProducts.map(product => (
                   <li 
                     key={product.id}
-                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b"
+                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b truncate"
                     onClick={() => handleSelectProduct(product)}
                   >
-                    <div className="font-medium">{product.name}</div>
-                    <div className="text-sm text-gray-500">SKU: {product.sku}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium truncate">{product.name}</div>
+                    <div className="text-sm text-gray-500 truncate">SKU: {product.sku}</div>
+                    <div className="text-sm text-gray-500 truncate">
                       {product.productClass} - Base: {formatCurrency(parseFloat(product.basePrice.toString()))}
                     </div>
                   </li>
@@ -225,9 +238,9 @@ export default function CostCalculator() {
       {selectedProduct && (
         <>
           <div className="p-4 bg-blue-50 rounded-md mb-6 shadow-sm">
-            <h2 className="font-bold text-lg text-blue-800">{selectedProduct.name}</h2>
-            <p className="text-blue-600">Category: {selectedProduct.productClass}</p>
-            <p className="text-blue-600 text-sm">Base Price: {formatCurrency(parseFloat(selectedProduct.basePrice.toString()))}</p>
+            <h2 className="font-bold text-lg text-blue-800 truncate">{selectedProduct.name}</h2>
+            <p className="text-blue-600 truncate">Category: {selectedProduct.productClass}</p>
+            <p className="text-blue-600 text-sm truncate">Base Price: {formatCurrency(parseFloat(selectedProduct.basePrice.toString()))}</p>
           </div>
           
           {/* Calculator Form */}
@@ -393,7 +406,7 @@ export default function CostCalculator() {
                 <button
                   key={margin}
                   onClick={() => handleSelectMargin(margin)}
-                  className={`p-4 border rounded-md text-center transition-colors ${
+                  className={`p-4 border rounded-md text-center transition-colors h-24 flex flex-col justify-center items-center ${
                     selectedMargin === margin 
                       ? 'border-indigo-500 bg-indigo-100 ring-2 ring-indigo-500 ring-opacity-50' 
                       : 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100'
@@ -402,7 +415,7 @@ export default function CostCalculator() {
                   <div className={`font-semibold text-lg ${selectedMargin === margin ? 'text-indigo-900' : 'text-indigo-800'}`}>
                     {margin}% Margin
                   </div>
-                  <div className={`text-lg ${selectedMargin === margin ? 'text-indigo-700' : 'text-indigo-600'}`}>
+                  <div className={`text-lg ${selectedMargin === margin ? 'text-indigo-700' : 'text-indigo-600'} truncate max-w-full`}>
                     {formatCurrency(calculatePriceWithMargin(margin))}
                   </div>
                 </button>
@@ -429,13 +442,22 @@ export default function CostCalculator() {
         </>
       )}
       
-      <div className="mt-8 mb-10">
+      <div className="mt-8 mb-10 flex flex-col sm:flex-row gap-4">
         <Link 
           href="/admin/dashboard"
-          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           Back to Dashboard
         </Link>
+        
+        {selectedProduct && (
+          <button
+            onClick={handleResetCalculator}
+            className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            Calculate for Another Product
+          </button>
+        )}
       </div>
     </div>
   );
