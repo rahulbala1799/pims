@@ -208,6 +208,7 @@ model HourLog {
   hours       Float?
   isActive    Boolean   @default(true)
   autoStopped Boolean   @default(false)
+  isPaid      Boolean   @default(false)
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

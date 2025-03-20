@@ -123,17 +123,20 @@ export default function HourLogsList() {
     
     try {
       // Construct datetime strings with selected date and times
-      const startDateTime = `${selectedDate}T${selectedStartTime}:00`;
-      let endDateTime = null;
+      // Parse the date and time properly to ensure correct timezone handling
+      const startDate = new Date(`${selectedDate}T${selectedStartTime}:00`);
+      let endDate = null;
       let hours = null;
+      
+      console.log('Starting to create hour log with date:', selectedDate, 'and start time:', selectedStartTime);
       
       // Only calculate hours if end time is included
       if (includeEndTime && selectedEndTime) {
-        endDateTime = `${selectedDate}T${selectedEndTime}:00`;
+        endDate = new Date(`${selectedDate}T${selectedEndTime}:00`);
         
         // Calculate hours between start and end time
-        const startMs = new Date(startDateTime).getTime();
-        const endMs = new Date(endDateTime).getTime();
+        const startMs = startDate.getTime();
+        const endMs = endDate.getTime();
         const diffMs = endMs - startMs;
         
         // Don't allow negative hours
@@ -144,27 +147,35 @@ export default function HourLogsList() {
         hours = diffMs / (1000 * 60 * 60);
       }
       
+      // Create payload with proper ISO strings
+      const payload = {
+        userId: userData.id,
+        startTime: startDate.toISOString(),
+        endTime: endDate ? endDate.toISOString() : null,
+        hours: hours,
+        date: selectedDate, // This is just the date part
+        isActive: !includeEndTime, // If no end time, it's an active log
+        notes: logNotes,
+      };
+      
+      console.log('Sending payload to API:', payload);
+      
       const response = await fetch('/api/hour-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: userData.id,
-          startTime: startDateTime,
-          endTime: endDateTime,
-          hours: hours,
-          date: selectedDate,
-          isActive: false,
-          notes: logNotes,
-        }),
+        body: JSON.stringify(payload),
       });
       
-      const data = await response.json();
-      
       if (!response.ok) {
+        const data = await response.json();
+        console.error('API error response:', data);
         throw new Error(data.error || 'Failed to create hour log');
       }
+      
+      const data = await response.json();
+      console.log('Successfully created hour log:', data);
       
       // Reset form
       setShowNewLogForm(false);

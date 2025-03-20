@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log('Received hour log creation request:', body);
+    
     const { 
       userId, 
       startTime, 
@@ -80,7 +82,9 @@ export async function POST(request: Request) {
       notes 
     } = body;
     
+    // Validate required fields with better error messages
     if (!userId) {
+      console.error('Missing userId in hour log creation');
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -88,6 +92,7 @@ export async function POST(request: Request) {
     }
     
     if (!startTime) {
+      console.error('Missing startTime in hour log creation');
       return NextResponse.json(
         { error: 'Start time is required' },
         { status: 400 }
@@ -95,8 +100,39 @@ export async function POST(request: Request) {
     }
     
     if (!date) {
+      console.error('Missing date in hour log creation');
       return NextResponse.json(
         { error: 'Date is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Parse the date from the request - we need to handle both ISO string dates and YYYY-MM-DD format
+    let parsedDate;
+    try {
+      // First check if it's a date object already
+      if (date instanceof Date) {
+        parsedDate = date;
+      } else if (typeof date === 'string') {
+        // If it's a simple YYYY-MM-DD format, we need to convert it properly
+        if (date.length === 10 && date.includes('-')) {
+          parsedDate = new Date(date);
+        } else {
+          // Otherwise assume it's an ISO string or some other valid date format
+          parsedDate = new Date(date);
+        }
+      } else {
+        throw new Error('Invalid date format');
+      }
+      
+      // Make sure the date is valid
+      if (isNaN(parsedDate.getTime())) {
+        throw new Error('Invalid date');
+      }
+    } catch (error) {
+      console.error('Error parsing date:', error, 'Date value was:', date);
+      return NextResponse.json(
+        { error: 'Invalid date format' },
         { status: 400 }
       );
     }
@@ -104,23 +140,41 @@ export async function POST(request: Request) {
     // Calculate hours if both start and end time are provided
     let calculatedHours = hours;
     if (endTime && !calculatedHours) {
-      const startMs = new Date(startTime).getTime();
-      const endMs = new Date(endTime).getTime();
-      const diffMs = endMs - startMs;
-      
-      if (diffMs > 0) {
-        calculatedHours = diffMs / (1000 * 60 * 60);
+      try {
+        const startMs = new Date(startTime).getTime();
+        const endMs = new Date(endTime).getTime();
+        const diffMs = endMs - startMs;
+        
+        if (diffMs > 0) {
+          calculatedHours = diffMs / (1000 * 60 * 60);
+        }
+      } catch (error) {
+        console.error('Error calculating hours:', error, 'Start:', startTime, 'End:', endTime);
+        return NextResponse.json(
+          { error: 'Invalid start or end time format' },
+          { status: 400 }
+        );
       }
     }
     
     // Create the hour log
+    console.log('Creating hour log with parsed data:', {
+      userId,
+      startTime,
+      endTime,
+      hours: calculatedHours,
+      date: parsedDate,
+      isActive,
+      isPaid
+    });
+    
     const hourLog = await prisma.hourLog.create({
       data: {
         userId,
-        startTime,
-        endTime,
+        startTime: new Date(startTime),
+        endTime: endTime ? new Date(endTime) : null,
         hours: calculatedHours,
-        date,
+        date: parsedDate,
         isActive,
         isPaid,
         notes,
@@ -136,6 +190,7 @@ export async function POST(request: Request) {
       },
     });
     
+    console.log('Successfully created hour log:', hourLog.id);
     return NextResponse.json(hourLog);
   } catch (error) {
     console.error('Error creating hour log:', error);
