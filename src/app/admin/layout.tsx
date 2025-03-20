@@ -12,7 +12,7 @@ interface AdminLayoutProps {
 }
 
 const sidebarItems = [
-  { name: 'Dashboard', href: '/admin', icon: FiHome },
+  { name: 'Dashboard', href: '/admin/dashboard', icon: FiHome },
   { name: 'Jobs', href: '/admin/jobs', icon: FiFileText },
   { name: 'Products', href: '/admin/products', icon: FiPackage },
   { name: 'Customers', href: '/admin/customers', icon: FiUsers },
