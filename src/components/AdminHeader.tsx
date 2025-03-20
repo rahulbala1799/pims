@@ -32,7 +32,7 @@ export default function AdminHeader() {
   ];
 
   return (
-    <div>
+    <>
       {/* Mobile top bar */}
       <div className="lg:hidden bg-white shadow-md">
         <div className="flex justify-between items-center h-16 px-4">
@@ -60,7 +60,7 @@ export default function AdminHeader() {
       </div>
 
       {/* Sidebar for desktop and mobile */}
-      <div className={`lg:block ${isSidebarOpen ? 'block' : 'hidden'}`}>
+      <div className={`h-full ${isSidebarOpen ? 'block lg:hidden' : 'hidden lg:block'}`}>
         {/* Overlay - only shown on mobile */}
         {isSidebarOpen && (
           <div 
@@ -71,13 +71,13 @@ export default function AdminHeader() {
         )}
         
         {/* Sidebar */}
-        <div className="fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-xl transform lg:translate-x-0 transition-transform duration-300 ease-in-out
-          lg:static lg:h-full
+        <div className={`
+          h-full bg-white shadow-lg
+          ${isSidebarOpen ? 'fixed inset-y-0 left-0 z-30 w-64 transform transition-transform ease-in-out duration-300 translate-x-0' : 'hidden lg:block'}
+          lg:relative
           flex flex-col
           overflow-y-auto
-          pt-5 pb-4
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}"
-        >
+        `}>
           {/* Close button - Mobile only */}
           <div className="absolute top-0 right-0 p-1 lg:hidden">
             <button
@@ -92,7 +92,7 @@ export default function AdminHeader() {
           </div>
 
           {/* Logo */}
-          <div className="flex-shrink-0 flex items-center px-4 mb-5">
+          <div className="flex-shrink-0 flex items-center px-4 py-5">
             <Link href="/admin/dashboard" className="text-2xl font-bold text-indigo-600 lg:block hidden">
               PrintNPack Ltd
             </Link>
@@ -158,6 +158,6 @@ export default function AdminHeader() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 } 
