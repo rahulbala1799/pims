@@ -322,148 +322,192 @@ export default function InvoicePDF({ invoice, customer }: { invoice: Invoice, cu
   );
 }
 
-// Function to directly generate and download PDF using jsPDF
+// This function is called from invoice detail page and needs to be more efficient
 export const generateInvoicePDF = (invoice: Invoice, customer: Customer, fileName = 'invoice.pdf') => {
   try {
-    console.log('Generating PDF with invoice data:', invoice);
+    // Create a new jsPDF instance
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
     
-    // Create new document with autotable plugin
-    const doc = new jsPDF();
-    // Add autotable functionality to jsPDF instance
-    autoTable(doc, {}); // Initialize the plugin
+    // Company header
+    doc.setFontSize(12);
+    doc.text('PrintNPack Ltd', 20, 20);
+    doc.setFontSize(10);
+    doc.text('123 Print Avenue', 20, 25);
+    doc.text('Dublin, D02 A123', 20, 30);
+    doc.text('info@printnpack.ie', 20, 35);
+    doc.text('+353 1 234 5678', 20, 40);
     
-    // Add company info
+    // Invoice title
     doc.setFontSize(24);
     doc.setFont('helvetica', 'bold');
-    doc.text('PrintNPack Ltd', 14, 22);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text([
-      'PrintNPack Ltd',
-      '123 Print Avenue',
-      'Dublin, D02 A123',
-      'info@printnpack.ie',
-      '+353 1 234 5678'
-    ], 195, 22, { align: 'right' });
-    
-    // Add invoice title
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('INVOICE', 14, 45);
-    doc.setLineWidth(0.5);
-    doc.line(14, 48, 195, 48);
-    
-    // Add customer info
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 14, 60);
-    
-    doc.setFontSize(10);
+    doc.text('INVOICE', 140, 25, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     
-    // Format customer info safely
-    const customerInfo = [
-      customer?.name || 'N/A',
-      customer?.email || '',
-      customer?.phone || '',
-      customer?.address || ''
-    ].filter(line => line.trim() !== '');
+    // Invoice details section
+    doc.setFontSize(12);
+    doc.text('Invoice #:', 140, 40, { align: 'right' });
+    doc.text(invoice.invoiceNumber, 170, 40, { align: 'right' });
     
-    doc.text(customerInfo, 14, 65);
-    
-    // Format date safely
     const formatDate = (dateString: string) => {
-      if (!dateString) return 'N/A';
       const date = new Date(dateString);
       return date.toLocaleDateString('en-GB', {
         day: '2-digit',
-        month: 'long',
-        year: 'numeric',
+        month: 'short',
+        year: 'numeric'
       });
     };
     
-    // Add invoice details
-    doc.text([
-      `Invoice #: ${invoice.invoiceNumber || 'N/A'}`,
-      `Issue Date: ${formatDate(invoice.issueDate)}`,
-      `Due Date: ${formatDate(invoice.dueDate)}`,
-      `Status: ${invoice.status || 'N/A'}`
-    ], 195, 60, { align: 'right' });
+    doc.text('Issue Date:', 140, 45, { align: 'right' });
+    doc.text(formatDate(invoice.issueDate), 170, 45, { align: 'right' });
     
-    // Ensure we have items to map over (handle different data structures)
-    const items = invoice.invoiceItems || invoice.items || [];
-    console.log('Invoice items for PDF:', items);
+    doc.text('Due Date:', 140, 50, { align: 'right' });
+    doc.text(formatDate(invoice.dueDate), 170, 50, { align: 'right' });
+    
+    doc.text('Status:', 140, 55, { align: 'right' });
+    doc.text(invoice.status, 170, 55, { align: 'right' });
+    
+    // Customer info
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bill To:', 20, 55);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(customer.name, 20, 60);
+    doc.text(customer.email, 20, 65);
+    if (customer.phone) doc.text(customer.phone, 20, 70);
+    if (customer.address) doc.text(customer.address, 20, customer.phone ? 75 : 70);
+    
+    // Draw a line
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.5);
+    doc.line(20, 85, 190, 85);
     
     // Format currency
     const formatCurrency = (amount: number) => {
       return new Intl.NumberFormat('en-IE', {
         style: 'currency',
-        currency: 'EUR'
+        currency: 'EUR',
+        minimumFractionDigits: 2
       }).format(amount);
     };
     
-    // Prepare table data
-    const tableData = items.map((item: InvoiceItem) => [
-      item.description || 'N/A',
-      item.quantity.toString() || '0',
-      item.length && item.width 
-        ? `${Number(item.length).toFixed(2)}m × ${Number(item.width).toFixed(2)}m${item.area ? ` = ${Number(item.area).toFixed(2)}m²` : ''}`
-        : '-',
-      formatCurrency(item.unitPrice),
-      formatCurrency(item.totalPrice)
-    ]);
+    // Ensure we have items to display
+    const items = invoice.invoiceItems || invoice.items || [];
     
-    // Add invoice items table - use the proper autoTable syntax
-    autoTable(doc, {
-      startY: 85,
-      head: [['Description', 'Qty', 'Dimensions', 'Unit Price', 'Total']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold' },
-      columnStyles: {
-        0: { cellWidth: 'auto' },
-        1: { cellWidth: 20, halign: 'center' },
-        2: { cellWidth: 50, halign: 'center' },
-        3: { cellWidth: 30, halign: 'right' },
-        4: { cellWidth: 30, halign: 'right' }
-      },
-      margin: { left: 14, right: 14 },
-      didDrawPage: function(data: any) {
-        // Footer
-        doc.setFontSize(8);
-        doc.setTextColor(100);
-        const pageHeight = doc.internal.pageSize.height;
-        doc.text('Thank you for your business! Payment is due within 30 days of issue.', 105, pageHeight - 20, { align: 'center' });
-        doc.text('Please make all cheques payable to PrintNPack Ltd or pay by bank transfer using the invoice number as reference.', 105, pageHeight - 15, { align: 'center' });
-        doc.text('Bank: National Bank | Sort Code: 01-02-03 | Account Number: 12345678', 105, pageHeight - 10, { align: 'center' });
-      }
+    // Create the table for invoice items
+    const tableColumn = ["Description", "Qty", "Dimensions", "Unit Price", "Total"];
+    const tableRows: string[][] = [];
+    
+    // Add row data
+    items.forEach(item => {
+      const dimensions = item.length && item.width 
+        ? `${item.length}m × ${item.width}m` 
+        : item.area 
+          ? `${item.area}m²` 
+          : '-';
+          
+      const rowData = [
+        item.description || (item.product ? item.product.name : ''),
+        item.quantity.toString(),
+        dimensions,
+        formatCurrency(item.unitPrice),
+        formatCurrency(item.totalPrice)
+      ];
+      tableRows.push(rowData);
     });
     
-    // Get the final position using proper docs
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    // Generate table with row highlighting
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 90,
+      theme: 'grid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 10,
+        cellPadding: 5,
+        overflow: 'linebreak',
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [0, 0, 0],
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto' },
+        1: { cellWidth: 15, halign: 'center' },
+        2: { cellWidth: 30, halign: 'center' },
+        3: { cellWidth: 30, halign: 'right' },
+        4: { cellWidth: 30, halign: 'right' },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 248, 248],
+      },
+    });
     
-    // Add total section
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
+    // Get Y position after table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
     
     // Ensure we handle both 'subtotal' and 'subtotalAmount'
     const subtotal = invoice.subtotal || invoice.subtotalAmount || 0;
     
-    doc.text('Subtotal:', 150, finalY);
-    doc.text(formatCurrency(subtotal), 195, finalY, { align: 'right' });
+    // Summary
+    doc.text('Subtotal:', 140, finalY, { align: 'right' });
+    doc.text(formatCurrency(subtotal), 190, finalY, { align: 'right' });
     
-    doc.text(`VAT (${(invoice.taxRate * 100).toFixed(0)}%):`, 150, finalY + 5);
-    doc.text(formatCurrency(invoice.taxAmount), 195, finalY + 5, { align: 'right' });
+    doc.text('Tax Rate:', 140, finalY + 5, { align: 'right' });
+    doc.text(`${invoice.taxRate}%`, 190, finalY + 5, { align: 'right' });
+    
+    doc.text('Tax Amount:', 140, finalY + 10, { align: 'right' });
+    doc.text(formatCurrency(invoice.taxAmount), 190, finalY + 10, { align: 'right' });
     
     doc.setFont('helvetica', 'bold');
-    doc.text('Total:', 150, finalY + 10);
-    doc.text(formatCurrency(invoice.totalAmount), 195, finalY + 10, { align: 'right' });
+    doc.text('Total:', 140, finalY + 17, { align: 'right' });
+    doc.text(formatCurrency(invoice.totalAmount), 190, finalY + 17, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
     
-    // Save and download the PDF
+    // Notes
+    if (invoice.notes) {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.1);
+      doc.line(20, finalY + 25, 190, finalY + 25);
+      
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Notes:', 20, finalY + 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(invoice.notes, 20, finalY + 35);
+    }
+    
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.text(
+        `Page ${i} of ${pageCount} | PrintNPack Ltd | VAT: IE123456789`,
+        105, 
+        287, 
+        { align: 'center' }
+      );
+    }
+    
+    // Save the PDF
     doc.save(fileName);
+    
+    return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Failed to generate PDF. Please try again.');
+    return false;
   }
 }; 
