@@ -87,14 +87,21 @@ export async function POST() {
         if (product.product.productClass === 'PACKAGING') {
           const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0;
           const completedQuantity = product.completedQuantity || 0;
-          console.log(`Packaging ink cost for ${job.title}: ${inkCostPerUnit} × ${completedQuantity} = ${inkCostPerUnit * completedQuantity}`);
+          console.log(`Packaging ink cost for ${job.title}: €${inkCostPerUnit} × ${completedQuantity} = €${inkCostPerUnit * completedQuantity}`);
           return total + (inkCostPerUnit * completedQuantity);
-        } 
+        }
+        // For leaflet products, use fixed cost of 0.004€ per page
+        else if (product.product.productClass === 'LEAFLETS') {
+          const inkCostPerPage = 0.004; // 0.004€ per page for leaflets
+          const completedQuantity = product.completedQuantity || 0;
+          console.log(`Leaflet ink cost for ${job.title}: €${inkCostPerPage} × ${completedQuantity} = €${inkCostPerPage * completedQuantity}`);
+          return total + (inkCostPerPage * completedQuantity);
+        }
         // For other products (especially wide format), use inkUsageInMl × cost per ml
         else {
           const inkUsage = product.inkUsageInMl || 0;
           const inkCostPerMl = 0.16; // 0.16€ per ml of ink
-          console.log(`Ink usage cost for ${job.title}: ${inkUsage} ml × €${inkCostPerMl} = ${inkUsage * inkCostPerMl}`);
+          console.log(`Ink usage cost for ${job.title}: ${inkUsage} ml × €${inkCostPerMl} = €${inkUsage * inkCostPerMl}`);
           return total + (inkUsage * inkCostPerMl);
         }
       }, 0);
@@ -118,7 +125,7 @@ export async function POST() {
         return total + (product.timeTaken || 0);
       }, 0);
 
-      console.log(`Job ${job.title}: Revenue = ${revenue}, Material = ${materialCosts}, Ink = ${inkCosts}, Profit = ${grossProfit}, Margin = ${profitMargin}%`);
+      console.log(`Job ${job.title}: Revenue = €${revenue}, Material = €${materialCosts}, Ink = €${inkCosts}, Profit = €${grossProfit}, Margin = ${profitMargin}%`);
 
       // Create metrics in the database
       return prisma.jobMetrics.create({
