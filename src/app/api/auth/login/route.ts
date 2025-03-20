@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
 
@@ -45,6 +46,32 @@ export async function POST(request: Request) {
         { error: 'Invalid email or password' },
         { status: 401 }
       );
+    }
+
+    // Generate an expiration date (24 hours from now)
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+
+    // Set the appropriate authentication cookie
+    const cookieStore = cookies();
+    if (user.role === 'ADMIN') {
+      cookieStore.set({
+        name: 'admin_auth',
+        value: user.id,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        expires,
+        path: '/',
+      });
+    } else {
+      cookieStore.set({
+        name: 'employee_auth',
+        value: user.id,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        expires,
+        path: '/',
+      });
     }
 
     // Return user data (excluding password)

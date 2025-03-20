@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import AdminHeader from '@/components/AdminHeader';
+import { useEffect, useState } from 'react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -9,16 +10,63 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
-  // This is a client-side route handler for logout
-  if (typeof window !== 'undefined') {
-    // Define global logout handler for the "/logout" path
-    window.addEventListener('popstate', (event) => {
-      if (window.location.pathname === '/logout') {
-        // Implement simple logout - redirect to home
-        window.location.href = '/';
+  // Verify client-side authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Check if user data exists in localStorage
+        const userData = localStorage.getItem('adminUser');
+        
+        if (!userData) {
+          // Redirect to login if no user data found
+          router.push('/login/admin');
+          return;
+        }
+
+        // Parse user data
+        const user = JSON.parse(userData);
+        
+        // Verify the user is an admin
+        if (user.role !== 'ADMIN') {
+          console.error('Not authorized as admin');
+          localStorage.removeItem('adminUser');
+          router.push('/login/admin');
+          return;
+        }
+        
+        // Additional check to see if the auth cookie is present
+        // This is a secondary check since middleware should handle this already
+        const res = await fetch('/api/auth/verify');
+        const data = await res.json();
+        
+        if (!data.isAuthenticated) {
+          console.error('Auth cookie not found or invalid');
+          localStorage.removeItem('adminUser');
+          router.push('/login/admin');
+          return;
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        localStorage.removeItem('adminUser');
+        router.push('/login/admin');
       }
-    });
+    };
+    
+    checkAuth();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-100">
+        <div className="p-8 bg-white shadow rounded-lg">
+          <p className="text-lg text-gray-700">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
