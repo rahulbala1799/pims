@@ -1,25 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface LoginFormProps {
   userType: 'admin' | 'employee';
 }
 
 export default function LoginForm({ userType }: LoginFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [debug, setDebug] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Clear any previous localStorage data on login page load
+    if (userType === 'admin') {
+      localStorage.removeItem('adminUser');
+    } else {
+      localStorage.removeItem('employeeUser');
+    }
+  }, [userType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setDebug(null);
     setIsLoading(true);
 
     try {
-      console.log(`Attempting to log in as ${userType} with email: ${email}`);
+      setDebug(`Attempting to log in as ${userType} with email: ${email}`);
       
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -31,6 +44,7 @@ export default function LoginForm({ userType }: LoginFormProps) {
           password,
           userType
         }),
+        credentials: 'include' // Important for cookie handling
       });
       
       const data = await response.json();
@@ -39,6 +53,8 @@ export default function LoginForm({ userType }: LoginFormProps) {
         throw new Error(data.error || 'Authentication failed');
       }
       
+      setDebug(`Login successful. Response: ${JSON.stringify(data)}`);
+      
       // Store user data in localStorage based on user type
       if (userType === 'admin') {
         localStorage.setItem('adminUser', JSON.stringify(data.user));
@@ -46,9 +62,14 @@ export default function LoginForm({ userType }: LoginFormProps) {
         localStorage.setItem('employeeUser', JSON.stringify(data.user));
       }
       
-      // Login successful, redirect to appropriate dashboard
-      console.log(`${userType} login successful`);
-      window.location.href = data.redirectUrl || (userType === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
+      // Login successful, redirect to appropriate dashboard using router
+      const redirectUrl = data.redirectUrl || (userType === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
+      setDebug(`Redirecting to: ${redirectUrl}`);
+      
+      // Small delay to ensure cookies are set before redirect
+      setTimeout(() => {
+        router.push(redirectUrl);
+      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'Invalid email or password');
@@ -81,6 +102,21 @@ export default function LoginForm({ userType }: LoginFormProps) {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {debug && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700 whitespace-pre-wrap">{debug}</p>
               </div>
             </div>
           </div>

@@ -54,32 +54,47 @@ export async function POST(request: Request) {
 
     // Set the appropriate authentication cookie
     const cookieStore = cookies();
+    
+    // Common cookie settings
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      expires,
+      path: '/',
+      sameSite: 'lax' as const,
+    };
+    
+    console.log(`Setting auth cookie for ${user.role.toLowerCase()} with ID: ${user.id}`);
+    
     if (user.role === 'ADMIN') {
       cookieStore.set({
         name: 'admin_auth',
         value: user.id,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires,
-        path: '/',
+        ...cookieOptions,
       });
+      
+      // Also delete any employee cookie that might exist
+      cookieStore.delete('employee_auth');
     } else {
       cookieStore.set({
         name: 'employee_auth',
         value: user.id,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires,
-        path: '/',
+        ...cookieOptions,
       });
+      
+      // Also delete any admin cookie that might exist
+      cookieStore.delete('admin_auth');
     }
 
     // Return user data (excluding password)
     const { password: _, ...userData } = user;
-    return NextResponse.json({
+    
+    const response = NextResponse.json({
       user: userData,
       redirectUrl: user.role === 'ADMIN' ? '/admin/dashboard' : '/employee/dashboard',
     });
+    
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
