@@ -33,6 +33,10 @@ model Customer {
   updatedAt DateTime  @updatedAt
   invoices  Invoice[]
   jobs      Job[]
+  portalUsers PortalUser[]
+  orders CustomerOrder[]
+  quotes Quote[]
+  productCatalog CustomerProductCatalog[]
 }
 
 model Job {
@@ -57,6 +61,8 @@ model Job {
   jobProducts     JobProduct[]
   progressUpdates ProgressUpdate[]
   jobAssignments  JobAssignment[]
+  customerOrder   CustomerOrder?   @relation(fields: [customerOrderId], references: [id])
+  customerOrderId String?         @unique
 }
 
 model ProgressUpdate {
@@ -116,6 +122,8 @@ model Product {
   jobProducts      JobProduct[]
   createdBy        User             @relation("ProductCreatedBy", fields: [createdById], references: [id])
   productVariants  ProductVariant[]
+  orderItems       OrderItem[]
+  customerCatalogs CustomerProductCatalog[]
 }
 
 model ProductVariant {
@@ -261,4 +269,144 @@ enum InvoiceStatus {
   PAID
   OVERDUE
   CANCELLED
+}
+
+// Portal User model
+model PortalUser {
+  id          String      @id @default(uuid())
+  email       String      @unique
+  passwordHash String
+  firstName   String?
+  lastName    String?
+  role        PortalRole  @default(STANDARD)
+  status      UserStatus  @default(ACTIVE)
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  customerId  String
+  lastLogin   DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orders      CustomerOrder[]
+
+  @@map("portal_users")
+}
+
+enum PortalRole {
+  ADMIN
+  STANDARD
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+// Customer Order model
+model CustomerOrder {
+  id            String          @id @default(uuid())
+  orderNumber   String          @unique
+  status        OrderStatus     @default(DRAFT)
+  totalAmount   Decimal         @default(0) @db.Decimal(10, 2)
+  currency      String          @default("EUR")
+  notes         String?
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  customerId    String
+  portalUser    PortalUser      @relation(fields: [portalUserId], references: [id])
+  portalUserId  String
+  orderItems    OrderItem[]
+  orderFiles    OrderFile[]
+  quote         Quote?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  job           Job?
+
+  @@map("customer_orders")
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+// Order Item model
+model OrderItem {
+  id              String        @id @default(uuid())
+  quantity        Int
+  unitPrice       Decimal       @db.Decimal(10, 2)
+  specifications  Json?
+  notes           String?
+  order           CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId         String
+  product         Product       @relation(fields: [productId], references: [id])
+  productId       String
+  files           OrderFile[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("order_items")
+}
+
+// Order File model
+model OrderFile {
+  id           String       @id @default(uuid())
+  fileName     String
+  fileUrl      String
+  fileType     String
+  order        CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId      String
+  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id])
+  orderItemId  String?
+  uploadedBy   String
+  uploadedAt   DateTime     @default(now())
+
+  @@map("order_files")
+}
+
+// Quote model
+model Quote {
+  id           String        @id @default(uuid())
+  quoteNumber  String        @unique
+  status       QuoteStatus   @default(PENDING)
+  expiresAt    DateTime
+  totalAmount  Decimal       @db.Decimal(10, 2)
+  items        Json
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  customerId   String
+  order        CustomerOrder? @relation(fields: [orderId], references: [id])
+  orderId      String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// Customer Product Catalog
+model CustomerProductCatalog {
+  id                   String   @id @default(uuid())
+  customerProductCode  String?
+  customerProductName  String?
+  customPrice          Decimal? @db.Decimal(10, 2)
+  isVisible            Boolean  @default(true)
+  customer             Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId           String
+  product              Product  @relation(fields: [productId], references: [id])
+  productId            String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([customerId, productId])
+  @@map("customer_product_catalog")
 }

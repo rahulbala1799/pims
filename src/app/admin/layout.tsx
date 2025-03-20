@@ -3,13 +3,29 @@
 import { useRouter } from 'next/navigation';
 import AdminHeader from '@/components/AdminHeader';
 import { useEffect, useState } from 'react';
+import { FiHome, FiUsers, FiFileText, FiPackage, FiDollarSign, FiClock, FiBarChart2, FiSettings, FiShoppingCart } from 'react-icons/fi';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+const sidebarItems = [
+  { name: 'Dashboard', href: '/admin', icon: FiHome },
+  { name: 'Jobs', href: '/admin/jobs', icon: FiFileText },
+  { name: 'Products', href: '/admin/products', icon: FiPackage },
+  { name: 'Customers', href: '/admin/customers', icon: FiUsers },
+  { name: 'Invoices', href: '/admin/invoices', icon: FiDollarSign },
+  { name: 'Time Tracking', href: '/admin/time-tracking', icon: FiClock },
+  { name: 'Reporting', href: '/admin/reporting', icon: FiBarChart2 },
+  { name: 'Customer Portal', href: '/admin/customer-portal', icon: FiShoppingCart },
+  { name: 'Settings', href: '/admin/settings', icon: FiSettings },
+];
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
 
   // Verify client-side authentication
@@ -64,8 +80,33 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <AdminHeader />
       </div>
       <div className="flex-1 flex overflow-hidden">
-        <div className="lg:block hidden w-64 flex-shrink-0">
-          <AdminHeader />
+        <div className="lg:block hidden w-64 flex-shrink-0 bg-white border-r border-gray-200">
+          <div className="h-16 flex items-center px-6 border-b border-gray-200">
+            <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+          </div>
+          <nav className="mt-5 px-3 space-y-1">
+            {sidebarItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                    isActive
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <item.icon
+                    className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                      isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-500'
+                    }`}
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
         <main className="flex-1 overflow-y-auto pb-16 pt-4 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
