@@ -123,32 +123,33 @@ export async function POST(request: Request) {
       }
 
       // Calculate ink costs - different method depending on product class
-      const inkCosts = job.jobProducts.reduce((total, product) => {
-        // For packaging products, use inkCostPerUnit × completedQuantity
+      const inkCost = job.jobProducts.reduce((total, product) => {
         if (product.product.productClass === 'PACKAGING') {
-          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0;
+          // For packaging, use inkCostPerUnit * completedQuantity
+          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0.04;
           const completedQuantity = product.completedQuantity || 0;
-          console.log(`Packaging ink cost for ${job.title}: €${inkCostPerUnit} × ${completedQuantity} = €${inkCostPerUnit * completedQuantity}`);
-          return total + (inkCostPerUnit * completedQuantity);
-        }
-        // For leaflet products, use fixed cost of 0.004€ per page
-        else if (product.product.productClass === 'LEAFLETS') {
-          const inkCostPerPage = 0.004; // 0.004€ per page for leaflets
+          const cost = inkCostPerUnit * completedQuantity;
+          console.log(`Ink cost for packaging product ${product.product.name}: ${cost}€`);
+          return total + cost;
+        } else if (product.product.productClass === 'LEAFLETS') {
+          // For leaflets, use a rate of 0.004€ per page * quantity
+          const inkCostPerPage = 0.004; // 0.4 cents per page
           const completedQuantity = product.completedQuantity || 0;
-          console.log(`Leaflet ink cost for ${job.title}: €${inkCostPerPage} × ${completedQuantity} = €${inkCostPerPage * completedQuantity}`);
-          return total + (inkCostPerPage * completedQuantity);
-        }
-        // For other products (especially wide format), use inkUsageInMl × cost per ml
-        else {
+          const cost = inkCostPerPage * completedQuantity;
+          console.log(`Ink cost for leaflet product ${product.product.name}: ${cost}€`);
+          return total + cost;
+        } else {
+          // For other products, use inkUsageInMl * cost per ml (0.16€)
           const inkUsage = product.inkUsageInMl || 0;
-          const inkCostPerMl = 0.16; // 0.16€ per ml of ink
-          console.log(`Ink usage cost for ${job.title}: ${inkUsage} ml × €${inkCostPerMl} = €${inkUsage * inkCostPerMl}`);
-          return total + (inkUsage * inkCostPerMl);
+          const inkCostPerMl = 0.16; // 16 cents per ml
+          const cost = inkUsage * inkCostPerMl;
+          console.log(`Ink cost for standard product ${product.product.name}: ${cost}€`);
+          return total + cost;
         }
       }, 0);
 
       // Calculate gross profit
-      const totalCosts = materialCosts + inkCosts;
+      const totalCosts = materialCosts + inkCost;
       const grossProfit = revenue - totalCosts;
 
       // Calculate profit margin as a percentage
@@ -172,7 +173,7 @@ export async function POST(request: Request) {
         update: {
           revenue: revenue.toString(),
           materialCost: materialCosts.toString(),
-          inkCost: inkCosts.toString(),
+          inkCost: inkCost.toString(),
           grossProfit: grossProfit.toString(),
           profitMargin: profitMargin.toString(),
           totalQuantity,
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
           jobId: job.id,
           revenue: revenue.toString(),
           materialCost: materialCosts.toString(),
-          inkCost: inkCosts.toString(),
+          inkCost: inkCost.toString(),
           grossProfit: grossProfit.toString(),
           profitMargin: profitMargin.toString(),
           totalQuantity,
@@ -286,32 +287,33 @@ export async function POST(request: Request) {
       }
 
       // Calculate ink costs - different method depending on product class
-      const inkCosts = job.jobProducts.reduce((total, product) => {
-        // For packaging products, use inkCostPerUnit × completedQuantity
+      const inkCost = job.jobProducts.reduce((total, product) => {
         if (product.product.productClass === 'PACKAGING') {
-          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0;
+          // For packaging, use inkCostPerUnit * completedQuantity
+          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0.04;
           const completedQuantity = product.completedQuantity || 0;
-          console.log(`Packaging ink cost for ${job.title}: €${inkCostPerUnit} × ${completedQuantity} = €${inkCostPerUnit * completedQuantity}`);
-          return total + (inkCostPerUnit * completedQuantity);
-        }
-        // For leaflet products, use fixed cost of 0.004€ per page
-        else if (product.product.productClass === 'LEAFLETS') {
-          const inkCostPerPage = 0.004; // 0.004€ per page for leaflets
+          const cost = inkCostPerUnit * completedQuantity;
+          console.log(`Ink cost for packaging product ${product.product.name}: ${cost}€`);
+          return total + cost;
+        } else if (product.product.productClass === 'LEAFLETS') {
+          // For leaflets, use a rate of 0.004€ per page * quantity
+          const inkCostPerPage = 0.004; // 0.4 cents per page
           const completedQuantity = product.completedQuantity || 0;
-          console.log(`Leaflet ink cost for ${job.title}: €${inkCostPerPage} × ${completedQuantity} = €${inkCostPerPage * completedQuantity}`);
-          return total + (inkCostPerPage * completedQuantity);
-        }
-        // For other products (especially wide format), use inkUsageInMl × cost per ml
-        else {
+          const cost = inkCostPerPage * completedQuantity;
+          console.log(`Ink cost for leaflet product ${product.product.name}: ${cost}€`);
+          return total + cost;
+        } else {
+          // For other products, use inkUsageInMl * cost per ml (0.16€)
           const inkUsage = product.inkUsageInMl || 0;
-          const inkCostPerMl = 0.16; // 0.16€ per ml of ink
-          console.log(`Ink usage cost for ${job.title}: ${inkUsage} ml × €${inkCostPerMl} = €${inkUsage * inkCostPerMl}`);
-          return total + (inkUsage * inkCostPerMl);
+          const inkCostPerMl = 0.16; // 16 cents per ml
+          const cost = inkUsage * inkCostPerMl;
+          console.log(`Ink cost for standard product ${product.product.name}: ${cost}€`);
+          return total + cost;
         }
       }, 0);
 
       // Calculate gross profit
-      const totalCosts = materialCosts + inkCosts;
+      const totalCosts = materialCosts + inkCost;
       const grossProfit = revenue - totalCosts;
 
       // Calculate profit margin as a percentage
@@ -335,7 +337,7 @@ export async function POST(request: Request) {
           jobId: job.id,
           revenue: revenue.toString(),
           materialCost: materialCosts.toString(),
-          inkCost: inkCosts.toString(),
+          inkCost: inkCost.toString(),
           grossProfit: grossProfit.toString(),
           profitMargin: profitMargin.toString(),
           totalQuantity,
