@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS "JobAssignment_userId_idx" ON "JobAssignment"("userId
 CREATE INDEX IF NOT EXISTS "JobAssignment_jobId_idx" ON "JobAssignment"("jobId");
 CREATE UNIQUE INDEX IF NOT EXISTS "JobAssignment_jobId_userId_key" ON "JobAssignment"("jobId", "userId");
 
--- Add foreign keys if they don't exist
+-- Check if foreign key constraint exists and add it if it doesn't
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -23,7 +23,12 @@ BEGIN
         ALTER TABLE "JobAssignment" ADD CONSTRAINT "JobAssignment_jobId_fkey" 
         FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE CASCADE ON UPDATE CASCADE;
     END IF;
-    
+END
+$$;
+
+-- Check if foreign key constraint exists and add it if it doesn't
+DO $$
+BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.table_constraints
         WHERE constraint_name = 'JobAssignment_userId_fkey'
