@@ -11,14 +11,53 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const sidebarItems = [
+interface SubSubMenuItem {
+  name: string;
+  href: string;
+}
+
+interface SubMenuItem {
+  name: string;
+  href?: string;
+  subItems?: SubSubMenuItem[];
+}
+
+interface SidebarItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  subItems?: SubMenuItem[];
+}
+
+const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: FiHome },
   { name: 'Jobs', href: '/admin/jobs', icon: FiFileText },
   { name: 'Products', href: '/admin/products', icon: FiPackage },
   { name: 'Customers', href: '/admin/customers', icon: FiUsers },
   { name: 'Invoices', href: '/admin/invoices', icon: FiDollarSign },
+  { name: 'Mobile Invoices', href: '/admin/mobile-invoices', icon: FiDollarSign },
+  { name: 'Employees', href: '/admin/employees', icon: FiUsers },
   { name: 'Time Tracking', href: '/admin/time-tracking', icon: FiClock },
-  { name: 'Reporting', href: '/admin/reporting', icon: FiBarChart2 },
+  { name: 'Employee Hours', href: '/admin/employee-hours', icon: FiClock },
+  { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: FiFileText },
+  { 
+    name: 'Reporting', 
+    href: '/admin/reporting', 
+    icon: FiBarChart2,
+    subItems: [
+      { name: 'Financial', subItems: [
+        { name: 'Revenue Trends', href: '/admin/reporting/financial/revenue-trends' },
+        { name: 'Profit Margins', href: '/admin/reporting/financial/profit-margins' },
+        { name: 'Average Invoice Value', href: '/admin/reporting/financial/avg-invoice-value' },
+        { name: 'Outstanding Invoices', href: '/admin/reporting/financial/outstanding-invoices' },
+        { name: 'Revenue by Product', href: '/admin/reporting/financial/revenue-by-product' },
+        { name: 'DSO', href: '/admin/reporting/financial/dso' },
+      ]},
+      { name: 'Operational', subItems: [
+        { name: 'Employee Productivity', href: '/admin/reporting/operational/employee-productivity' },
+      ]},
+    ]
+  },
   { name: 'Customer Portal', href: '/admin/customer-portal', icon: FiShoppingCart },
   { name: 'Settings', href: '/admin/settings', icon: FiSettings },
 ];
@@ -88,22 +127,86 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {sidebarItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                    isActive
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                >
-                  <item.icon
-                    className={`mr-3 flex-shrink-0 h-5 w-5 ${
-                      isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
-                  />
-                  {item.name}
-                </Link>
+                <div key={item.name}>
+                  {item.subItems ? (
+                    <div className="mb-2">
+                      <div
+                        className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                          isActive
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                      >
+                        <item.icon
+                          className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                            isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-500'
+                          }`}
+                        />
+                        {item.name}
+                      </div>
+                      <div className="ml-6 mt-1 space-y-1">
+                        {item.subItems.map((subItem) => (
+                          <div key={subItem.name}>
+                            {subItem.subItems ? (
+                              <div className="mb-1">
+                                <div className="text-sm font-medium text-gray-700 px-2 py-1">
+                                  {subItem.name}
+                                </div>
+                                <div className="ml-4 space-y-1">
+                                  {subItem.subItems.map((subSubItem) => {
+                                    const isSubSubActive = pathname === subSubItem.href;
+                                    return (
+                                      <Link
+                                        key={subSubItem.name}
+                                        href={subSubItem.href}
+                                        className={`block text-sm px-2 py-1 rounded-md ${
+                                          isSubSubActive
+                                            ? 'bg-indigo-50 text-indigo-700'
+                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        }`}
+                                      >
+                                        {subSubItem.name}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : (
+                              subItem.href && (
+                                <Link
+                                  href={subItem.href}
+                                  className={`block text-sm px-2 py-1 rounded-md ${
+                                    pathname === subItem.href
+                                      ? 'bg-indigo-50 text-indigo-700'
+                                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                  }`}
+                                >
+                                  {subItem.name}
+                                </Link>
+                              )
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                        isActive
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <item.icon
+                        className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                          isActive ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-500'
+                        }`}
+                      />
+                      {item.name}
+                    </Link>
+                  )}
+                </div>
               );
             })}
           </nav>
