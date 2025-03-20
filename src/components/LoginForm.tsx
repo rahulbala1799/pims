@@ -43,8 +43,7 @@ export default function LoginForm({ userType }: LoginFormProps) {
           email,
           password,
           userType
-        }),
-        credentials: 'include' // Important for cookie handling
+        })
       });
       
       const data = await response.json();
@@ -53,7 +52,7 @@ export default function LoginForm({ userType }: LoginFormProps) {
         throw new Error(data.error || 'Authentication failed');
       }
       
-      setDebug(`Login successful. Response: ${JSON.stringify(data)}`);
+      setDebug(`Login successful. User: ${JSON.stringify(data.user)}`);
       
       // Store user data in localStorage based on user type
       if (userType === 'admin') {
@@ -62,25 +61,14 @@ export default function LoginForm({ userType }: LoginFormProps) {
         localStorage.setItem('employeeUser', JSON.stringify(data.user));
       }
       
-      // Check if cookies were set properly
-      try {
-        const cookieCheckResponse = await fetch('/api/auth/check', {
-          credentials: 'include'
-        });
-        const cookieData = await cookieCheckResponse.json();
-        setDebug(prev => `${prev}\n\nCookie check: ${JSON.stringify(cookieData, null, 2)}`);
-      } catch (cookieError) {
-        console.error('Error checking cookies:', cookieError);
-      }
-      
       // Login successful, redirect to appropriate dashboard using router
       const redirectUrl = data.redirectUrl || (userType === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
       setDebug(prev => `${prev}\n\nRedirecting to: ${redirectUrl}`);
       
-      // Small delay to ensure cookies are set before redirect
+      // Small delay for UI feedback before redirect
       setTimeout(() => {
         router.push(redirectUrl);
-      }, 1000);
+      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       setError(error instanceof Error ? error.message : 'Invalid email or password');

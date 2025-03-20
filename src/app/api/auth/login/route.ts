@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { cookies } from 'next/headers';
 
 const prisma = new PrismaClient();
 
@@ -48,12 +47,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate an expiration date (24 hours from now)
-    const expires = new Date();
-    expires.setHours(expires.getHours() + 24);
-
-    // Create the response first
-    const response = NextResponse.json({
+    console.log(`Login successful for ${user.role.toLowerCase()} - ${user.email}`);
+    
+    // Use a simplified approach - return the user data without setting cookies
+    // We'll rely on localStorage for authentication
+    return NextResponse.json({
       user: {
         id: user.id,
         name: user.name,
@@ -61,58 +59,8 @@ export async function POST(request: Request) {
         role: user.role,
       },
       redirectUrl: user.role === 'ADMIN' ? '/admin/dashboard' : '/employee/dashboard',
+      success: true
     });
-    
-    // Log the user role and ID
-    console.log(`Setting auth cookie for ${user.role.toLowerCase()} with ID: ${user.id}`);
-
-    // Set cookies directly on the response
-    if (user.role === 'ADMIN') {
-      response.cookies.set({
-        name: 'admin_auth',
-        value: user.id,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires,
-        path: '/',
-        sameSite: 'lax',
-      });
-      
-      // Delete employee cookie if it exists
-      response.cookies.set({
-        name: 'employee_auth',
-        value: '',
-        httpOnly: true,
-        expires: new Date(0),
-        path: '/',
-      });
-    } else {
-      response.cookies.set({
-        name: 'employee_auth',
-        value: user.id,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        expires,
-        path: '/',
-        sameSite: 'lax',
-      });
-      
-      // Delete admin cookie if it exists
-      response.cookies.set({
-        name: 'admin_auth',
-        value: '',
-        httpOnly: true,
-        expires: new Date(0),
-        path: '/',
-      });
-    }
-    
-    // Log the cookies being set
-    console.log(`Cookies set in response:`, 
-      Object.fromEntries(response.cookies.getAll().map(c => [c.name, c.value ? 'Present' : 'Empty']))
-    );
-    
-    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

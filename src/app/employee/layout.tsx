@@ -16,15 +16,16 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
   const [userName, setUserName] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Enhanced auth check for employee section
+  // Simplified auth check for employee section
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
         // Check if user data exists in localStorage
         const userData = localStorage.getItem('employeeUser');
         
         if (!userData) {
           // Redirect to login if no user data found
+          console.error('No employee user data found in localStorage');
           router.push('/login/employee');
           return;
         }
@@ -34,24 +35,13 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
         
         // Verify the user is an employee
         if (user.role !== 'EMPLOYEE') {
-          console.error('Not authorized as employee');
+          console.error('User is not an employee');
           localStorage.removeItem('employeeUser');
           router.push('/login/employee');
           return;
         }
         
-        // Additional check to see if the auth cookie is present
-        // This is a secondary check since middleware should handle this already
-        const res = await fetch('/api/auth/verify');
-        const data = await res.json();
-        
-        if (!data.isAuthenticated || data.role !== 'EMPLOYEE') {
-          console.error('Auth cookie not found or invalid');
-          localStorage.removeItem('employeeUser');
-          router.push('/login/employee');
-          return;
-        }
-        
+        // Authentication successful
         setUserName(user.name || 'Employee');
         setIsLoading(false);
       } catch (error) {

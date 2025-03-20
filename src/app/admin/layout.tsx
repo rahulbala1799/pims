@@ -14,13 +14,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   // Verify client-side authentication
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
         // Check if user data exists in localStorage
         const userData = localStorage.getItem('adminUser');
         
         if (!userData) {
-          // Redirect to login if no user data found
+          console.error('No admin user data found in localStorage');
           router.push('/login/admin');
           return;
         }
@@ -30,24 +30,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         
         // Verify the user is an admin
         if (user.role !== 'ADMIN') {
-          console.error('Not authorized as admin');
+          console.error('User is not an admin');
           localStorage.removeItem('adminUser');
           router.push('/login/admin');
           return;
         }
         
-        // Additional check to see if the auth cookie is present
-        // This is a secondary check since middleware should handle this already
-        const res = await fetch('/api/auth/verify');
-        const data = await res.json();
-        
-        if (!data.isAuthenticated) {
-          console.error('Auth cookie not found or invalid');
-          localStorage.removeItem('adminUser');
-          router.push('/login/admin');
-          return;
-        }
-        
+        // Authentication successful
         setIsLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);

@@ -7,17 +7,9 @@ export default function LogoutPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const performLogout = async () => {
+    const performLogout = () => {
       try {
-        // Call the logout API to clear cookies
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        // Also clear localStorage user data
+        // Clear localStorage user data
         localStorage.removeItem('adminUser');
         localStorage.removeItem('employeeUser');
         
@@ -25,7 +17,7 @@ export default function LogoutPage() {
         router.push('/');
       } catch (error) {
         console.error('Error during logout:', error);
-        // Redirect to home page even if logout API fails
+        // Redirect to home page even if logout fails
         router.push('/');
       }
     };
