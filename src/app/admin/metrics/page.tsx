@@ -228,9 +228,9 @@ export default function MetricsPage() {
   
   // Format currency
   const formatCurrency = (value: string | number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('de-DE', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'EUR',
       minimumFractionDigits: 2
     }).format(Number(value));
   };
