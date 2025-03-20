@@ -5,39 +5,27 @@ const prisma = new PrismaClient();
 
 export async function GET() {
   try {
-    // In a real implementation, we would query the database with Prisma
-    // For now, we're returning sample data
+    // Get the current date
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
     
-    // Sample data for last 30 days sales
-    const lastThirtyDaysSales = generateLastThirtyDaysSales();
+    // Format dates for comparison
+    const formattedThirtyDaysAgo = thirtyDaysAgo.toISOString().split('T')[0];
     
-    // Sample data for top 10 products
-    const topProducts = [
-      { id: '1', name: 'Business Cards', quantity: 250, revenue: 5600 },
-      { id: '2', name: 'Brochures', quantity: 180, revenue: 4900 },
-      { id: '3', name: 'Flyers', quantity: 320, revenue: 4200 },
-      { id: '4', name: 'Posters', quantity: 95, revenue: 3800 },
-      { id: '5', name: 'Banners', quantity: 42, revenue: 3500 },
-      { id: '6', name: 'Letterheads', quantity: 220, revenue: 2900 },
-      { id: '7', name: 'Envelopes', quantity: 300, revenue: 2400 },
-      { id: '8', name: 'Labels', quantity: 450, revenue: 2200 },
-      { id: '9', name: 'Booklets', quantity: 65, revenue: 1900 },
-      { id: '10', name: 'Calendars', quantity: 80, revenue: 1600 }
-    ];
+    // Last 30 days sales - grouped by date
+    const lastThirtyDaysSales = await fetchLastThirtyDaysSales(formattedThirtyDaysAgo);
     
-    // Sample data for weekly growth
-    const currentWeek = 28500;
-    const previousWeek = 25200;
-    const growthPercentage = ((currentWeek - previousWeek) / previousWeek) * 100;
+    // Top 10 products by revenue
+    const topProducts = await fetchTopProducts();
+    
+    // Weekly growth calculation
+    const weeklyGrowth = await calculateWeeklyGrowth();
     
     return NextResponse.json({
       lastThirtyDaysSales,
       topProducts,
-      weeklyGrowth: {
-        currentWeek,
-        previousWeek,
-        growthPercentage
-      }
+      weeklyGrowth
     });
   } catch (error) {
     console.error('Error fetching revenue trends:', error);
@@ -45,35 +33,173 @@ export async function GET() {
       { error: 'Failed to fetch revenue trends data' },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
-// Helper function to generate last 30 days of sales data
-function generateLastThirtyDaysSales() {
-  const sales = [];
-  const today = new Date();
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(today.getDate() - i);
-    
-    // Generate more realistic data - weekends typically have lower sales
-    let amount = Math.floor(Math.random() * 4000) + 2000; // Base amount between 2000-6000
-    
-    // Weekend adjustment (lower sales on weekends)
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      amount = Math.floor(amount * 0.6); // 60% of weekday sales
+/**
+ * Fetch last 30 days of sales data from the database
+ */
+async function fetchLastThirtyDaysSales(formattedThirtyDaysAgo: string) {
+  // Get all invoices from the last 30 days
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      issueDate: {
+        gte: new Date(formattedThirtyDaysAgo)
+      },
+      status: {
+        in: ['PENDING', 'PAID']
+      }
+    },
+    select: {
+      issueDate: true,
+      totalAmount: true
+    },
+    orderBy: {
+      issueDate: 'asc'
     }
-    
-    // Trend - generally increasing
-    amount += i * 30; // Slight upward trend
-    
-    sales.push({
-      date: date.toISOString().split('T')[0],
-      amount
-    });
+  });
+  
+  // Group invoices by date and sum the total amounts
+  const salesByDate = new Map();
+  
+  // Initialize all dates in the last 30 days with zero sales
+  const lastThirtyDays = [];
+  for (let i = 0; i < 30; i++) {
+    const date = new Date(formattedThirtyDaysAgo);
+    date.setDate(date.getDate() + i);
+    const dateString = date.toISOString().split('T')[0];
+    salesByDate.set(dateString, 0);
   }
   
-  return sales;
+  // Add invoice amounts to the corresponding dates
+  invoices.forEach(invoice => {
+    const dateString = invoice.issueDate.toISOString().split('T')[0];
+    const currentAmount = salesByDate.get(dateString) || 0;
+    salesByDate.set(dateString, currentAmount + Number(invoice.totalAmount));
+  });
+  
+  // Convert Map to array
+  const result = Array.from(salesByDate.entries()).map(([date, amount]) => ({
+    date,
+    amount: Number(amount)
+  }));
+  
+  return result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+/**
+ * Fetch top 10 products by revenue
+ */
+async function fetchTopProducts() {
+  // Get all invoice items with product information
+  const invoiceItems = await prisma.invoiceItem.findMany({
+    select: {
+      productId: true,
+      quantity: true,
+      totalPrice: true,
+      product: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    },
+    where: {
+      invoice: {
+        issueDate: {
+          gte: new Date(new Date().setDate(new Date().getDate() - 90)) // Last 90 days
+        }
+      }
+    }
+  });
+  
+  // Group by product and calculate total revenue
+  const productMap = new Map();
+  
+  invoiceItems.forEach(item => {
+    const productId = item.productId;
+    const existingProduct = productMap.get(productId) || {
+      id: item.product.id,
+      name: item.product.name,
+      quantity: 0,
+      revenue: 0
+    };
+    
+    existingProduct.quantity += item.quantity;
+    existingProduct.revenue += Number(item.totalPrice);
+    
+    productMap.set(productId, existingProduct);
+  });
+  
+  // Convert to array and sort by revenue (descending)
+  const sortedProducts = Array.from(productMap.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+  
+  return sortedProducts;
+}
+
+/**
+ * Calculate week-on-week growth
+ */
+async function calculateWeeklyGrowth() {
+  // Calculate start dates for current and previous weeks
+  const today = new Date();
+  const currentWeekStart = new Date(today);
+  currentWeekStart.setDate(today.getDate() - today.getDay()); // Sunday of current week
+  currentWeekStart.setHours(0, 0, 0, 0);
+  
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7); // Sunday of previous week
+  
+  const previousWeekEnd = new Date(currentWeekStart);
+  previousWeekEnd.setSeconds(previousWeekEnd.getSeconds() - 1); // Just before current week started
+  
+  // Get invoice totals for current week
+  const currentWeekRevenue = await prisma.invoice.aggregate({
+    _sum: {
+      totalAmount: true
+    },
+    where: {
+      issueDate: {
+        gte: currentWeekStart
+      },
+      status: {
+        in: ['PENDING', 'PAID']
+      }
+    }
+  });
+  
+  // Get invoice totals for previous week
+  const previousWeekRevenue = await prisma.invoice.aggregate({
+    _sum: {
+      totalAmount: true
+    },
+    where: {
+      issueDate: {
+        gte: previousWeekStart,
+        lt: currentWeekStart
+      },
+      status: {
+        in: ['PENDING', 'PAID']
+      }
+    }
+  });
+  
+  // Convert Decimal to number and handle null values
+  const currentWeek = Number(currentWeekRevenue._sum.totalAmount || 0);
+  const previousWeek = Number(previousWeekRevenue._sum.totalAmount || 0);
+  
+  // Calculate growth percentage (handle division by zero)
+  const growthPercentage = previousWeek === 0 
+    ? currentWeek > 0 ? 100 : 0 
+    : ((currentWeek - previousWeek) / previousWeek) * 100;
+  
+  return {
+    currentWeek,
+    previousWeek,
+    growthPercentage
+  };
 } 
