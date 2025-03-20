@@ -10,17 +10,31 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get('query') || '';
     const forDropdown = searchParams.get('forDropdown') === 'true';
+    const includeAdmins = searchParams.get('includeAdmins') === 'true';
+    
+    let whereClause: any = {};
+    
+    // Build the where clause based on parameters
+    if (!includeAdmins) {
+      whereClause.role = Role.EMPLOYEE;
+    }
+    
+    if (query) {
+      whereClause.OR = [
+        { name: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } }
+      ];
+    }
     
     // If it's for dropdown, return a simplified list
     if (forDropdown) {
       const employees = await prisma.user.findMany({
-        where: {
-          role: Role.EMPLOYEE
-        },
+        where: whereClause,
         select: {
           id: true,
           name: true,
           email: true,
+          role: true
         },
         orderBy: {
           name: 'asc'
@@ -31,14 +45,8 @@ export async function GET(req: NextRequest) {
     }
     
     // Otherwise return the detailed list with additional information
-    const employees = await prisma.user.findMany({
-      where: {
-        role: Role.EMPLOYEE,
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } }
-        ]
-      },
+    const users = await prisma.user.findMany({
+      where: whereClause,
       orderBy: {
         name: 'asc'
       },
@@ -46,6 +54,7 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -56,23 +65,30 @@ export async function GET(req: NextRequest) {
       }
     });
     
-    return NextResponse.json(employees);
+    return NextResponse.json(users);
   } catch (error: any) {
-    console.error('Error fetching employees:', error);
+    console.error('Error fetching users:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// POST - Create a new employee user
+// POST - Create a new user (employee or admin)
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { name, email, password } = data;
+    const { name, email, password, role = 'EMPLOYEE' } = data;
     
     // Validate required fields
     if (!name || !email || !password) {
       return NextResponse.json({ 
         error: 'Name, email, and password are required' 
+      }, { status: 400 });
+    }
+    
+    // Validate role
+    if (role !== 'EMPLOYEE' && role !== 'ADMIN') {
+      return NextResponse.json({ 
+        error: 'Role must be either EMPLOYEE or ADMIN' 
       }, { status: 400 });
     }
     
@@ -90,13 +106,13 @@ export async function POST(req: NextRequest) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create the new employee
-    const employee = await prisma.user.create({
+    // Create the new user with the specified role
+    const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: Role.EMPLOYEE
+        role: role as Role
       },
       select: {
         id: true,
@@ -108,9 +124,9 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    return NextResponse.json(employee, { status: 201 });
+    return NextResponse.json(user, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating employee:', error);
+    console.error('Error creating user:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 } 

@@ -10,13 +10,14 @@ export default function NewEmployeePage() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'EMPLOYEE' // Default role is EMPLOYEE
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -56,21 +57,22 @@ export default function NewEmployeePage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          role: formData.role
         }),
       });
       
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create employee');
+        throw new Error(data.error || 'Failed to create user');
       }
       
       // Redirect to employees list
       router.push('/admin/employees');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error creating employee:', err);
+      console.error('Error creating user:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,9 +82,9 @@ export default function NewEmployeePage() {
     <div className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 flex justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Add New Employee</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Add New User</h1>
           <p className="mt-2 text-sm text-gray-700">
-            Create a new employee account with access to the employee portal.
+            Create a new user account with access to the system.
           </p>
         </div>
         <div>
@@ -114,7 +116,7 @@ export default function NewEmployeePage() {
         </div>
       )}
       
-      {/* Employee form */}
+      {/* User form */}
       <div className="mt-6 overflow-hidden bg-white shadow sm:rounded-lg">
         <form onSubmit={handleSubmit} className="px-4 py-5 sm:p-6">
           <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -153,6 +155,28 @@ export default function NewEmployeePage() {
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
+            </div>
+            
+            {/* Role */}
+            <div className="sm:col-span-3">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Role
+              </label>
+              <div className="mt-1">
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="EMPLOYEE">Employee</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Admin users have full access to the admin dashboard.
+              </p>
             </div>
             
             {/* Password */}
@@ -211,7 +235,7 @@ export default function NewEmployeePage() {
               disabled={isSubmitting}
               className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-75"
             >
-              {isSubmitting ? 'Creating...' : 'Create Employee'}
+              {isSubmitting ? 'Creating...' : formData.role === 'ADMIN' ? 'Create Admin' : 'Create Employee'}
             </button>
           </div>
         </form>
