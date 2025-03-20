@@ -24,8 +24,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminHeader />
-      <main className="pb-16">
-        {children}
+      <main className="lg:pl-64 pb-16 pt-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {children}
+        </div>
       </main>
     </div>
   );
