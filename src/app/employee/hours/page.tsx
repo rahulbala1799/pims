@@ -53,22 +53,33 @@ export default function HourLogsList() {
       // Build the query URL based on filter
       let queryUrl = `/api/hour-logs?userId=${userData.id}`;
       
+      // Use current date for all calculations
+      const currentDate = new Date();
+      
       if (filter === 'week') {
-        const startDate = format(startOfDay(subDays(new Date(), 7)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        const endDate = format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+        // Last 7 days from now
+        const startDate = format(startOfDay(subDays(currentDate, 7)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+        const endDate = format(endOfDay(currentDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
         queryUrl += `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        console.log('Fetching week logs with date range:', { startDate, endDate });
       } else if (filter === 'month') {
-        const startDate = format(startOfDay(subDays(new Date(), 30)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
-        const endDate = format(endOfDay(new Date()), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+        // Last 30 days from now
+        const startDate = format(startOfDay(subDays(currentDate, 30)), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+        const endDate = format(endOfDay(currentDate), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
         queryUrl += `&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        console.log('Fetching month logs with date range:', { startDate, endDate });
       }
       
+      console.log('Fetching logs with URL:', queryUrl);
       const response = await fetch(queryUrl);
-      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch hour logs');
+        const errorData = await response.json();
+        console.error('API Error response:', errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
+      
+      const data = await response.json();
       
       // Sort logs by date (newest first)
       const sortedLogs = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const isPaid = searchParams.get('isPaid');
     
+    console.log('Fetching hour logs with params:', {
+      id, userId, startDate, endDate, isPaid
+    });
+    
     // Query filters
     const filters: any = {};
     
@@ -26,38 +30,77 @@ export async function GET(request: NextRequest) {
       filters.isPaid = isPaid === 'true';
     }
     
-    // Date range filtering
+    // Date range filtering - handle with more care
     if (startDate || endDate) {
       filters.date = {};
       
       if (startDate) {
-        filters.date.gte = startDate;
+        try {
+          // Parse the date safely
+          const parsedStartDate = new Date(startDate);
+          if (!isNaN(parsedStartDate.getTime())) {
+            filters.date.gte = parsedStartDate;
+          } else {
+            console.warn('Invalid startDate format:', startDate);
+          }
+        } catch (error) {
+          console.error('Error parsing startDate:', error);
+          // Don't add invalid date filter
+        }
       }
       
       if (endDate) {
-        filters.date.lte = endDate;
+        try {
+          // Parse the date safely
+          const parsedEndDate = new Date(endDate);
+          if (!isNaN(parsedEndDate.getTime())) {
+            filters.date.lte = parsedEndDate;
+          } else {
+            console.warn('Invalid endDate format:', endDate);
+          }
+        } catch (error) {
+          console.error('Error parsing endDate:', error);
+          // Don't add invalid date filter
+        }
+      }
+      
+      // If no valid dates were added, remove the empty date filter
+      if (Object.keys(filters.date).length === 0) {
+        delete filters.date;
       }
     }
     
-    const hourLogs = await prisma.hourLog.findMany({
-      where: filters,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+    console.log('Using filters:', JSON.stringify(filters));
+    
+    // Fetch hour logs with better error handling
+    try {
+      const hourLogs = await prisma.hourLog.findMany({
+        where: filters,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
-    
-    return NextResponse.json(hourLogs);
+        orderBy: {
+          date: 'desc',
+        },
+      });
+      
+      console.log(`Successfully fetched ${hourLogs.length} hour logs`);
+      return NextResponse.json(hourLogs);
+    } catch (dbError) {
+      console.error('Database error fetching hour logs:', dbError);
+      return NextResponse.json(
+        { error: 'Database error while fetching hour logs' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Error fetching hour logs:', error);
+    console.error('Error in hour logs GET route:', error);
     return NextResponse.json(
       { error: 'Failed to fetch hour logs' },
       { status: 500 }
