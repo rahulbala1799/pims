@@ -98,11 +98,22 @@ export async function GET(request: Request) {
         });
       }
 
-      // Calculate ink costs from inkUsageInMl
+      // Calculate ink costs - different method depending on product class
       const inkCosts = job.jobProducts.reduce((total, product) => {
-        const inkUsage = product.inkUsageInMl || 0;
-        const inkCostPerMl = 0.16; // 0.16€ per ml of ink
-        return total + (inkUsage * inkCostPerMl);
+        // For packaging products, use inkCostPerUnit × completedQuantity
+        if (product.product.productClass === 'PACKAGING') {
+          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0;
+          const completedQuantity = product.completedQuantity || 0;
+          console.log(`Packaging ink cost for ${job.title}: ${inkCostPerUnit} × ${completedQuantity} = ${inkCostPerUnit * completedQuantity}`);
+          return total + (inkCostPerUnit * completedQuantity);
+        } 
+        // For other products (especially wide format), use inkUsageInMl × cost per ml
+        else {
+          const inkUsage = product.inkUsageInMl || 0;
+          const inkCostPerMl = 0.16; // 0.16€ per ml of ink
+          console.log(`Ink usage cost for ${job.title}: ${inkUsage} ml × €${inkCostPerMl} = ${inkUsage * inkCostPerMl}`);
+          return total + (inkUsage * inkCostPerMl);
+        }
       }, 0);
 
       // Calculate gross profit
