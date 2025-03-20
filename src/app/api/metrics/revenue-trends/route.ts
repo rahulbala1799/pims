@@ -54,7 +54,7 @@ async function fetchLastThirtyDaysSales(formattedThirtyDaysAgo: string) {
     },
     select: {
       issueDate: true,
-      totalAmount: true
+      subtotal: true
     },
     orderBy: {
       issueDate: 'asc'
@@ -77,7 +77,7 @@ async function fetchLastThirtyDaysSales(formattedThirtyDaysAgo: string) {
   invoices.forEach(invoice => {
     const dateString = invoice.issueDate.toISOString().split('T')[0];
     const currentAmount = salesByDate.get(dateString) || 0;
-    salesByDate.set(dateString, currentAmount + Number(invoice.totalAmount));
+    salesByDate.set(dateString, currentAmount + Number(invoice.subtotal));
   });
   
   // Convert Map to array
@@ -160,7 +160,7 @@ async function calculateWeeklyGrowth() {
   // Get invoice totals for current week
   const currentWeekRevenue = await prisma.invoice.aggregate({
     _sum: {
-      totalAmount: true
+      subtotal: true
     },
     where: {
       issueDate: {
@@ -175,7 +175,7 @@ async function calculateWeeklyGrowth() {
   // Get invoice totals for previous week
   const previousWeekRevenue = await prisma.invoice.aggregate({
     _sum: {
-      totalAmount: true
+      subtotal: true
     },
     where: {
       issueDate: {
@@ -189,12 +189,12 @@ async function calculateWeeklyGrowth() {
   });
   
   // Convert Decimal to number and handle null values
-  const currentWeek = Number(currentWeekRevenue._sum.totalAmount || 0);
-  const previousWeek = Number(previousWeekRevenue._sum.totalAmount || 0);
+  const currentWeek = Number(currentWeekRevenue._sum.subtotal || 0);
+  const previousWeek = Number(previousWeekRevenue._sum.subtotal || 0);
   
   // Calculate growth percentage (handle division by zero)
   const growthPercentage = previousWeek === 0 
-    ? currentWeek > 0 ? 100 : 0 
+    ? 0
     : ((currentWeek - previousWeek) / previousWeek) * 100;
   
   return {
