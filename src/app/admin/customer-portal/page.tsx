@@ -63,6 +63,12 @@ export default function CustomerPortalPage() {
     customerId: ''
   });
   
+  // Add a new state for customers loading
+  const [customersLoading, setCustomersLoading] = useState(false);
+  
+  // Add a new state for customer loading errors
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  
   // Mock API connections
   const apiConnections: ApiConnection[] = [
     {
@@ -138,15 +144,37 @@ export default function CustomerPortalPage() {
   
   const fetchCustomers = async () => {
     try {
+      setCustomersLoading(true);
+      setCustomerError(null);
       const response = await fetch('/api/customers');
       if (!response.ok) {
         throw new Error('Failed to fetch customers');
       }
       
       const data = await response.json();
-      setCustomers(data.customers || []);
+      // Check the structure of the data returned by the API
+      // Some APIs might return data directly, others might nest it under a property
+      if (Array.isArray(data)) {
+        // If the response is a direct array of customers
+        setCustomers(data);
+      } else if (data.customers && Array.isArray(data.customers)) {
+        // If the response has a customers property
+        setCustomers(data.customers);
+      } else if (data.data && Array.isArray(data.data)) {
+        // Some APIs use a data property
+        setCustomers(data.data);
+      } else {
+        console.error('Unexpected API response format:', data);
+        setCustomerError('Unexpected API response format');
+      }
+      
+      // Log for debugging
+      console.log('Customers API response:', data);
     } catch (err: any) {
       console.error('Error fetching customers:', err);
+      setCustomerError(err.message || 'Failed to load customers');
+    } finally {
+      setCustomersLoading(false);
     }
   };
   
@@ -847,21 +875,39 @@ export default function CustomerPortalPage() {
                           <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
                             Customer <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            id="customerId"
-                            name="customerId"
-                            value={userForm.customerId}
-                            onChange={handleUserFormChange}
-                            required
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          >
-                            <option value="">Select a customer</option>
-                            {customers.map(customer => (
-                              <option key={customer.id} value={customer.id}>
-                                {customer.name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="mt-1 relative">
+                            <select
+                              id="customerId"
+                              name="customerId"
+                              value={userForm.customerId}
+                              onChange={handleUserFormChange}
+                              required
+                              disabled={customersLoading}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            >
+                              <option value="">Select a customer</option>
+                              {customers.map(customer => (
+                                <option key={customer.id} value={customer.id}>
+                                  {customer.name}
+                                </option>
+                              ))}
+                            </select>
+                            {customersLoading && (
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <div className="animate-spin h-5 w-5 border-2 border-indigo-500 rounded-full border-t-transparent"></div>
+                              </div>
+                            )}
+                          </div>
+                          {customers.length === 0 && !customersLoading && !customerError && (
+                            <p className="mt-1 text-sm text-red-600">
+                              No customers available. Please add customers first.
+                            </p>
+                          )}
+                          {customerError && (
+                            <p className="mt-1 text-sm text-red-600">
+                              Error loading customers: {customerError}
+                            </p>
+                          )}
                         </div>
 
                         <div>
