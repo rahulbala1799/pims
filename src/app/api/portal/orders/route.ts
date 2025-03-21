@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { verifyPortalToken } from '../../../../lib/auth/portalAuth';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
+// Get JWT secret from environment variables with fallback
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Force dynamic execution
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,10 +20,26 @@ export async function POST(request: NextRequest) {
     }
     
     // Verify the token and get user info
-    const tokenData = await verifyPortalToken(token);
-    
-    if (!tokenData || !tokenData.id || !tokenData.customerId) {
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      
+      // Safety check to ensure decoded has the expected structure
+      if (typeof decoded !== 'object' || !decoded || !('userId' in decoded) || !('customerId' in decoded)) {
+        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+      }
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+    
+    // Check if user still exists and is active
+    const portalUser = await prisma.portalUser.findUnique({
+      where: { id: decoded.userId as string },
+    });
+    
+    if (!portalUser || portalUser.status !== 'ACTIVE') {
+      return NextResponse.json({ error: 'User account is not active or not found' }, { status: 401 });
     }
     
     const body = await request.json();
@@ -38,12 +61,12 @@ export async function POST(request: NextRequest) {
         notes: body.specialInstructions || '',
         customer: {
           connect: {
-            id: tokenData.customerId
+            id: decoded.customerId as string
           }
         },
         portalUser: {
           connect: {
-            id: tokenData.id
+            id: decoded.userId as string
           }
         },
         // Create order items
@@ -93,16 +116,32 @@ export async function GET(request: NextRequest) {
     }
     
     // Verify the token and get user info
-    const tokenData = await verifyPortalToken(token);
-    
-    if (!tokenData || !tokenData.id || !tokenData.customerId) {
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      
+      // Safety check to ensure decoded has the expected structure
+      if (typeof decoded !== 'object' || !decoded || !('userId' in decoded) || !('customerId' in decoded)) {
+        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+      }
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+    
+    // Check if user still exists and is active
+    const portalUser = await prisma.portalUser.findUnique({
+      where: { id: decoded.userId as string },
+    });
+    
+    if (!portalUser || portalUser.status !== 'ACTIVE') {
+      return NextResponse.json({ error: 'User account is not active or not found' }, { status: 401 });
     }
     
     // Get customer orders
     const orders = await prisma.customerOrder.findMany({
       where: {
-        customerId: tokenData.customerId
+        customerId: decoded.customerId as string
       },
       orderBy: {
         createdAt: 'desc'

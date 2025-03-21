@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { authMiddleware } from '../middleware';
+import jwt from 'jsonwebtoken';
 
 // Prevent static generation for this route
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,8 @@ export const fetchCache = 'force-no-store';
 export const revalidate = 0;
 
 const prisma = new PrismaClient();
+// Get JWT secret from environment variables with fallback
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Define types for the request body
 interface InvoiceItem {
@@ -38,17 +40,39 @@ interface PortalInvoiceRequest {
 export async function GET(request: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authMiddleware(request);
-    if (!(authResult as any).user) {
-      return authResult as NextResponse;
+    const token = request.headers.get('Authorization')?.split(' ')[1];
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
     
-    const portalUser = (authResult as any).user;
+    // Verify the token and get user info
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      
+      // Safety check to ensure decoded has the expected structure
+      if (typeof decoded !== 'object' || !decoded || !('userId' in decoded) || !('customerId' in decoded)) {
+        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+      }
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+    
+    // Check if user still exists and is active
+    const portalUser = await prisma.portalUser.findUnique({
+      where: { id: decoded.userId as string },
+    });
+    
+    if (!portalUser || portalUser.status !== 'ACTIVE') {
+      return NextResponse.json({ error: 'User account is not active or not found' }, { status: 401 });
+    }
 
     // Get all invoices for this customer
     const invoices = await prisma.invoice.findMany({
       where: {
-        customerId: portalUser.customerId,
+        customerId: decoded.customerId as string,
       },
       orderBy: {
         createdAt: 'desc',
@@ -93,12 +117,34 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Authenticate the request
-    const authResult = await authMiddleware(request);
-    if (!(authResult as any).user) {
-      return authResult as NextResponse;
+    const token = request.headers.get('Authorization')?.split(' ')[1];
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
     
-    const portalUser = (authResult as any).user;
+    // Verify the token and get user info
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+      
+      // Safety check to ensure decoded has the expected structure
+      if (typeof decoded !== 'object' || !decoded || !('userId' in decoded) || !('customerId' in decoded)) {
+        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+      }
+    } catch (jwtError) {
+      console.error('JWT verification error:', jwtError);
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+    
+    // Check if user still exists and is active
+    const portalUser = await prisma.portalUser.findUnique({
+      where: { id: decoded.userId as string },
+    });
+    
+    if (!portalUser || portalUser.status !== 'ACTIVE') {
+      return NextResponse.json({ error: 'User account is not active or not found' }, { status: 401 });
+    }
 
     const body = await request.json() as PortalInvoiceRequest;
     
@@ -114,7 +160,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Ensure the customer ID matches the logged-in user's customer ID
-    if (body.customerId !== portalUser.customerId) {
+    if (body.customerId !== decoded.customerId) {
       return NextResponse.json(
         { error: 'Cannot create invoice for another customer' },
         { status: 403 }

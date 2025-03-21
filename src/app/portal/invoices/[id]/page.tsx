@@ -100,7 +100,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       try {
         const token = localStorage.getItem('portalToken');
         if (!token) {
-          throw new Error('Authentication required');
+          throw new Error('Authentication required. Please log in again.');
         }
         
         const response = await fetch(`/api/portal/invoices/${params.id}`, {
@@ -108,6 +108,12 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             'Authorization': `Bearer ${token}`
           }
         });
+        
+        if (response.status === 401) {
+          // Handle authentication errors
+          localStorage.removeItem('portalToken'); // Clear invalid token
+          throw new Error('Your session has expired. Please log in again.');
+        }
         
         if (!response.ok) {
           throw new Error('Failed to fetch invoice');
@@ -118,6 +124,13 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       } catch (err: any) {
         console.error('Error fetching invoice:', err);
         setError(err.message || 'Failed to load invoice');
+        
+        // If it's an authentication error, redirect to login after a short delay
+        if (err.message?.includes('session has expired') || err.message?.includes('Authentication required')) {
+          setTimeout(() => {
+            window.location.href = '/portal/login';
+          }, 3000);
+        }
       } finally {
         setIsLoading(false);
       }

@@ -147,7 +147,7 @@ export default function CheckoutPage() {
       // Get token from localStorage
       const token = localStorage.getItem('portalToken');
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error('Authentication required. Please log in again.');
       }
       
       const orderData = {
@@ -180,6 +180,12 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderData)
       });
       
+      if (orderResponse.status === 401) {
+        // Handle authentication errors
+        localStorage.removeItem('portalToken'); // Clear invalid token
+        throw new Error('Your session has expired. Please log in again.');
+      }
+      
       const orderResult = await orderResponse.json();
       
       if (!orderResponse.ok) {
@@ -187,7 +193,7 @@ export default function CheckoutPage() {
       }
       
       // Store the order ID
-      const newOrderId = orderResult.id || `order-${Date.now()}`;
+      const newOrderId = orderResult.order.id || `order-${Date.now()}`;
       setOrderId(newOrderId);
       
       // Create invoice data
@@ -229,6 +235,12 @@ export default function CheckoutPage() {
         body: JSON.stringify(invoiceData)
       });
       
+      // Handle authentication errors for the invoice API too
+      if (invoiceResponse.status === 401) {
+        localStorage.removeItem('portalToken'); // Clear invalid token
+        throw new Error('Your session has expired. Please log in again.');
+      }
+      
       const invoiceResult = await invoiceResponse.json();
       
       if (!invoiceResponse.ok) {
@@ -246,6 +258,13 @@ export default function CheckoutPage() {
     } catch (err: any) {
       console.error('Error placing order:', err);
       setError(err.message || 'Failed to place order. Please try again.');
+      
+      // If it's an authentication error, redirect to login after a short delay
+      if (err.message?.includes('session has expired') || err.message?.includes('Authentication required')) {
+        setTimeout(() => {
+          router.push('/portal/login');
+        }, 3000);
+      }
     } finally {
       setIsLoading(false);
     }
