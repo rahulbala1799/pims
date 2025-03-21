@@ -60,6 +60,13 @@ export default function CartPage() {
     router.push('/portal/checkout');
   };
 
+  // Format currency safely
+  const formatCurrency = (amount: number | string) => {
+    // Convert to number if it's a string, or default to 0 if conversion fails
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
+    return typeof numAmount === 'number' ? `$${numAmount.toFixed(2)}` : '$0.00';
+  };
+
   if (items.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -119,7 +126,7 @@ export default function CartPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${item.price.toFixed(2)} / {item.unit}</div>
+                    <div className="text-sm text-gray-900">{formatCurrency(item.price)} / {item.unit}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -139,7 +146,7 @@ export default function CartPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {formatCurrency(item.price * item.quantity)}
                   </td>
                   <td className="px-6 py-4">
                     {isEditingNotes[item.productId] ? (
@@ -200,7 +207,7 @@ export default function CartPage() {
         <div className="border-t border-gray-200 pt-4">
           <div className="flex justify-between text-base font-medium text-gray-900">
             <p>Subtotal</p>
-            <p>${totalPrice.toFixed(2)}</p>
+            <p>{formatCurrency(totalPrice)}</p>
           </div>
           <p className="mt-0.5 text-sm text-gray-500">Shipping and taxes will be calculated at checkout.</p>
         </div>
