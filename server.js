@@ -1,29 +1,26 @@
-// This file is used when deploying to environments like Railway
-// It loads the appropriate Next.js server file based on the environment
+// Simple server for Railway deployment
+const { createServer } = require('http');
+const { parse } = require('url');
+const next = require('next');
 
-const fs = require('fs');
-const path = require('path');
-const { exec } = require('child_process');
+// Environment variables
+const dev = process.env.NODE_ENV !== 'production';
+const port = process.env.PORT || 3000;
 
-// Check if we're in production
-const isProd = process.env.NODE_ENV === 'production';
+// Initialize Next.js
+const app = next({ dev });
+const handle = app.getRequestHandler();
 
-// Path to Next.js standalone server (created by next build)
-const standalonePath = path.join(__dirname, '.next/standalone/server.js');
-
-// Check if .next/standalone exists
-if (isProd && fs.existsSync(standalonePath)) {
-  console.log('Starting Next.js standalone server...');
-  require(standalonePath);
-} else {
-  console.log('Starting Next.js dev server...');
-  // For development or when standalone doesn't exist, run the dev server
-  exec('npx next start', (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error starting Next.js: ${error}`);
-      return;
-    }
-    console.log(stdout);
-    console.error(stderr);
+app.prepare().then(() => {
+  createServer((req, res) => {
+    // Parse the URL
+    const parsedUrl = parse(req.url, true);
+    
+    // Let Next.js handle the request
+    handle(req, res, parsedUrl);
+  })
+  .listen(port, (err) => {
+    if (err) throw err;
+    console.log(`> Ready on http://localhost:${port}`);
   });
-} 
+}); 

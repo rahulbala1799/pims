@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Remove standalone output for now to fix deployment
+  // output: 'standalone',
   reactStrictMode: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
@@ -18,10 +19,6 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'jsonwebtoken'],
     // Force Server Components to be treated as Client Components during static generation
     appDir: true,
-    // Disable static generation for API routes, improving auth compatibility
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
   },
   // Configure image optimization
   images: {
@@ -39,12 +36,6 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   // Optimize compiled code
   swcMinify: true,
-  // Configure compiler to handle JSON Web Tokens properly
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn'],
-    } : false,
-  },
 };
 
 module.exports = nextConfig; 

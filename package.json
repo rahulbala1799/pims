@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "npx next dev",
-    "build": "prisma generate && npx next build --debug",
-    "start": "if [ -f .next/standalone/server.js ]; then node .next/standalone/server.js; else npx next start; fi",
+    "build": "prisma generate && npx next build",
+    "start": "node server.js",
     "lint": "npx next lint",
     "postinstall": "prisma generate && npx prisma db push --accept-data-loss && ([ \"$RAILWAY_ENVIRONMENT_NAME\" ] || node prisma/seed.js)",
     "seed:admin": "node prisma/seed-admin.js",
