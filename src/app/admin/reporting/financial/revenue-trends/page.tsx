@@ -3,6 +3,28 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface DailySales {
   date: string;
@@ -131,6 +153,65 @@ export default function RevenueTrendsPage() {
     }).format(date);
   };
 
+  // Prepare chart data for Line chart
+  const chartData = {
+    labels: data.lastThirtyDaysSales.map(day => formatDate(day.date)),
+    datasets: [
+      {
+        label: 'Daily Sales',
+        data: data.lastThirtyDaysSales.map(day => day.amount),
+        borderColor: 'rgb(79, 70, 229)',
+        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: 'rgb(79, 70, 229)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+      }
+    ]
+  };
+  
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context: any) {
+            return `Sales: ${formatCurrency(context.raw)}`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false
+        },
+        ticks: {
+          maxRotation: 0,
+          autoSkip: true,
+          maxTicksLimit: 10
+        }
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)'
+        },
+        ticks: {
+          callback: function(value: any) {
+            return formatCurrency(value);
+          }
+        }
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -199,7 +280,7 @@ export default function RevenueTrendsPage() {
             </div>
           </div>
           
-          {/* Bar Chart - Last 30 Days Sales */}
+          {/* Line Chart - Last 30 Days Sales */}
           <div className="bg-white rounded-lg shadow mb-8">
             <div className="p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
@@ -207,22 +288,15 @@ export default function RevenueTrendsPage() {
               </h2>
               
               <div className="h-80">
-                <div className="flex h-full items-end space-x-2">
-                  {data.lastThirtyDaysSales.map((day, index) => (
-                    <div key={index} className="flex flex-col items-center flex-1">
-                      <div 
-                        className="w-full bg-indigo-500 rounded-t hover:bg-indigo-600 transition-colors duration-200"
-                        style={{ 
-                          height: `${(day.amount / maxSales) * 100}%`,
-                          minHeight: '4px' 
-                        }}
-                      ></div>
-                      <div className="mt-2 text-xs text-gray-600 w-full text-center truncate" title={day.date}>
-                        {index % 3 === 0 ? formatDate(day.date) : ''}
-                      </div>
+                {data.lastThirtyDaysSales.length > 0 ? (
+                  <Line data={chartData} options={chartOptions} />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-gray-500 mb-2">No sales data available</p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
