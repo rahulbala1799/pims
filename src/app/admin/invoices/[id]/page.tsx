@@ -51,6 +51,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [error, setError] = useState<string | null>(null);
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [existingJobId, setExistingJobId] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -215,6 +216,41 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     }
   };
 
+  // Add a function to update invoice status
+  const updateInvoiceStatus = async (newStatus: string) => {
+    if (!confirm(`Are you sure you want to mark this invoice as ${newStatus.toLowerCase()}?`)) {
+      return;
+    }
+    
+    setIsUpdatingStatus(true);
+    
+    try {
+      const response = await fetch(`/api/invoices/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update invoice status: ${response.statusText}`);
+      }
+      
+      // Update local state
+      setInvoice({
+        ...invoice!,
+        status: newStatus as 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED'
+      });
+      
+    } catch (err) {
+      console.error('Error updating invoice status:', err);
+      alert(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -341,11 +377,38 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                 <div className="mt-2 text-sm text-gray-500">
                   <div className="grid grid-cols-2 gap-2">
                     <p className="text-gray-500">Status:</p>
-                    <p>
+                    <div className="flex items-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(invoice.status)}`}>
                         {invoice.status}
                       </span>
-                    </p>
+                      <div className="ml-2">
+                        <button 
+                          type="button"
+                          className="text-xs text-indigo-600 hover:text-indigo-900"
+                          onClick={() => {
+                            const select = document.getElementById('statusUpdate');
+                            if (select) select.classList.toggle('hidden');
+                          }}
+                        >
+                          Change
+                        </button>
+                        <select
+                          id="statusUpdate"
+                          className="hidden ml-2 mt-1 text-xs border-gray-300 rounded-md"
+                          onChange={(e) => updateInvoiceStatus(e.target.value)}
+                          disabled={isUpdatingStatus}
+                          value={invoice.status}
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="PAID">Paid</option>
+                          <option value="OVERDUE">Overdue</option>
+                          <option value="CANCELLED">Cancelled</option>
+                        </select>
+                        {isUpdatingStatus && (
+                          <span className="ml-2 inline-block h-3 w-3 rounded-full border-2 border-t-indigo-500 animate-spin"></span>
+                        )}
+                      </div>
+                    </div>
                     
                     <p className="text-gray-500">Issue Date:</p>
                     <p className="text-gray-900">{formatDate(invoice.issueDate)}</p>
