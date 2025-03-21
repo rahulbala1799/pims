@@ -40,6 +40,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Time Tracking', href: '/admin/time-tracking', icon: FiClock },
   { name: 'Employee Hours', href: '/admin/employee-hours', icon: FiClock },
   { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: FiFileText },
+  { name: 'Metrics', href: '/admin/metrics', icon: FiBarChart2 },
   { 
     name: 'Reporting', 
     href: '/admin/reporting', 
