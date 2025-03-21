@@ -13,7 +13,10 @@ import {
   FiPlus,
   FiSettings,
   FiTrash2,
-  FiEdit
+  FiEdit,
+  FiEye,
+  FiEyeOff,
+  FiDollarSign
 } from 'react-icons/fi';
 
 interface ApiConnection {
@@ -43,6 +46,26 @@ interface PortalUser {
   createdAt: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  description?: string;
+  productClass: string;
+  basePrice: number;
+  unit: string;
+  isActive: boolean;
+}
+
+interface CustomerCatalog {
+  customerId: string;
+  customerName: string;
+  totalProducts: number;
+  visibleProducts: number;
+  hasCustomPricing: boolean;
+  lastUpdated: string;
+}
+
 export default function CustomerPortalPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'products' | 'settings'>('overview');
   const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
@@ -68,6 +91,27 @@ export default function CustomerPortalPage() {
   
   // Add a new state for customer loading errors
   const [customerError, setCustomerError] = useState<string | null>(null);
+  
+  // Product catalog states
+  const [customerCatalogs, setCustomerCatalogs] = useState<CustomerCatalog[]>([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  
+  // Product management modal states
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [customerProducts, setCustomerProducts] = useState<{
+    id: string;
+    productId: string;
+    customPrice: number | null;
+    isVisible: boolean;
+    customerProductCode?: string;
+    customerProductName?: string;
+  }[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
   
   // Mock API connections
   const apiConnections: ApiConnection[] = [
@@ -121,6 +165,21 @@ export default function CustomerPortalPage() {
       fetchCustomers();
     }
   }, [showUserModal]);
+
+  // Fetch customer catalogs when products tab is active
+  useEffect(() => {
+    if (activeTab === 'products') {
+      fetchCustomerCatalogs();
+    }
+  }, [activeTab]);
+  
+  // Fetch all products and customer products when product modal is shown
+  useEffect(() => {
+    if (showProductModal && selectedCustomerId) {
+      fetchAllProducts();
+      fetchCustomerProducts(selectedCustomerId);
+    }
+  }, [showProductModal, selectedCustomerId]);
   
   const fetchPortalUsers = async () => {
     try {
@@ -175,6 +234,137 @@ export default function CustomerPortalPage() {
       setCustomerError(err.message || 'Failed to load customers');
     } finally {
       setCustomersLoading(false);
+    }
+  };
+
+  // Fetch customer catalogs with product counts
+  const fetchCustomerCatalogs = async () => {
+    try {
+      setCatalogsLoading(true);
+      setCatalogError(null);
+      
+      // First, get all customers
+      const customersResponse = await fetch('/api/customers');
+      if (!customersResponse.ok) {
+        throw new Error('Failed to fetch customers');
+      }
+      
+      let customersData;
+      const customersJson = await customersResponse.json();
+      
+      if (Array.isArray(customersJson)) {
+        customersData = customersJson;
+      } else if (customersJson.customers && Array.isArray(customersJson.customers)) {
+        customersData = customersJson.customers;
+      } else if (customersJson.data && Array.isArray(customersJson.data)) {
+        customersData = customersJson.data;
+      } else {
+        throw new Error('Unexpected customers API response format');
+      }
+      
+      // For each customer, get catalog stats
+      const catalogPromises = customersData.map(async (customer: Customer) => {
+        try {
+          const response = await fetch(`/api/portal/catalog/stats?customerId=${customer.id}`);
+          
+          if (!response.ok) {
+            // If we can't get catalog stats, create default values
+            return {
+              customerId: customer.id,
+              customerName: customer.name,
+              totalProducts: 0,
+              visibleProducts: 0,
+              hasCustomPricing: false,
+              lastUpdated: 'Never'
+            };
+          }
+          
+          const data = await response.json();
+          return {
+            customerId: customer.id,
+            customerName: customer.name,
+            totalProducts: data.totalProducts || 0,
+            visibleProducts: data.visibleProducts || 0,
+            hasCustomPricing: data.hasCustomPricing || false,
+            lastUpdated: data.lastUpdated || 'Never'
+          };
+        } catch (err) {
+          console.error(`Error fetching catalog for customer ${customer.id}:`, err);
+          return {
+            customerId: customer.id,
+            customerName: customer.name,
+            totalProducts: 0,
+            visibleProducts: 0,
+            hasCustomPricing: false,
+            lastUpdated: 'Never'
+          };
+        }
+      });
+      
+      const catalogs = await Promise.all(catalogPromises);
+      setCustomerCatalogs(catalogs);
+      
+    } catch (err: any) {
+      console.error('Error fetching customer catalogs:', err);
+      setCatalogError(err.message || 'An error occurred while fetching catalogs');
+    } finally {
+      setCatalogsLoading(false);
+    }
+  };
+  
+  // Fetch all products
+  const fetchAllProducts = async () => {
+    try {
+      setProductsLoading(true);
+      setProductError(null);
+      
+      const response = await fetch('/api/products');
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      
+      const data = await response.json();
+      let products;
+      
+      if (Array.isArray(data)) {
+        products = data;
+      } else if (data.products && Array.isArray(data.products)) {
+        products = data.products;
+      } else if (data.data && Array.isArray(data.data)) {
+        products = data.data;
+      } else {
+        throw new Error('Unexpected products API response format');
+      }
+      
+      setAllProducts(products.filter((p: any) => p.isActive));
+      
+    } catch (err: any) {
+      console.error('Error fetching products:', err);
+      setProductError(err.message || 'An error occurred while fetching products');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+  
+  // Fetch customer-specific products
+  const fetchCustomerProducts = async (customerId: string) => {
+    try {
+      setProductsLoading(true);
+      setProductError(null);
+      
+      const response = await fetch(`/api/portal/catalog?customerId=${customerId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch customer catalog');
+      }
+      
+      const data = await response.json();
+      setCustomerProducts(data.catalog || []);
+      
+    } catch (err: any) {
+      console.error('Error fetching customer catalog:', err);
+      setProductError(err.message || 'An error occurred while fetching customer catalog');
+    } finally {
+      setProductsLoading(false);
     }
   };
   
@@ -311,6 +501,175 @@ export default function CustomerPortalPage() {
       case 'INACTIVE': return 'bg-gray-100 text-gray-800';
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  
+  // Function to handle updating a customer's product catalog
+  const handleManageCatalog = (customerId: string, customerName: string) => {
+    setSelectedCustomerId(customerId);
+    setSelectedCustomerName(customerName);
+    setShowProductModal(true);
+  };
+  
+  // Handle toggling product visibility in customer catalog
+  const handleProductVisibilityToggle = (productId: string, isVisible: boolean) => {
+    setCustomerProducts(prev => {
+      // Find if the product is already in the customer catalog
+      const existingIndex = prev.findIndex(p => p.productId === productId);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          isVisible
+        };
+        return updated;
+      } else {
+        // Create new entry
+        return [
+          ...prev,
+          {
+            id: '', // Will be assigned by the server
+            productId,
+            customPrice: null,
+            isVisible,
+            customerProductCode: '',
+            customerProductName: ''
+          }
+        ];
+      }
+    });
+  };
+  
+  // Handle changing custom price
+  const handleCustomPriceChange = (productId: string, price: number | null) => {
+    setCustomerProducts(prev => {
+      // Find if the product is already in the customer catalog
+      const existingIndex = prev.findIndex(p => p.productId === productId);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          customPrice: price
+        };
+        return updated;
+      } else {
+        // Create new entry with visibility defaulted to true
+        return [
+          ...prev,
+          {
+            id: '', // Will be assigned by the server
+            productId,
+            customPrice: price,
+            isVisible: true,
+            customerProductCode: '',
+            customerProductName: ''
+          }
+        ];
+      }
+    });
+  };
+  
+  // Handle changing custom product code
+  const handleCustomProductCodeChange = (productId: string, code: string) => {
+    setCustomerProducts(prev => {
+      // Find if the product is already in the customer catalog
+      const existingIndex = prev.findIndex(p => p.productId === productId);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          customerProductCode: code
+        };
+        return updated;
+      } else {
+        // Create new entry with visibility defaulted to true
+        return [
+          ...prev,
+          {
+            id: '', // Will be assigned by the server
+            productId,
+            customPrice: null,
+            isVisible: true,
+            customerProductCode: code,
+            customerProductName: ''
+          }
+        ];
+      }
+    });
+  };
+  
+  // Handle changing custom product name
+  const handleCustomProductNameChange = (productId: string, name: string) => {
+    setCustomerProducts(prev => {
+      // Find if the product is already in the customer catalog
+      const existingIndex = prev.findIndex(p => p.productId === productId);
+      
+      if (existingIndex >= 0) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          customerProductName: name
+        };
+        return updated;
+      } else {
+        // Create new entry with visibility defaulted to true
+        return [
+          ...prev,
+          {
+            id: '', // Will be assigned by the server
+            productId,
+            customPrice: null,
+            isVisible: true,
+            customerProductCode: '',
+            customerProductName: name
+          }
+        ];
+      }
+    });
+  };
+  
+  // Handle saving catalog changes
+  const handleSaveCatalog = async () => {
+    if (!selectedCustomerId) return;
+    
+    try {
+      setProductsLoading(true);
+      setProductError(null);
+      
+      const response = await fetch(`/api/portal/catalog`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: selectedCustomerId,
+          products: customerProducts
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save catalog');
+      }
+      
+      // Close the modal
+      setShowProductModal(false);
+      
+      // Refresh the catalogs list
+      fetchCustomerCatalogs();
+      
+    } catch (err: any) {
+      console.error('Error saving catalog:', err);
+      setProductError(err.message || 'An error occurred while saving the catalog');
+    } finally {
+      setProductsLoading(false);
     }
   };
   
@@ -595,77 +954,95 @@ export default function CustomerPortalPage() {
                 </div>
                 <button
                   type="button"
+                  onClick={fetchCustomerCatalogs}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   <FiSettings className="-ml-1 mr-2 h-4 w-4" />
-                  Configure Catalog
+                  Refresh Catalogs
                 </button>
               </div>
-              <div className="border-t border-gray-200">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Customer
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Products Visible
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Custom Pricing
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Updated
-                        </th>
-                        <th scope="col" className="relative px-6 py-3">
-                          <span className="sr-only">Manage</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {/* Mock data - will be replaced with actual data from API */}
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">Acme Inc.</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">42 / 68</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Yes
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          2023-11-15
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <a href="#" className="text-indigo-600 hover:text-indigo-900">Manage</a>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">TechCorp</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">68 / 68</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                            No
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          2023-11-20
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <a href="#" className="text-indigo-600 hover:text-indigo-900">Manage</a>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+              
+              {catalogError && (
+                <div className="mx-6 mt-4 bg-red-50 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <FiX className="h-5 w-5 text-red-400" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">{catalogError}</h3>
+                    </div>
+                  </div>
                 </div>
+              )}
+              
+              <div className="border-t border-gray-200">
+                {catalogsLoading ? (
+                  <div className="flex justify-center items-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Customer
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Products Visible
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Custom Pricing
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Updated
+                          </th>
+                          <th scope="col" className="relative px-6 py-3">
+                            <span className="sr-only">Manage</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {customerCatalogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                              No customer catalogs found. Add products to customer catalogs to get started.
+                            </td>
+                          </tr>
+                        ) : (
+                          customerCatalogs.map((catalog) => (
+                            <tr key={catalog.customerId}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">{catalog.customerName}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {catalog.visibleProducts} / {catalog.totalProducts}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${catalog.hasCustomPricing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                                  {catalog.hasCustomPricing ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {catalog.lastUpdated}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button 
+                                  onClick={() => handleManageCatalog(catalog.customerId, catalog.customerName)}
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                >
+                                  Manage Products
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -962,6 +1339,162 @@ export default function CustomerPortalPage() {
                         </button>
                       </div>
                     </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Product Catalog Modal */}
+      {showProductModal && (
+        <div className="fixed z-10 inset-0 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
+              <div>
+                <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    Manage Product Catalog: {selectedCustomerName}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Select products to display in the customer portal and set custom pricing
+                  </p>
+                  
+                  {productError && (
+                    <div className="mt-4 bg-red-50 p-4 rounded-md">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <FiX className="h-5 w-5 text-red-400" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">{productError}</h3>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4">
+                    {productsLoading ? (
+                      <div className="flex justify-center items-center py-10">
+                        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
+                      </div>
+                    ) : (
+                      <div className="overflow-y-auto max-h-96">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                                Visible
+                              </th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Product
+                              </th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Base Price
+                              </th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Custom Price
+                              </th>
+                              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Custom Name/Code
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {allProducts.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                                  No products available. Please add products to your catalog first.
+                                </td>
+                              </tr>
+                            ) : (
+                              allProducts.map((product) => {
+                                // Find if this product is in the customer catalog
+                                const catalogEntry = customerProducts.find(cp => cp.productId === product.id);
+                                const isVisible = catalogEntry ? catalogEntry.isVisible : false;
+                                const customPrice = catalogEntry ? catalogEntry.customPrice : null;
+                                const customerProductCode = catalogEntry ? catalogEntry.customerProductCode : '';
+                                const customerProductName = catalogEntry ? catalogEntry.customerProductName : '';
+                                
+                                return (
+                                  <tr key={product.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <input
+                                        type="checkbox"
+                                        checked={isVisible}
+                                        onChange={() => handleProductVisibilityToggle(product.id, !isVisible)}
+                                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                      />
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                                      <div className="text-sm text-gray-500">{product.sku}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="text-sm text-gray-900">€{product.basePrice.toFixed(2)}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={customPrice !== null ? customPrice : ''}
+                                        onChange={(e) => handleCustomPriceChange(product.id, e.target.value ? parseFloat(e.target.value) : null)}
+                                        placeholder={`€${product.basePrice.toFixed(2)}`}
+                                        className="w-24 border border-gray-300 rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                      />
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                      <div className="flex space-x-2">
+                                        <input
+                                          type="text"
+                                          value={customerProductCode || ''}
+                                          onChange={(e) => handleCustomProductCodeChange(product.id, e.target.value)}
+                                          placeholder="Custom Code"
+                                          className="w-24 border border-gray-300 rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={customerProductName || ''}
+                                          onChange={(e) => handleCustomProductNameChange(product.id, e.target.value)}
+                                          placeholder="Custom Name"
+                                          className="w-32 border border-gray-300 rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        />
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    <button
+                      type="button"
+                      onClick={handleSaveCatalog}
+                      disabled={productsLoading}
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                    >
+                      {productsLoading ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowProductModal(false)}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>
