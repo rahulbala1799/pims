@@ -11,19 +11,23 @@ export default function CartPage() {
   const router = useRouter();
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
   const [isEditingNotes, setIsEditingNotes] = useState<{ [key: string]: boolean }>({});
+  const [quantityInputs, setQuantityInputs] = useState<{ [key: string]: number }>({});
 
   // Initialize notes from cart items
   useEffect(() => {
     const initialNotes: { [key: string]: string } = {};
     const initialEditState: { [key: string]: boolean } = {};
+    const initialQuantities: { [key: string]: number } = {};
     
     items.forEach(item => {
       initialNotes[item.productId] = item.notes || '';
       initialEditState[item.productId] = false;
+      initialQuantities[item.productId] = item.quantity;
     });
     
     setNotes(initialNotes);
     setIsEditingNotes(initialEditState);
+    setQuantityInputs(initialQuantities);
   }, [items]);
 
   const handleQuantityChange = (productId: string, amount: number) => {
@@ -31,6 +35,28 @@ export default function CartPage() {
     if (item) {
       const newQuantity = Math.max(1, item.quantity + amount);
       updateQuantity(productId, newQuantity);
+      setQuantityInputs({...quantityInputs, [productId]: newQuantity});
+    }
+  };
+
+  const handleQuantityInputChange = (productId: string, value: string) => {
+    // Update local state for the input field
+    const parsedValue = parseInt(value) || 1;
+    setQuantityInputs({...quantityInputs, [productId]: parsedValue});
+  };
+
+  const handleQuantityInputBlur = (productId: string) => {
+    // Update cart when focus leaves the input field
+    const quantity = Math.max(1, quantityInputs[productId] || 1);
+    updateQuantity(productId, quantity);
+  };
+
+  const handleQuantityInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, productId: string) => {
+    // Update cart when Enter key is pressed
+    if (e.key === 'Enter') {
+      const quantity = Math.max(1, quantityInputs[productId] || 1);
+      updateQuantity(productId, quantity);
+      e.currentTarget.blur();
     }
   };
 
@@ -64,7 +90,7 @@ export default function CartPage() {
   const formatCurrency = (amount: number | string) => {
     // Convert to number if it's a string, or default to 0 if conversion fails
     const numAmount = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
-    return typeof numAmount === 'number' ? `$${numAmount.toFixed(2)}` : '$0.00';
+    return typeof numAmount === 'number' ? `€${numAmount.toFixed(2)}` : '€0.00';
   };
 
   if (items.length === 0) {
@@ -136,7 +162,16 @@ export default function CartPage() {
                       >
                         <FiMinusCircle className="h-5 w-5" />
                       </button>
-                      <span className="mx-2 text-gray-700">{item.quantity}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        className="mx-2 w-16 text-center shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border-gray-300 rounded-md"
+                        value={quantityInputs[item.productId] || item.quantity}
+                        onChange={(e) => handleQuantityInputChange(item.productId, e.target.value)}
+                        onBlur={() => handleQuantityInputBlur(item.productId)}
+                        onKeyDown={(e) => handleQuantityInputKeyDown(e, item.productId)}
+                        placeholder="50"
+                      />
                       <button 
                         onClick={() => handleQuantityChange(item.productId, 1)}
                         className="text-gray-400 hover:text-gray-500"
