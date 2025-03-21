@@ -27,6 +27,12 @@ export default function Home() {
               >
                 Employee Login
               </Link>
+              <Link 
+                href="/portal/landing" 
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Customer Portal
+              </Link>
             </div>
           </div>
         </div>

@@ -23,24 +23,30 @@ export default function PortalLogin() {
     setError('');
     
     try {
-      // For development, we'll use mock authentication
-      // In production, this would make an API call
-      if (email === 'john.doe@example.com' && password === 'password') {
-        // Store user info in localStorage
-        localStorage.setItem('portalUser', JSON.stringify({
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          company: 'Acme Inc.',
-          role: 'ADMIN'
-        }));
-        
-        // Redirect to dashboard
-        router.push('/portal');
-      } else {
-        setError('Invalid email or password');
+      // Call the authentication API
+      const response = await fetch('/api/portal/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Authentication failed');
       }
+      
+      // Store user info and token in localStorage
+      localStorage.setItem('portalUser', JSON.stringify(data.user));
+      localStorage.setItem('portalToken', data.token);
+      
+      // Redirect to dashboard
+      router.push('/portal');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -142,8 +148,8 @@ export default function PortalLogin() {
             Don't have an account? Contact your account manager.
           </p>
           <p className="mt-2 text-sm text-gray-600">
-            <Link href="/" className="font-medium text-indigo-600 hover:text-indigo-500">
-              Return to main site
+            <Link href="/portal/landing" className="font-medium text-indigo-600 hover:text-indigo-500">
+              Return to portal home
             </Link>
           </p>
         </div>

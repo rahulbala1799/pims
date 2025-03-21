@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FiShoppingCart, FiFileText, FiPackage, FiUser, FiHome, FiLogOut } from 'react-icons/fi';
@@ -11,37 +11,62 @@ interface PortalLayoutProps {
 
 export default function PortalLayout({ children }: PortalLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
-  // Mock authentication check - replace with actual authentication later
+  // Authentication check
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
-        // This would check if user data exists in localStorage or session
-        const userData = localStorage.getItem('portalUser');
+        // Skip authentication for login page and landing page
+        if (pathname === '/portal/login' || pathname === '/portal/landing') {
+          setIsLoading(false);
+          return;
+        }
         
-        if (!userData) {
+        // Get token from localStorage
+        const token = localStorage.getItem('portalToken');
+        
+        if (!token) {
           // Not logged in, redirect to portal login
           router.push('/portal/login');
           return;
         }
 
-        // Parse user data and set to state
-        const user = JSON.parse(userData);
-        setUser(user);
+        // Verify token with API
+        const response = await fetch('/api/portal/auth', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.valid) {
+          throw new Error(data.error || 'Invalid authentication');
+        }
+        
+        // Set user data
+        setUser(data.user);
+        localStorage.setItem('portalUser', JSON.stringify(data.user));
         
         // Authentication successful
         setIsLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
+        localStorage.removeItem('portalToken');
         localStorage.removeItem('portalUser');
         router.push('/portal/login');
       }
     };
     
-    // In development, we'll skip authentication for now
-    // checkAuth();
+    // Check authentication on route change
+    checkAuth();
+    
+    // For development, we can skip the authentication temporarily
+    /*
     setTimeout(() => {
       setUser({
         name: 'John Doe',
@@ -51,15 +76,18 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
       });
       setIsLoading(false);
     }, 500);
-  }, [router]);
+    */
+  }, [router, pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('portalUser');
+    localStorage.removeItem('portalToken');
     router.push('/portal/login');
   };
 
-  // Check if the current route is the login page
-  const isLoginPage = false; // We'll implement this logic later
+  // Check if the current route is the login page or landing page
+  const isLoginPage = pathname === '/portal/login';
+  const isLandingPage = pathname === '/portal/landing';
 
   if (isLoading) {
     return (
@@ -71,8 +99,8 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
     );
   }
 
-  if (isLoginPage) {
-    // Just render the login page without the portal layout
+  if (isLoginPage || isLandingPage) {
+    // Just render the login page or landing page without the portal layout
     return <>{children}</>;
   }
 
@@ -91,17 +119,17 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
             <div className="flex items-center">
               {user && (
                 <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-4">{user.company}</span>
+                  <span className="text-sm text-gray-500 mr-4">{user.companyName || 'Company'}</span>
                   <div className="relative">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="font-medium text-indigo-800">
-                          {user.name.split(' ').map((n: string) => n[0]).join('')}
+                          {user.name && user.name.split(' ').map((n: string) => n[0]).join('')}
                         </span>
                       </div>
                       <div className="ml-2">
-                        <div className="text-sm font-medium text-gray-700">{user.name}</div>
-                        <div className="text-xs text-gray-500">{user.email}</div>
+                        <div className="text-sm font-medium text-gray-700">{user.name || 'User'}</div>
+                        <div className="text-xs text-gray-500">{user.email || 'Email'}</div>
                       </div>
                     </div>
                   </div>
