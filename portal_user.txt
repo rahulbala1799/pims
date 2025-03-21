@@ -1,0 +1,16 @@
+model PortalUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  role         PortalRole      @default(STANDARD)
+  status       UserStatus      @default(ACTIVE)
+  customerId   String
+  lastLogin    DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  orders       CustomerOrder[]
+  customer     Customer        @relation(fields: [customerId], references: [id])
+
+  @@map("portal_users")

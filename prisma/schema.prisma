@@ -18,25 +18,25 @@ model User {
   hourLogs        HourLog[]
   jobs            Job[]            @relation("AssignedTo")
   createdJobs     Job[]            @relation("CreatedBy")
+  jobAssignments  JobAssignment[]
   createdProducts Product[]        @relation("ProductCreatedBy")
   progressUpdates ProgressUpdate[]
-  jobAssignments  JobAssignment[]
 }
 
 model Customer {
-  id        String    @id @default(cuid())
-  name      String
-  email     String    @unique
-  phone     String?
-  address   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  invoices  Invoice[]
-  jobs      Job[]
-  portalUsers PortalUser[]
-  orders CustomerOrder[]
-  quotes Quote[]
+  id             String                   @id @default(cuid())
+  name           String
+  email          String                   @unique
+  phone          String?
+  address        String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  invoices       Invoice[]
+  jobs           Job[]
+  orders         CustomerOrder[]
   productCatalog CustomerProductCatalog[]
+  portalUsers    PortalUser[]
+  quotes         Quote[]
 }
 
 model Job {
@@ -52,17 +52,17 @@ model Job {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   invoiceId       String?
+  customerOrderId String?          @unique
   assignedTo      User?            @relation("AssignedTo", fields: [assignedToId], references: [id])
   createdBy       User             @relation("CreatedBy", fields: [createdById], references: [id])
   customer        Customer         @relation(fields: [customerId], references: [id])
+  customerOrder   CustomerOrder?   @relation(fields: [customerOrderId], references: [id])
   invoice         Invoice?         @relation(fields: [invoiceId], references: [id])
+  jobAssignments  JobAssignment[]
   jobCostings     JobCosting[]
   metrics         JobMetrics?
   jobProducts     JobProduct[]
   progressUpdates ProgressUpdate[]
-  jobAssignments  JobAssignment[]
-  customerOrder   CustomerOrder?   @relation(fields: [customerOrderId], references: [id])
-  customerOrderId String?         @unique
 }
 
 model ProgressUpdate {
@@ -93,37 +93,37 @@ model JobMetrics {
 }
 
 model Product {
-  id               String           @id @default(cuid())
+  id               String                   @id @default(cuid())
   name             String
-  sku              String           @unique
+  sku              String                   @unique
   description      String?
   productClass     ProductClass
-  basePrice        Decimal          @db.Decimal(10, 2)
+  basePrice        Decimal                  @db.Decimal(10, 2)
   unit             String
   dimensions       String?
   weight           Float?
   material         String?
   finishOptions    String[]
-  minOrderQuantity Int              @default(1)
+  minOrderQuantity Int                      @default(1)
   leadTime         Int?
-  isActive         Boolean          @default(true)
+  isActive         Boolean                  @default(true)
   createdById      String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
   packagingType    String?
   printResolution  String?
   paperWeight      Int?
   foldType         String?
   bindingType      String?
-  costPerSqMeter   Decimal?         @db.Decimal(10, 2)
+  costPerSqMeter   Decimal?                 @db.Decimal(10, 2)
   defaultLength    Float?
   defaultWidth     Float?
   invoiceItems     InvoiceItem[]
   jobProducts      JobProduct[]
-  createdBy        User             @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  createdBy        User                     @relation("ProductCreatedBy", fields: [createdById], references: [id])
   productVariants  ProductVariant[]
-  orderItems       OrderItem[]
   customerCatalogs CustomerProductCatalog[]
+  orderItems       OrderItem[]
 }
 
 model ProductVariant {
@@ -216,10 +216,10 @@ model HourLog {
   hours       Float?
   isActive    Boolean   @default(true)
   autoStopped Boolean   @default(false)
-  isPaid      Boolean   @default(false)
   notes       String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  isPaid      Boolean   @default(false)
   user        User      @relation(fields: [userId], references: [id])
 
   @@index([userId, date])
@@ -236,6 +236,111 @@ model JobAssignment {
   @@unique([jobId, userId])
   @@index([userId])
   @@index([jobId])
+}
+
+model PortalUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  firstName    String?
+  lastName     String?
+  role         PortalRole      @default(STANDARD)
+  status       UserStatus      @default(ACTIVE)
+  customerId   String
+  lastLogin    DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  orders       CustomerOrder[]
+  customer     Customer        @relation(fields: [customerId], references: [id])
+
+  @@map("portal_users")
+}
+
+model CustomerOrder {
+  id           String      @id @default(uuid())
+  orderNumber  String      @unique
+  status       OrderStatus @default(DRAFT)
+  totalAmount  Decimal     @default(0) @db.Decimal(10, 2)
+  currency     String      @default("EUR")
+  notes        String?
+  customerId   String
+  portalUserId String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  job          Job?
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  portalUser   PortalUser  @relation(fields: [portalUserId], references: [id])
+  orderFiles   OrderFile[]
+  orderItems   OrderItem[]
+  quote        Quote?
+
+  @@map("customer_orders")
+}
+
+model OrderItem {
+  id             String        @id @default(uuid())
+  quantity       Int
+  unitPrice      Decimal       @db.Decimal(10, 2)
+  specifications Json?
+  notes          String?
+  orderId        String
+  productId      String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  files          OrderFile[]
+  order          CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product       @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model OrderFile {
+  id          String        @id @default(uuid())
+  fileName    String
+  fileUrl     String
+  fileType    String
+  orderId     String
+  orderItemId String?
+  uploadedBy  String
+  uploadedAt  DateTime      @default(now())
+  order       CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem?    @relation(fields: [orderItemId], references: [id])
+
+  @@map("order_files")
+}
+
+model Quote {
+  id          String         @id @default(uuid())
+  quoteNumber String         @unique
+  status      QuoteStatus    @default(PENDING)
+  expiresAt   DateTime
+  totalAmount Decimal        @db.Decimal(10, 2)
+  items       Json
+  customerId  String
+  orderId     String?        @unique
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  customer    Customer       @relation(fields: [customerId], references: [id])
+  order       CustomerOrder? @relation(fields: [orderId], references: [id])
+
+  @@map("quotes")
+}
+
+model CustomerProductCatalog {
+  id                  String   @id @default(uuid())
+  customerProductCode String?
+  customerProductName String?
+  customPrice         Decimal? @db.Decimal(10, 2)
+  isVisible           Boolean  @default(true)
+  customerId          String
+  productId           String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  customer            Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product             Product  @relation(fields: [productId], references: [id])
+
+  @@unique([customerId, productId])
+  @@map("customer_product_catalog")
 }
 
 enum Role {
@@ -271,25 +376,6 @@ enum InvoiceStatus {
   CANCELLED
 }
 
-// Portal User model
-model PortalUser {
-  id          String      @id @default(uuid())
-  email       String      @unique
-  passwordHash String
-  firstName   String?
-  lastName    String?
-  role        PortalRole  @default(STANDARD)
-  status      UserStatus  @default(ACTIVE)
-  customer    Customer    @relation(fields: [customerId], references: [id])
-  customerId  String
-  lastLogin   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orders      CustomerOrder[]
-
-  @@map("portal_users")
-}
-
 enum PortalRole {
   ADMIN
   STANDARD
@@ -302,28 +388,6 @@ enum UserStatus {
   PENDING
 }
 
-// Customer Order model
-model CustomerOrder {
-  id            String          @id @default(uuid())
-  orderNumber   String          @unique
-  status        OrderStatus     @default(DRAFT)
-  totalAmount   Decimal         @default(0) @db.Decimal(10, 2)
-  currency      String          @default("EUR")
-  notes         String?
-  customer      Customer        @relation(fields: [customerId], references: [id])
-  customerId    String
-  portalUser    PortalUser      @relation(fields: [portalUserId], references: [id])
-  portalUserId  String
-  orderItems    OrderItem[]
-  orderFiles    OrderFile[]
-  quote         Quote?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  job           Job?
-
-  @@map("customer_orders")
-}
-
 enum OrderStatus {
   DRAFT
   SUBMITTED
@@ -334,79 +398,9 @@ enum OrderStatus {
   CANCELLED
 }
 
-// Order Item model
-model OrderItem {
-  id              String        @id @default(uuid())
-  quantity        Int
-  unitPrice       Decimal       @db.Decimal(10, 2)
-  specifications  Json?
-  notes           String?
-  order           CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId         String
-  product         Product       @relation(fields: [productId], references: [id])
-  productId       String
-  files           OrderFile[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@map("order_items")
-}
-
-// Order File model
-model OrderFile {
-  id           String       @id @default(uuid())
-  fileName     String
-  fileUrl      String
-  fileType     String
-  order        CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderId      String
-  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id])
-  orderItemId  String?
-  uploadedBy   String
-  uploadedAt   DateTime     @default(now())
-
-  @@map("order_files")
-}
-
-// Quote model
-model Quote {
-  id           String        @id @default(uuid())
-  quoteNumber  String        @unique
-  status       QuoteStatus   @default(PENDING)
-  expiresAt    DateTime
-  totalAmount  Decimal       @db.Decimal(10, 2)
-  items        Json
-  customer     Customer      @relation(fields: [customerId], references: [id])
-  customerId   String
-  order        CustomerOrder? @relation(fields: [orderId], references: [id])
-  orderId      String?       @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  @@map("quotes")
-}
-
 enum QuoteStatus {
   PENDING
   ACCEPTED
   REJECTED
   EXPIRED
-}
-
-// Customer Product Catalog
-model CustomerProductCatalog {
-  id                   String   @id @default(uuid())
-  customerProductCode  String?
-  customerProductName  String?
-  customPrice          Decimal? @db.Decimal(10, 2)
-  isVisible            Boolean  @default(true)
-  customer             Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  customerId           String
-  product              Product  @relation(fields: [productId], references: [id])
-  productId            String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  @@unique([customerId, productId])
-  @@map("customer_product_catalog")
 }

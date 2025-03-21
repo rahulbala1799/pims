@@ -18,16 +18,44 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'jsonwebtoken'],
     // Force Server Components to be treated as Client Components during static generation
     appDir: true,
+    // Disable static generation for API routes, improving auth compatibility
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
-  // Prevent specific routes from being statically generated
-  // This is crucial for auth routes that use dynamic features like cookies and JWT
+  // Configure image optimization
   images: {
+    domains: ['localhost', 'pims-production.up.railway.app'],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**',
       },
     ],
+  },
+  // Increase timeout for builds
+  staticPageGenerationTimeout: 120,
+  // Disable source maps in production to reduce bundle size
+  productionBrowserSourceMaps: false,
+  // Optimize compiled code
+  swcMinify: true,
+  // Configure compiler to handle JSON Web Tokens properly
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  webpack: (config, { isServer }) => {
+    // Add jsonwebtoken polyfills
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify'),
+        buffer: require.resolve('buffer'),
+      };
+    }
+    return config;
   },
 };
 

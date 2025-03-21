@@ -1,0 +1,12 @@
+enum PortalRole {
+  ADMIN
+  STANDARD
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
