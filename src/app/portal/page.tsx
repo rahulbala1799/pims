@@ -1,327 +1,148 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { 
-  FiPlus, 
-  FiShoppingCart, 
-  FiFileText, 
-  FiClock, 
-  FiPackage, 
-  FiAlertCircle,
-  FiArrowRight,
-  FiTruck
-} from 'react-icons/fi';
+import { HiOutlineDocumentText, HiOutlineShoppingCart, HiOutlineClipboardCheck, HiOutlineInformationCircle } from 'react-icons/hi';
 
-interface DashboardStats {
-  pendingOrders: number;
-  inProductionJobs: number;
-  readyForDeliveryJobs: number;
-  pendingInvoices: number;
-  mostOrderedProducts: {
-    name: string;
-    count: number;
-  }[];
-}
+export default function Portal() {
+  const [userName, setUserName] = useState('');
+  const [companyName, setCompanyName] = useState('');
 
-interface RecentOrder {
-  id: string;
-  orderNumber: string;
-  date: string;
-  status: string;
-  totalAmount: number;
-  itemCount: number;
-}
-
-export default function PortalDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    pendingOrders: 0,
-    inProductionJobs: 0,
-    readyForDeliveryJobs: 0,
-    pendingInvoices: 0,
-    mostOrderedProducts: []
-  });
-  
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
   useEffect(() => {
-    // In a real implementation, this would be an API call
-    // Simulate API call with mock data
-    setTimeout(() => {
-      setStats({
-        pendingOrders: 3,
-        inProductionJobs: 5,
-        readyForDeliveryJobs: 2,
-        pendingInvoices: 4,
-        mostOrderedProducts: [
-          { name: 'Business Cards', count: 25 },
-          { name: 'Brochures', count: 18 },
-          { name: 'Banners', count: 12 },
-        ]
-      });
-      
-      setRecentOrders([
-        {
-          id: '1',
-          orderNumber: 'PO-1234',
-          date: '2023-11-20',
-          status: 'Processing',
-          totalAmount: 345.60,
-          itemCount: 3
-        },
-        {
-          id: '2',
-          orderNumber: 'PO-1235',
-          date: '2023-11-15',
-          status: 'Completed',
-          totalAmount: 129.99,
-          itemCount: 2
-        },
-        {
-          id: '3',
-          orderNumber: 'PO-1236',
-          date: '2023-11-10',
-          status: 'Delivered',
-          totalAmount: 864.75,
-          itemCount: 5
-        }
-      ]);
-      
-      setIsLoading(false);
-    }, 1000);
-  }, []);
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-  
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'processing':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'delivered':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'pending':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+    // Get user info from localStorage
+    const userJson = localStorage.getItem('portalUser');
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        setUserName(user.name || '');
+        setCompanyName(user.companyName || '');
+      } catch (err) {
+        console.error('Failed to parse user data:', err);
+      }
     }
-  };
-  
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-  
+  }, []);
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Customer Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Welcome back! Here's an overview of your orders and account.
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to PrintPack Portal{userName ? `, ${userName}` : ''}</h1>
+        {companyName && <p className="text-xl text-gray-600">{companyName}</p>}
+      </div>
+
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mb-8">
+        <div className="p-8">
+          <div className="flex items-center mb-4">
+            <HiOutlineInformationCircle className="h-6 w-6 text-blue-500" />
+            <h2 className="text-xl font-semibold text-gray-800 ml-2">About This Portal</h2>
+          </div>
+          <p className="text-gray-600 mb-4">
+            This customer portal allows you to place orders, track your invoices, and manage your printing needs efficiently.
+            Use the navigation menu to access different features, or explore the key sections highlighted below.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <HiOutlineShoppingCart className="h-8 w-8 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-800 ml-2">Products</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Browse our catalog of available products and place orders directly from our selection.
+              Each product includes detailed specifications and pricing information.
+            </p>
+            <Link 
+              href="/portal/products" 
+              className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Browse Products
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <HiOutlineClipboardCheck className="h-8 w-8 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-800 ml-2">Orders</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              View your order history, check order status, and manage upcoming deliveries.
+              Track the progress of your orders from submission to completion.
+            </p>
+            <Link 
+              href="/portal/orders" 
+              className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              View Orders
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <HiOutlineDocumentText className="h-8 w-8 text-blue-500" />
+              <h3 className="text-lg font-semibold text-gray-800 ml-2">Invoices</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Access and download your invoices, check payment status, and review previous transactions.
+              All invoices include detailed breakdowns of products and services.
+            </p>
+            <Link 
+              href="/portal/invoices" 
+              className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              View Invoices
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden mb-8">
+        <div className="p-8">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">How to Use the Portal</h2>
+          
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-700 mb-2">1. Placing an Order</h3>
+            <ol className="list-decimal list-inside text-gray-600 ml-4 space-y-1">
+              <li>Navigate to the Products section</li>
+              <li>Browse the catalog and select the products you want</li>
+              <li>Click "Add to Cart" for each product, specifying the quantity</li>
+              <li>Review your cart and proceed to checkout</li>
+              <li>Fill in delivery and payment details</li>
+              <li>Submit your order</li>
+            </ol>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-700 mb-2">2. Tracking Orders</h3>
+            <ol className="list-decimal list-inside text-gray-600 ml-4 space-y-1">
+              <li>Go to the Orders section</li>
+              <li>View a list of all your orders with their current status</li>
+              <li>Click on any order to see detailed information</li>
+              <li>Use filters to find specific orders by date or status</li>
+            </ol>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">3. Managing Invoices</h3>
+            <ol className="list-decimal list-inside text-gray-600 ml-4 space-y-1">
+              <li>Visit the Invoices section</li>
+              <li>See all invoices with payment status indicators</li>
+              <li>Click on an invoice to view or download a copy</li>
+              <li>Filter invoices by date range or status</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <p className="text-gray-600">
+          Need assistance? Contact our customer support team at <a href="mailto:support@printpack.com" className="text-blue-600 hover:underline">support@printpack.com</a>
         </p>
-      </div>
-      
-      {/* Quick action buttons */}
-      <div className="mb-8">
-        <Link
-          href="/portal/orders/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <FiPlus className="-ml-1 mr-2 h-4 w-4" /> Place New Order
-        </Link>
-      </div>
-      
-      {/* Stats overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-indigo-100 rounded-md p-3">
-                <FiShoppingCart className="h-6 w-6 text-indigo-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pending Orders</dt>
-                  <dd>
-                    <div className="text-lg font-medium text-gray-900">{stats.pendingOrders}</div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <div className="text-sm">
-              <Link href="/portal/orders?status=pending" className="font-medium text-indigo-600 hover:text-indigo-500">
-                View all
-              </Link>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-yellow-100 rounded-md p-3">
-                <FiClock className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">In Production</dt>
-                  <dd>
-                    <div className="text-lg font-medium text-gray-900">{stats.inProductionJobs}</div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <div className="text-sm">
-              <Link href="/portal/orders?status=production" className="font-medium text-indigo-600 hover:text-indigo-500">
-                View all
-              </Link>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-                <FiTruck className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Ready for Delivery</dt>
-                  <dd>
-                    <div className="text-lg font-medium text-gray-900">{stats.readyForDeliveryJobs}</div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <div className="text-sm">
-              <Link href="/portal/orders?status=ready" className="font-medium text-indigo-600 hover:text-indigo-500">
-                View all
-              </Link>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
-                <FiFileText className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pending Invoices</dt>
-                  <dd>
-                    <div className="text-lg font-medium text-gray-900">{stats.pendingInvoices}</div>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gray-50 px-5 py-3">
-            <div className="text-sm">
-              <Link href="/portal/invoices?status=pending" className="font-medium text-indigo-600 hover:text-indigo-500">
-                View all
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Recent orders */}
-      <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Orders</h2>
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {recentOrders.map((order) => (
-              <li key={order.id}>
-                <Link href={`/portal/orders/${order.id}`} className="block hover:bg-gray-50">
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <p className="text-sm font-medium text-indigo-600 truncate">{order.orderNumber}</p>
-                        <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <div className="ml-2 flex-shrink-0 flex">
-                        <p className="text-sm text-gray-500">{formatCurrency(order.totalAmount)}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          <FiPackage className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                          {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>
-                          Ordered on {new Date(order.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="bg-gray-50 px-4 py-3 flex justify-between items-center">
-            <span className="text-sm text-gray-500">
-              Showing <span className="font-medium">{recentOrders.length}</span> orders
-            </span>
-            <Link href="/portal/orders" className="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500">
-              View all orders
-              <FiArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-      
-      {/* Most ordered products */}
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Most Ordered Products</h2>
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {stats.mostOrderedProducts.map((product, index) => (
-              <li key={index}>
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                    <div className="ml-2 flex-shrink-0 flex">
-                      <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-                        {product.count} orders
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="bg-gray-50 px-4 py-3 text-right">
-            <Link href="/portal/products" className="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500">
-              Browse all products
-              <FiArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
