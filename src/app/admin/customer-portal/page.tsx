@@ -11,7 +11,9 @@ import {
   FiCheck, 
   FiX,
   FiPlus,
-  FiSettings
+  FiSettings,
+  FiTrash2,
+  FiEdit
 } from 'react-icons/fi';
 
 interface ApiConnection {
@@ -22,8 +24,44 @@ interface ApiConnection {
   description: string;
 }
 
+interface Customer {
+  id: string;
+  name: string;
+}
+
+interface PortalUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  role: string;
+  status: string;
+  customerId: string;
+  customerName: string;
+  lastLogin?: string;
+  createdAt: string;
+}
+
 export default function CustomerPortalPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'products' | 'settings'>('overview');
+  const [portalUsers, setPortalUsers] = useState<PortalUser[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // User form state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<PortalUser | null>(null);
+  const [userForm, setUserForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    password: '',
+    role: 'STANDARD',
+    status: 'ACTIVE',
+    customerId: ''
+  });
   
   // Mock API connections
   const apiConnections: ApiConnection[] = [
@@ -63,6 +101,190 @@ export default function CustomerPortalPage() {
       description: 'Job status tracking and updates'
     }
   ];
+  
+  // Fetch portal users
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchPortalUsers();
+    }
+  }, [activeTab]);
+  
+  // Fetch customers for dropdown
+  useEffect(() => {
+    if (showUserModal) {
+      fetchCustomers();
+    }
+  }, [showUserModal]);
+  
+  const fetchPortalUsers = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/portal/users');
+      if (!response.ok) {
+        throw new Error('Failed to fetch portal users');
+      }
+      
+      const data = await response.json();
+      setPortalUsers(data.users || []);
+    } catch (err: any) {
+      console.error('Error fetching portal users:', err);
+      setError(err.message || 'An error occurred while fetching portal users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers');
+      if (!response.ok) {
+        throw new Error('Failed to fetch customers');
+      }
+      
+      const data = await response.json();
+      setCustomers(data.customers || []);
+    } catch (err: any) {
+      console.error('Error fetching customers:', err);
+    }
+  };
+  
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setUserForm({
+      email: '',
+      firstName: '',
+      lastName: '',
+      password: '',
+      role: 'STANDARD',
+      status: 'ACTIVE',
+      customerId: customers.length > 0 ? customers[0].id : ''
+    });
+    setShowUserModal(true);
+  };
+  
+  const handleEditUser = (user: PortalUser) => {
+    setEditingUser(user);
+    setUserForm({
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      password: '', // Don't populate password when editing
+      role: user.role,
+      status: user.status,
+      customerId: user.customerId
+    });
+    setShowUserModal(true);
+  };
+  
+  const handleUserFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setUserForm(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubmitUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Validate form
+      if (!userForm.email || (!editingUser && !userForm.password) || !userForm.customerId) {
+        setError('Please fill in all required fields');
+        setIsLoading(false);
+        return;
+      }
+      
+      let response;
+      
+      if (editingUser) {
+        // Update existing user
+        response = await fetch(`/api/portal/users/${editingUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userForm),
+        });
+      } else {
+        // Create new user
+        response = await fetch('/api/portal/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userForm),
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save user');
+      }
+      
+      // Refresh the user list
+      await fetchPortalUsers();
+      
+      // Close the modal
+      setShowUserModal(false);
+    } catch (err: any) {
+      console.error('Error saving portal user:', err);
+      setError(err.message || 'An error occurred while saving the user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch(`/api/portal/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete user');
+      }
+      
+      // Refresh the user list
+      await fetchPortalUsers();
+    } catch (err: any) {
+      console.error('Error deleting portal user:', err);
+      setError(err.message || 'An error occurred while deleting the user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleString();
+  };
+  
+  const getRoleDisplay = (role: string) => {
+    switch (role) {
+      case 'ADMIN': return 'Admin';
+      case 'STANDARD': return 'Standard';
+      case 'VIEWER': return 'Viewer';
+      default: return role;
+    }
+  };
+  
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-green-100 text-green-800';
+      case 'INACTIVE': return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
   
   return (
     <div className="py-6">
@@ -219,102 +441,119 @@ export default function CustomerPortalPage() {
                 </div>
                 <button
                   type="button"
+                  onClick={handleAddUser}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   <FiPlus className="-ml-1 mr-2 h-4 w-4" />
                   Add User
                 </button>
               </div>
-              <div className="border-t border-gray-200">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Customer
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Role
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Login
-                        </th>
-                        <th scope="col" className="relative px-6 py-3">
-                          <span className="sr-only">Edit</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {/* Mock data - will be replaced with actual data from API */}
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-500">JD</span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">John Doe</div>
-                              <div className="text-sm text-gray-500">john.doe@example.com</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">Acme Inc.</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">Admin</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Today at 09:15
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <a href="#" className="text-indigo-600 hover:text-indigo-900">Edit</a>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-500">JS</span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">Jane Smith</div>
-                              <div className="text-sm text-gray-500">jane.smith@example.com</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">TechCorp</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">Standard</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Yesterday at 15:32
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <a href="#" className="text-indigo-600 hover:text-indigo-900">Edit</a>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+              
+              {error && (
+                <div className="mx-6 mt-4 bg-red-50 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <FiX className="h-5 w-5 text-red-400" />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                    </div>
+                  </div>
                 </div>
+              )}
+              
+              <div className="border-t border-gray-200">
+                {isLoading && activeTab === 'users' ? (
+                  <div className="flex justify-center items-center h-32">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            User
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Customer
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Role
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Login
+                          </th>
+                          <th scope="col" className="relative px-6 py-3">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {portalUsers.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                              No portal users found. Click "Add User" to create your first portal user.
+                            </td>
+                          </tr>
+                        ) : (
+                          portalUsers.map((user) => (
+                            <tr key={user.id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <span className="text-sm font-medium text-gray-500">
+                                      {user.firstName && user.lastName 
+                                        ? `${user.firstName[0]}${user.lastName[0]}`
+                                        : user.email.substring(0, 2).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">{user.name || 'Unnamed User'}</div>
+                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{user.customerName}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{getRoleDisplay(user.role)}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(user.status)}`}>
+                                  {user.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {formatDate(user.lastLogin)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex justify-end space-x-3">
+                                  <button
+                                    onClick={() => handleEditUser(user)}
+                                    className="text-indigo-600 hover:text-indigo-900"
+                                  >
+                                    <FiEdit className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    <FiTrash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -523,6 +762,167 @@ export default function CustomerPortalPage() {
           )}
         </div>
       </div>
+
+      {/* User Form Modal */}
+      {showUserModal && (
+        <div className="fixed z-10 inset-0 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+              <div>
+                <div className="mt-3 text-center sm:mt-0 sm:text-left">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">
+                    {editingUser ? 'Edit Portal User' : 'Add Portal User'}
+                  </h3>
+                  <div className="mt-2">
+                    <form onSubmit={handleSubmitUser}>
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                            Email <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            name="email"
+                            id="email"
+                            required
+                            value={userForm.email}
+                            onChange={handleUserFormChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            disabled={!!editingUser}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                              First Name
+                            </label>
+                            <input
+                              type="text"
+                              name="firstName"
+                              id="firstName"
+                              value={userForm.firstName}
+                              onChange={handleUserFormChange}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                              Last Name
+                            </label>
+                            <input
+                              type="text"
+                              name="lastName"
+                              id="lastName"
+                              value={userForm.lastName}
+                              onChange={handleUserFormChange}
+                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                            Password {!editingUser && <span className="text-red-500">*</span>}
+                          </label>
+                          <input
+                            type="password"
+                            name="password"
+                            id="password"
+                            value={userForm.password}
+                            onChange={handleUserFormChange}
+                            required={!editingUser}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            placeholder={editingUser ? "Leave blank to keep current password" : ""}
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor="customerId" className="block text-sm font-medium text-gray-700">
+                            Customer <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            id="customerId"
+                            name="customerId"
+                            value={userForm.customerId}
+                            onChange={handleUserFormChange}
+                            required
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          >
+                            <option value="">Select a customer</option>
+                            {customers.map(customer => (
+                              <option key={customer.id} value={customer.id}>
+                                {customer.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                            Role
+                          </label>
+                          <select
+                            id="role"
+                            name="role"
+                            value={userForm.role}
+                            onChange={handleUserFormChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          >
+                            <option value="ADMIN">Admin</option>
+                            <option value="STANDARD">Standard</option>
+                            <option value="VIEWER">Viewer</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                            Status
+                          </label>
+                          <select
+                            id="status"
+                            name="status"
+                            value={userForm.status}
+                            onChange={handleUserFormChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          >
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="PENDING">Pending</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                        >
+                          {isLoading ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowUserModal(false)}
+                          className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
