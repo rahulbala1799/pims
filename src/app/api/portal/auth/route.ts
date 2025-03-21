@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Simplified auth for development - DON'T use in production!
     // In production, use bcrypt.compare(password, portalUser.passwordHash)
-    const isPasswordValid = password === 'test123'; // Simplified for dev
+    const isPasswordValid = password === 'test123' || password === portalUser.passwordHash; // Allow both for dev
 
     if (!isPasswordValid) {
       return NextResponse.json(
