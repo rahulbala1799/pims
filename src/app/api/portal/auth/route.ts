@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
+// Use a secret key from environment variables in production
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Simple login endpoint without actual crypto - for development only
 export async function POST(request: NextRequest) {
@@ -15,7 +19,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the portal user (without bcrypt for now)
+    // Find the portal user
     const portalUser = await prisma.portalUser.findUnique({
       where: { email },
       include: {
@@ -43,9 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simplified auth for development - DON'T use in production!
-    // In production, use bcrypt.compare(password, portalUser.passwordHash)
-    const isPasswordValid = password === 'test123' || password === portalUser.passwordHash; // Allow both for dev
+    // Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, portalUser.passwordHash);
 
     if (!isPasswordValid) {
       return NextResponse.json(
@@ -54,14 +57,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create simple token (NOT secure - only for development)
-    const token = Buffer.from(JSON.stringify({
-      userId: portalUser.id,
-      email: portalUser.email,
-      role: portalUser.role,
-      customerId: portalUser.customerId,
-      exp: Date.now() + 8 * 60 * 60 * 1000 // 8 hours
-    })).toString('base64');
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userId: portalUser.id,
+        email: portalUser.email,
+        role: portalUser.role,
+        customerId: portalUser.customerId,
+      },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
 
     // Update last login timestamp
     await prisma.portalUser.update({
@@ -104,20 +110,17 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     
     try {
-      // Simple token verification (NOT secure - only for development)
-      const tokenData = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
-      // Check expiration
-      if (tokenData.exp < Date.now()) {
-        return NextResponse.json(
-          { error: 'Token expired' },
-          { status: 401 }
-        );
-      }
+      // Verify JWT token
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        role: string;
+        customerId: string;
+      };
       
       // Check if user still exists and is active
       const portalUser = await prisma.portalUser.findUnique({
-        where: { id: tokenData.userId },
+        where: { id: decoded.userId },
         include: {
           customer: {
             select: {

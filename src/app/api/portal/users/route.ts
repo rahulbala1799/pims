@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -98,9 +99,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // In production, hash the password with bcrypt
-    // For development, we're using a simple password
-    const passwordHash = data.password; // In production: await bcrypt.hash(data.password, 10)
+    // Hash the password with bcrypt
+    const passwordHash = await bcrypt.hash(data.password, 10);
     
     // Create the new portal user
     const newUser = await prisma.portalUser.create({
@@ -194,8 +194,8 @@ export async function PUT(
     
     // Update password if provided
     if (data.password) {
-      // In production, hash the password with bcrypt
-      updateData.passwordHash = data.password; // In production: await bcrypt.hash(data.password, 10)
+      // Hash the password with bcrypt
+      updateData.passwordHash = await bcrypt.hash(data.password, 10);
     }
     
     // Update the user
