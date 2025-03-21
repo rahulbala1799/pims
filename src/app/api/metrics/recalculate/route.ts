@@ -51,7 +51,7 @@ export async function POST() {
 
     // Step 3: Calculate metrics for each job
     const metricsPromises = jobs.map(async job => {
-      // Get the revenue from invoice subtotal
+      // Get the revenue from invoice subtotal (amount before tax)
       const revenue = job.invoice?.subtotal || 0;
 
       // Calculate material costs - handle wide format products differently
