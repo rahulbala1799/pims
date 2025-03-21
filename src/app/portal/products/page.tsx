@@ -10,8 +10,11 @@ import {
   FiInfo,
   FiX,
   FiGrid,
-  FiList
+  FiList,
+  FiCheck
 } from 'react-icons/fi';
+import { useCart } from '@/context/CartContext';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   id: string;
@@ -42,6 +45,9 @@ export default function CustomerProducts() {
     material: [] as string[],
     finish: [] as string[]
   });
+  const [addedToCart, setAddedToCart] = useState<{[key: string]: boolean}>({});
+  const { addItem } = useCart();
+  const router = useRouter();
   
   // Get logged in user/customer info
   const getCustomerId = () => {
@@ -194,6 +200,45 @@ export default function CustomerProducts() {
       .filter(p => p.finishOptions)
       .flatMap(p => p.finishOptions as string[]);
     return Array.from(new Set(finishes));
+  };
+  
+  // Add to cart functionality
+  const handleAddToCart = (product: Product) => {
+    // Add the product to cart with minimum order quantity
+    addItem({
+      productId: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: product.price,
+      quantity: product.minOrderQuantity || 1,
+      unit: product.unit,
+      customPriced: product.isCustomPriced
+    });
+    
+    // Show temporary "Added to cart" indication
+    setAddedToCart(prev => ({ ...prev, [product.id]: true }));
+    
+    // Reset the indication after 2 seconds
+    setTimeout(() => {
+      setAddedToCart(prev => ({ ...prev, [product.id]: false }));
+    }, 2000);
+  };
+
+  // Order Now functionality (add to cart and go to checkout)
+  const handleOrderNow = (product: Product) => {
+    // Add the product to cart with minimum order quantity
+    addItem({
+      productId: product.id,
+      name: product.name,
+      sku: product.sku,
+      price: product.price,
+      quantity: product.minOrderQuantity || 1,
+      unit: product.unit,
+      customPriced: product.isCustomPriced
+    });
+    
+    // Navigate to the cart page
+    router.push('/portal/cart');
   };
   
   // Loading state
@@ -465,14 +510,35 @@ export default function CustomerProducts() {
                     >
                       View Details
                     </Link>
-                    <button
-                      type="button"
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      onClick={() => {/* Add to order functionality */}}
-                    >
-                      <FiShoppingCart className="-ml-0.5 mr-1.5 h-4 w-4" />
-                      Add to Order
-                    </button>
+                    
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        onClick={() => handleAddToCart(product)}
+                        disabled={addedToCart[product.id]}
+                      >
+                        {addedToCart[product.id] ? (
+                          <>
+                            <FiCheck className="-ml-0.5 mr-1.5 h-4 w-4" />
+                            Added
+                          </>
+                        ) : (
+                          <>
+                            <FiShoppingCart className="-ml-0.5 mr-1.5 h-4 w-4" />
+                            Add to Cart
+                          </>
+                        )}
+                      </button>
+                      
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-3 py-1.5 border border-indigo-600 text-xs font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        onClick={() => handleOrderNow(product)}
+                      >
+                        Order Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -528,10 +594,27 @@ export default function CustomerProducts() {
                             <button
                               type="button"
                               className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
-                              onClick={() => {/* Add to order functionality */}}
+                              onClick={() => handleAddToCart(product)}
+                              disabled={addedToCart[product.id]}
                             >
-                              <FiShoppingCart className="mr-1 h-4 w-4" />
-                              Add to Order
+                              {addedToCart[product.id] ? (
+                                <>
+                                  <FiCheck className="mr-1 h-4 w-4" />
+                                  Added to Cart
+                                </>
+                              ) : (
+                                <>
+                                  <FiShoppingCart className="mr-1 h-4 w-4" />
+                                  Add to Cart
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
+                              onClick={() => handleOrderNow(product)}
+                            >
+                              Order Now
                             </button>
                           </div>
                         </div>
