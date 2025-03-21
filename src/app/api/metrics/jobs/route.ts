@@ -108,7 +108,7 @@ export async function GET(request: Request) {
       const inkCosts = job.jobProducts.reduce((total, product) => {
         // For packaging products, use inkCostPerUnit × completedQuantity
         if (product.product.productClass === 'PACKAGING') {
-          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0;
+          const inkCostPerUnit = product.inkCostPerUnit ? parseFloat(product.inkCostPerUnit.toString()) : 0.04;
           const completedQuantity = product.completedQuantity || 0;
           console.log(`Packaging ink cost for ${job.title}: €${inkCostPerUnit} × ${completedQuantity} = €${inkCostPerUnit * completedQuantity}`);
           return total + (inkCostPerUnit * completedQuantity);
