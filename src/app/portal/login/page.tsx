@@ -9,6 +9,7 @@ export default function PortalLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [debug, setDebug] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,8 +22,12 @@ export default function PortalLogin() {
     
     setIsLoading(true);
     setError('');
+    setDebug('Attempting login...');
     
     try {
+      // Add request debugging
+      setDebug(prev => prev + '\nSending request to /api/portal/auth...');
+      
       // Call the authentication API
       const response = await fetch('/api/portal/auth', {
         method: 'POST',
@@ -32,25 +37,37 @@ export default function PortalLogin() {
         body: JSON.stringify({ email, password }),
       });
       
+      setDebug(prev => prev + `\nResponse status: ${response.status}`);
+      
       const data = await response.json();
+      setDebug(prev => prev + `\nResponse data: ${JSON.stringify(data, null, 2)}`);
       
       if (!response.ok) {
         throw new Error(data.error || 'Authentication failed');
       }
       
+      setDebug(prev => prev + '\nAuthentication successful, storing token...');
+      
       // Store user info and token in localStorage
       localStorage.setItem('portalUser', JSON.stringify(data.user));
       localStorage.setItem('portalToken', data.token);
       
+      setDebug(prev => prev + '\nRedirecting to portal dashboard...');
+      
       // Redirect to dashboard
       router.push('/portal');
     } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+      const errorMsg = err.message || 'An error occurred during login';
+      setError(errorMsg);
+      setDebug(prev => prev + `\nError: ${errorMsg}`);
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Debug mode toggle
+  const [showDebug, setShowDebug] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -124,9 +141,13 @@ export default function PortalLogin() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Forgot your password?
-              </a>
+              <button 
+                type="button" 
+                onClick={() => setShowDebug(!showDebug)}
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
+                {showDebug ? 'Hide debug' : 'Show debug'}
+              </button>
             </div>
           </div>
 
@@ -141,6 +162,25 @@ export default function PortalLogin() {
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+          
+          {/* TEST CREDENTIALS SECTION */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-md">
+            <h3 className="text-sm font-medium text-blue-800">Test Credentials</h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>Email: portal@example.com</p>
+              <p>Password: password123</p>
+            </div>
+          </div>
+          
+          {/* DEBUG INFO SECTION */}
+          {showDebug && debug && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+              <h3 className="text-sm font-medium text-gray-700">Debug Information</h3>
+              <pre className="mt-2 text-xs text-gray-600 whitespace-pre-wrap overflow-auto max-h-40">
+                {debug}
+              </pre>
+            </div>
+          )}
         </form>
         
         <div className="text-center mt-4">

@@ -14,6 +14,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Authentication check
   useEffect(() => {
@@ -30,58 +31,76 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         
         if (!token) {
           // Not logged in, redirect to portal login
+          console.log('No token found in localStorage, redirecting to login');
+          setAuthError('No authentication token found');
           router.push('/portal/login');
           return;
         }
 
+        console.log('Verifying token with API...');
+        
         // Verify token with API
         const response = await fetch('/api/portal/auth', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Cache-Control': 'no-cache, no-store',
           },
         });
         
+        if (!response.ok) {
+          // Try to get the error message from the response
+          let errorMsg = 'Authentication verification failed';
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || errorMsg;
+          } catch (e) {
+            console.error('Failed to parse error response:', e);
+          }
+          
+          console.error(`Auth verification failed: ${response.status} ${response.statusText}`);
+          setAuthError(errorMsg);
+          throw new Error(errorMsg);
+        }
+        
         const data = await response.json();
         
-        if (!response.ok || !data.valid) {
-          throw new Error(data.error || 'Invalid authentication');
+        if (!data.valid) {
+          const errorMsg = data.error || 'Invalid authentication token';
+          console.error(`Token verification failed: ${errorMsg}`);
+          setAuthError(errorMsg);
+          throw new Error(errorMsg);
         }
+        
+        console.log('Authentication successful:', data.user);
         
         // Set user data
         setUser(data.user);
         localStorage.setItem('portalUser', JSON.stringify(data.user));
         
         // Authentication successful
+        setAuthError(null);
         setIsLoading(false);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Auth check error:', error);
+        setAuthError(error.message || 'Authentication failed');
         localStorage.removeItem('portalToken');
         localStorage.removeItem('portalUser');
-        router.push('/portal/login');
+        
+        // Add a small delay before redirect to ensure the error is displayed
+        setTimeout(() => {
+          router.push('/portal/login');
+        }, 1000);
       }
     };
     
     // Check authentication on route change
     checkAuth();
-    
-    // For development, we can skip the authentication temporarily
-    /*
-    setTimeout(() => {
-      setUser({
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        company: 'Acme Inc.',
-        role: 'ADMIN'
-      });
-      setIsLoading(false);
-    }, 500);
-    */
   }, [router, pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem('portalUser');
     localStorage.removeItem('portalToken');
+    localStorage.removeItem('portalUser');
     router.push('/portal/login');
   };
 
@@ -89,11 +108,23 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
   const isLoginPage = pathname === '/portal/login';
   const isLandingPage = pathname === '/portal/landing';
 
-  if (isLoading) {
+  if (isLoading && pathname !== '/portal/login' && pathname !== '/portal/landing') {
     return (
-      <div className="min-h-screen flex justify-center items-center bg-gray-100">
-        <div className="p-8 bg-white shadow rounded-lg">
-          <p className="text-lg text-gray-700">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-700">Loading...</h2>
+          {authError && (
+            <div className="mt-4 p-4 bg-red-50 rounded-md text-red-800 max-w-md">
+              <p className="text-sm font-medium">Authentication Error</p>
+              <p className="text-xs mt-1">{authError}</p>
+              <button 
+                onClick={() => router.push('/portal/login')}
+                className="mt-3 text-sm text-blue-600 hover:text-blue-800"
+              >
+                Back to Login
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
