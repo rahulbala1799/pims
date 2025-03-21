@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { differenceInDays, subMonths, format, addDays, parseISO, startOfDay } from 'date-fns';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 interface InvoiceWithAmount {
   status: string;
   totalAmount: { toString(): string } | number;

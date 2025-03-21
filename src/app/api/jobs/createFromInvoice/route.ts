@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { JobStatus, JobPriority } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 interface CreateJobRequest {
   invoiceId: string;
   title?: string;

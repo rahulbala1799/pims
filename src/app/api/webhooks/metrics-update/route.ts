@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { JobStatus, JobPriority, Job as PrismaJob, Invoice, InvoiceItem, Product, JobProduct, ProductClass } from '@prisma/client';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 // Define TypeScript types to avoid linter errors
 interface ProductWithDetails {
   id: string;

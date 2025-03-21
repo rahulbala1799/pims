@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 export async function POST(request: Request) {
   try {
     const cookieStore = cookies();

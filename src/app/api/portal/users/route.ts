@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 // GET /api/portal/users - Get all portal users
 export async function GET(request: NextRequest) {
   try {

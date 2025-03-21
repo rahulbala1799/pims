@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware } from '../middleware';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 const prisma = new PrismaClient();
 
 // GET /api/portal/products - Get all visible products for a customer

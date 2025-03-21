@@ -6,6 +6,11 @@ import prisma from '@/lib/prisma';
 // Use a secret key from environment variables in production
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
+// Add this to prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
 // Simple login endpoint without actual crypto - for development only
 export async function POST(request: NextRequest) {
   try {

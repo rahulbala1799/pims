@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 // GET /api/jobs/:id - Get a specific job
 export async function GET(
   request: Request,

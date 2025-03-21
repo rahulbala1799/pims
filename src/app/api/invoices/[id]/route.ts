@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient, JobProduct, Invoice, InvoiceItem } from '@prisma/client';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 const prisma = new PrismaClient();
 
 // Define types for the request body

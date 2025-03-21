@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 // POST /api/metrics/recalculate - Force recalculation of all job metrics
 export async function POST() {
   try {

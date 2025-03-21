@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { subMonths, getYear, getMonth, getQuarter } from 'date-fns';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 interface ProductClassRevenue {
   productClass: string;
   totalRevenue: number;

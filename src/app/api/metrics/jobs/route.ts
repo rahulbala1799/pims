@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Decimal } from 'decimal.js';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 // GET /api/metrics/jobs - Get job metrics data
 export async function GET(request: Request) {
   try {

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Prevent static generation for this route
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+
+
 export async function POST(request: NextRequest) {
   try {
     // Simplified API that doesn't actually save a file
