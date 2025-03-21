@@ -1,42 +1,29 @@
-// Custom server to start the Next.js application
-const { createServer } = require('http');
-const { join } = require('path');
-const { parse } = require('url');
-const next = require('next');
+// This file is used when deploying to environments like Railway
+// It loads the appropriate Next.js server file based on the environment
 
-// Check if we're in development mode
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = '0.0.0.0';
-const port = process.env.PORT || 8080;
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
 
-// Configuration for standalone mode in production
-const standaloneDir = join(__dirname, '.next/standalone');
-const publicDir = join(__dirname, '.next/static');
-const staticDir = join(__dirname, 'public');
+// Check if we're in production
+const isProd = process.env.NODE_ENV === 'production';
 
-// Initialize the Next.js app
-const app = next({ dev, hostname, port });
-const handle = app.getRequestHandler();
+// Path to Next.js standalone server (created by next build)
+const standalonePath = path.join(__dirname, '.next/standalone/server.js');
 
-app.prepare().then(() => {
-  createServer(async (req, res) => {
-    try {
-      // Parse the URL
-      const parsedUrl = parse(req.url, true);
-      
-      // Handle the request
-      await handle(req, res, parsedUrl);
-    } catch (err) {
-      console.error('Error occurred handling', req.url, err);
-      res.statusCode = 500;
-      res.end('Internal Server Error');
+// Check if .next/standalone exists
+if (isProd && fs.existsSync(standalonePath)) {
+  console.log('Starting Next.js standalone server...');
+  require(standalonePath);
+} else {
+  console.log('Starting Next.js dev server...');
+  // For development or when standalone doesn't exist, run the dev server
+  exec('npx next start', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error starting Next.js: ${error}`);
+      return;
     }
-  })
-    .once('error', (err) => {
-      console.error(err);
-      process.exit(1);
-    })
-    .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
-    });
-}); 
+    console.log(stdout);
+    console.error(stderr);
+  });
+} 
