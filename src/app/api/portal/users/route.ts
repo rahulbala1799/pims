@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/prisma';
 
 // GET /api/portal/users - Get all portal users
 export async function GET(request: NextRequest) {
