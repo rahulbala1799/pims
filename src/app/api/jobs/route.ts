@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { sub } from 'date-fns';
 
 // Prevent static generation for this route
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 export const revalidate = 0;
-
 
 interface JobQuery {
   invoiceId?: string;
@@ -19,16 +19,32 @@ interface JobWithInvoiceId {
 }
 
 // GET /api/jobs - Get all jobs
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Extract query parameters
-    const url = new URL(request.url);
-    const invoiceId = url.searchParams.get('invoiceId');
+    // Parse URL parameters
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get('status');
+    const daysParam = searchParams.get('days');
+    const invoiceId = searchParams.get('invoiceId');
+    const days = daysParam ? parseInt(daysParam) : undefined;
     
-    // Build where clause based on filters
-    let whereClause = {};
+    // Build filter object
+    const filter: any = {};
     
-    // If invoiceId is provided, use raw query to handle optional relationship
+    // Add status filter if provided
+    if (status) {
+      filter.status = status;
+    }
+    
+    // Add date filter if days parameter is provided
+    if (days && !isNaN(days)) {
+      const startDate = sub(new Date(), { days: days });
+      filter.updatedAt = {
+        gte: startDate,
+      };
+    }
+    
+    // Special case for invoiceId filter (existing functionality)
     if (invoiceId) {
       const jobs = await prisma.$queryRaw`
         SELECT j.*, 
@@ -87,74 +103,53 @@ export async function GET(request: Request) {
       
       return NextResponse.json(jobsWithProducts);
     }
-    
-    // Otherwise use normal Prisma query with include for job products
+
+    // Fetch jobs with filters
     const jobs = await prisma.job.findMany({
+      where: filter,
+      orderBy: {
+        updatedAt: 'desc',
+      },
       include: {
-        customer: true,
-        assignedTo: true,
-        createdBy: true,
+        customer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         jobProducts: {
           include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                sku: true,
-                productClass: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc',
+            product: true,
+          },
+        },
+        invoice: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+          },
+        },
       },
     });
-    
-    // Fetch invoice data for each job
-    const enhancedJobs = await Promise.all(
-      jobs.map(async (job) => {
-        // Use raw query to get invoiceId
-        const jobWithInvoiceId = await prisma.$queryRaw`
-          SELECT "invoiceId" FROM "Job" WHERE id = ${job.id}
-        ` as any[];
-        
-        const invoiceId = jobWithInvoiceId[0]?.invoiceId;
-        
-        // If job has invoiceId, fetch the invoice
-        let invoice = null;
-        if (invoiceId) {
-          const invoiceData = await prisma.invoice.findUnique({
-            where: { id: invoiceId },
-            select: {
-              id: true,
-              invoiceNumber: true
-            }
-          });
-          if (invoiceData) {
-            invoice = invoiceData;
-          }
-        }
-        
-        return {
-          ...job,
-          invoiceId,
-          invoice
-        };
-      })
-    );
-    
-    return NextResponse.json(enhancedJobs);
-  } catch (error: any) {
+
+    return NextResponse.json(jobs);
+  } catch (error) {
     console.error('Error fetching jobs:', error);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
-    
-    return NextResponse.json(
-      { error: `Failed to fetch jobs: ${error.message}` },
-      { status: 500 }
-    );
+    return new NextResponse(JSON.stringify({ error: 'Failed to fetch jobs' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
