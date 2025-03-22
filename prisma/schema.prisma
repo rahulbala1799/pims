@@ -15,6 +15,7 @@ model User {
   role            Role             @default(EMPLOYEE)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  hourlyWage      Decimal          @default(12.00) @db.Decimal(10, 2)
   hourLogs        HourLog[]
   jobs            Job[]            @relation("AssignedTo")
   createdJobs     Job[]            @relation("CreatedBy")

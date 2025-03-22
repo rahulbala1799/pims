@@ -25,6 +25,7 @@ export async function GET(
         name: true,
         email: true,
         role: true,
+        hourlyWage: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -54,7 +55,7 @@ export async function PATCH(
   try {
     const employeeId = params.id;
     const data = await req.json();
-    const { name, email, password } = data;
+    const { name, email, password, hourlyWage } = data;
     
     // Check if the employee exists
     const employee = await prisma.user.findUnique({
@@ -82,6 +83,7 @@ export async function PATCH(
     const updateData: any = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
+    if (hourlyWage !== undefined) updateData.hourlyWage = hourlyWage;
     
     // Only hash and update password if it's provided
     if (password) {
@@ -97,6 +99,7 @@ export async function PATCH(
         name: true,
         email: true,
         role: true,
+        hourlyWage: true,
         createdAt: true,
         updatedAt: true
       }
