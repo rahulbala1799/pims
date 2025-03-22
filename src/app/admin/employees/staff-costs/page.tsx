@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import AdminHeader from '@/components/AdminHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 // Helper function to format currency
 function formatCurrency(amount: number): string {
@@ -42,6 +43,7 @@ type StaffCostsData = {
 
 export default function StaffCostsPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [staffCosts, setStaffCosts] = useState<StaffCostsData | null>(null);
   const [period, setPeriod] = useState('month');
   const router = useRouter();
@@ -55,17 +57,20 @@ export default function StaffCostsPage() {
 
   const fetchStaffCosts = async (selectedPeriod: string) => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/hour-logs/labor-costs?period=${selectedPeriod}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch staff costs');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch staff costs');
       }
       
       const data = await response.json();
       setStaffCosts(data);
     } catch (error) {
       console.error('Error fetching staff costs:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred while fetching staff costs data');
     } finally {
       setLoading(false);
     }
@@ -110,6 +115,19 @@ export default function StaffCostsPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <AdminHeader title="Staff Costs" />
+
+      {/* Back button */}
+      <div className="mb-6">
+        <Link
+          href="/admin/employees"
+          className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900"
+        >
+          <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Employees
+        </Link>
+      </div>
       
       <div className="flex justify-between items-center my-6">
         <h2 className="text-2xl font-bold">
@@ -162,6 +180,26 @@ export default function StaffCostsPage() {
           </div>
         </div>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mb-6 rounded-md bg-red-50 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+                <p className="mt-1">Make sure employees have hour logs and hourly wages set up properly.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -190,7 +228,7 @@ export default function StaffCostsPage() {
               {loading ? (
                 <div className="h-8 w-24 bg-gray-200 animate-pulse rounded"></div>
               ) : (
-                formatCurrency(staffCosts?.summary.totalCost || 0)
+                formatCurrency(staffCosts?.summary?.totalCost || 0)
               )}
             </h3>
           </div>
@@ -207,12 +245,12 @@ export default function StaffCostsPage() {
               {loading ? (
                 <div className="h-8 w-24 bg-gray-200 animate-pulse rounded"></div>
               ) : (
-                formatCurrency(staffCosts?.summary.averageHourlyWage || 0)
+                formatCurrency(staffCosts?.summary?.averageHourlyWage || 0)
               )}
             </h3>
           </div>
           <p className="text-sm text-gray-500">
-            Across {staffCosts?.summary.totalEmployees || 0} employee(s)
+            Across {staffCosts?.summary?.totalEmployees || 0} employee(s)
           </p>
         </div>
       </div>
@@ -232,7 +270,11 @@ export default function StaffCostsPage() {
                 <div key={i} className="h-12 w-full bg-gray-200 animate-pulse rounded"></div>
               ))}
             </div>
-          ) : (
+          ) : error ? (
+            <div className="py-4 text-center text-sm text-gray-500">
+              Unable to load employee labor costs data.
+            </div>
+          ) : staffCosts?.employees && staffCosts.employees.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -255,38 +297,34 @@ export default function StaffCostsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {staffCosts?.employees && staffCosts.employees.length > 0 ? (
-                    staffCosts.employees.map((employee) => (
-                      <tr key={employee.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{employee.name}</div>
-                          <div className="text-sm text-gray-500">{employee.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                            {employee.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {employee.hours.toFixed(1)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatCurrency(employee.hourlyWage)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
-                          {formatCurrency(employee.cost)}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                        No logged hours found for this period
+                  {staffCosts.employees.map((employee) => (
+                    <tr key={employee.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{employee.name}</div>
+                        <div className="text-sm text-gray-500">{employee.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                          {employee.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {employee.hours.toFixed(1)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatCurrency(employee.hourlyWage)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
+                        {formatCurrency(employee.cost)}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
+            </div>
+          ) : (
+            <div className="py-4 text-center text-sm text-gray-500">
+              No logged hours found for this period
             </div>
           )}
         </div>
