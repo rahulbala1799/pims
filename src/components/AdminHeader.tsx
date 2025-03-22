@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function AdminHeader() {
+interface AdminHeaderProps {
+  title?: string;
+}
+
+export default function AdminHeader({ title }: AdminHeaderProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
