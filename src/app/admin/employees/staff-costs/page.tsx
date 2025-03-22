@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AdminHeader from '@/components/AdminHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -114,7 +113,9 @@ export default function StaffCostsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <AdminHeader title="Staff Costs" />
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Staff Costs</h1>
+      </div>
 
       {/* Back button */}
       <div className="mb-6">
