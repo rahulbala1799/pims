@@ -73,6 +73,15 @@ export default function AdminHeader({ title }: AdminHeaderProps) {
         </div>
       </div>
 
+      {/* Title section (if title provided) */}
+      {title && (
+        <div className="bg-white shadow">
+          <div className="py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar for desktop and mobile */}
       <div className={`h-full ${isSidebarOpen ? 'block lg:hidden' : 'hidden lg:block'}`}>
         {/* Overlay - only shown on mobile */}
