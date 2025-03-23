@@ -11,24 +11,33 @@ interface User {
   role: 'ADMIN' | 'EMPLOYEE';
   createdAt: string;
   updatedAt: string;
+  salesEmployee: {
+    id: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+    notes: string | null;
+  } | null;
   _count: {
     jobs: number;
   };
 }
 
-export default function UsersPage() {
+export default function SalesEmployeesPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
   
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/employees?includeAdmins=true${searchQuery ? `&query=${searchQuery}` : ''}`);
+        const response = await fetch('/api/employees?includeAdmins=false&includeSalesStatus=true');
         
         if (!response.ok) {
           throw new Error('Failed to fetch users');
@@ -45,32 +54,56 @@ export default function UsersPage() {
     };
     
     fetchUsers();
-  }, [searchQuery]);
+  }, []);
   
-  // Handle user deletion
-  const handleDeleteUser = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
+  // Filter and search users
+  useEffect(() => {
+    let result = [...users];
+    
+    // Filter by sales status
+    if (filter === 'active') {
+      result = result.filter(user => user.salesEmployee?.isActive === true);
+    } else if (filter === 'inactive') {
+      result = result.filter(user => 
+        user.salesEmployee === null || user.salesEmployee?.isActive === false
+      );
     }
     
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(user => 
+        user.name.toLowerCase().includes(query) || 
+        user.email.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredUsers(result);
+  }, [users, filter, searchQuery]);
+  
+  // Handle toggle sales status
+  const handleToggleSalesStatus = async (userId: string) => {
     try {
-      const response = await fetch(`/api/employees/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/employees/${userId}/sales-status`, {
+        method: 'POST',
       });
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to delete user');
+        throw new Error(data.error || 'Failed to update sales status');
       }
       
-      // Remove the deleted user from the list
-      setUsers(users.filter(user => user.id !== id));
+      // Reload users to get updated data
+      const updatedResponse = await fetch('/api/employees?includeAdmins=false&includeSalesStatus=true');
+      const updatedData = await updatedResponse.json();
+      setUsers(updatedData);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error deleting user:', err);
+      console.error('Error updating sales status:', err);
     }
   };
-  
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -81,40 +114,28 @@ export default function UsersPage() {
     <div className="px-4 sm:px-6 lg:px-8 py-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-xl font-semibold text-gray-900">Users & Employees</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Sales Employees</h1>
           <p className="mt-2 text-sm text-gray-700">
-            A list of all users including admins and employees with their roles, email, and job count.
+            Manage which employees have access to the sales dashboard.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex items-center space-x-3">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <Link
-            href="/admin/sales-employees"
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            href="/admin/employees"
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
           >
-            Manage Sales Team
-          </Link>
-          <Link
-            href="/admin/employees/staff-costs"
-            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            View Staff Costs
-          </Link>
-          <Link
-            href="/admin/employees/new"
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
-          >
-            Add User
+            Back to Employees
           </Link>
         </div>
       </div>
       
-      {/* Search */}
-      <div className="mt-6 max-w-lg">
-        <label htmlFor="search" className="block text-sm font-medium text-gray-700">
-          Search Users
-        </label>
-        <div className="mt-1 flex rounded-md shadow-sm">
-          <div className="relative flex flex-grow items-stretch focus-within:z-10">
+      {/* Search and Filter */}
+      <div className="mt-6 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="sm:flex-1">
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700">
+            Search Employees
+          </label>
+          <div className="mt-1">
             <input
               type="text"
               name="search"
@@ -125,6 +146,23 @@ export default function UsersPage() {
               placeholder="Search by name or email"
             />
           </div>
+        </div>
+        
+        <div>
+          <label htmlFor="filter" className="block text-sm font-medium text-gray-700">
+            Filter by Status
+          </label>
+          <select
+            id="filter"
+            name="filter"
+            className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as 'all' | 'active' | 'inactive')}
+          >
+            <option value="all">All Employees</option>
+            <option value="active">Active Sales Employees</option>
+            <option value="inactive">Non-Sales Employees</option>
+          </select>
         </div>
       </div>
       
@@ -159,9 +197,9 @@ export default function UsersPage() {
             <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
               <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
                 <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                  {users.length === 0 ? (
+                  {filteredUsers.length === 0 ? (
                     <div className="bg-white px-6 py-4 text-center text-sm text-gray-500">
-                      {searchQuery ? 'No users found matching your search.' : 'No users found. Create your first user!'}
+                      {searchQuery || filter !== 'all' ? 'No employees found matching your criteria.' : 'No employees found.'}
                     </div>
                   ) : (
                     <table className="min-w-full divide-y divide-gray-300">
@@ -174,13 +212,10 @@ export default function UsersPage() {
                             Email
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Role
+                            Sales Status
                           </th>
                           <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Assigned Jobs
-                          </th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                            Created On
+                            Added on
                           </th>
                           <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                             <span className="sr-only">Actions</span>
@@ -188,7 +223,7 @@ export default function UsersPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
-                        {users.map((user) => (
+                        {filteredUsers.map((user) => (
                           <tr key={user.id}>
                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                               {user.name}
@@ -197,49 +232,42 @@ export default function UsersPage() {
                               {user.email}
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm">
-                              <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                                user.role === 'ADMIN' 
-                                  ? 'bg-purple-100 text-purple-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {user.role}
-                              </span>
+                              {user.salesEmployee ? (
+                                user.salesEmployee.isActive ? (
+                                  <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                                    Active
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                                    Inactive
+                                  </span>
+                                )
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                  Not a sales employee
+                                </span>
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {user._count.jobs}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {formatDate(user.createdAt)}
+                              {user.salesEmployee ? formatDate(user.salesEmployee.createdAt) : '-'}
                             </td>
                             <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                              <div className="flex justify-end space-x-2">
-                                <Link
-                                  href={`/admin/employees/${user.id}`}
-                                  className="text-indigo-600 hover:text-indigo-900"
-                                >
-                                  View
-                                </Link>
-                                <Link
-                                  href={`/admin/employees/${user.id}/edit`}
-                                  className="text-blue-600 hover:text-blue-900"
-                                >
-                                  Edit
-                                </Link>
-                                <button
-                                  onClick={() => handleDeleteUser(user.id)}
-                                  className="text-red-600 hover:text-red-900"
-                                  disabled={user._count.jobs > 0 || user.role === 'ADMIN'}
-                                  title={
-                                    user.role === 'ADMIN' 
-                                      ? "Cannot delete admin users" 
-                                      : user._count.jobs > 0 
-                                        ? "Cannot delete user with assigned jobs" 
-                                        : "Delete user"
-                                  }
-                                >
-                                  Delete
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => handleToggleSalesStatus(user.id)}
+                                className={`px-3 py-1 rounded-md ${
+                                  user.salesEmployee
+                                    ? user.salesEmployee.isActive
+                                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                      : "bg-green-100 text-green-700 hover:bg-green-200"
+                                    : "bg-green-100 text-green-700 hover:bg-green-200"
+                                }`}
+                              >
+                                {user.salesEmployee
+                                  ? user.salesEmployee.isActive
+                                    ? "Remove Sales Access"
+                                    : "Activate Sales Access"
+                                  : "Add to Sales Team"}
+                              </button>
                             </td>
                           </tr>
                         ))}

@@ -5,22 +5,22 @@ import bcrypt from 'bcryptjs';
 // Prevent static generation for this route
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-export const revalidate = 0;
-
 
 const prisma = new PrismaClient();
 
 // GET - List all employee users
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
+    const { searchParams } = new URL(request.url);
+    const includeAdmins = searchParams.get('includeAdmins') === 'true';
+    const includeSalesStatus = searchParams.get('includeSalesStatus') === 'true';
     const query = searchParams.get('query') || '';
     const forDropdown = searchParams.get('forDropdown') === 'true';
-    const includeAdmins = searchParams.get('includeAdmins') === 'true';
-    
+
+    // Build where conditions
     let whereClause: any = {};
     
-    // Build the where clause based on parameters
+    // Only include employees (exclude admins) if specified
     if (!includeAdmins) {
       whereClause.role = Role.EMPLOYEE;
     }
@@ -50,39 +50,43 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(employees);
     }
     
+    // Include sales employee relationship if requested
+    const include: any = {
+      _count: {
+        select: {
+          jobs: true,
+        },
+      },
+    };
+    
+    if (includeSalesStatus) {
+      include.salesEmployee = true;
+    }
+    
     // Otherwise return the detailed list with additional information
     const users = await prisma.user.findMany({
       where: whereClause,
+      include,
       orderBy: {
         name: 'asc'
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            jobs: true
-          }
-        }
       }
     });
     
     return NextResponse.json(users);
   } catch (error: any) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error fetching employees:', error);
+    return NextResponse.json(
+      { error: 'An error occurred while fetching employees' },
+      { status: 500 }
+    );
   }
 }
 
 // POST - Create a new user (employee or admin)
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await req.json();
-    const { name, email, password, role = 'EMPLOYEE' } = data;
+    const data = await request.json();
+    const { name, email, password, role = 'EMPLOYEE', hourlyWage = 12.00 } = data;
     
     // Validate required fields
     if (!name || !email || !password) {
@@ -118,13 +122,15 @@ export async function POST(req: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        role: role as Role
+        role: role as Role,
+        hourlyWage
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        hourlyWage: true,
         createdAt: true,
         updatedAt: true
       }
@@ -132,7 +138,7 @@ export async function POST(req: NextRequest) {
     
     return NextResponse.json(user, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating user:', error);
+    console.error('Error creating employee:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 } 

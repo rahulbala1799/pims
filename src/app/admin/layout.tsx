@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import AdminHeader from '@/components/AdminHeader';
 import { useEffect, useState } from 'react';
-import { FiHome, FiUsers, FiFileText, FiPackage, FiDollarSign, FiClock, FiBarChart2, FiSettings, FiShoppingCart } from 'react-icons/fi';
+import { FiHome, FiUsers, FiFileText, FiPackage, FiDollarSign, FiClock, FiBarChart2, FiSettings, FiShoppingCart, FiTrendingUp } from 'react-icons/fi';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -37,6 +37,16 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Invoices', href: '/admin/invoices', icon: FiDollarSign },
   { name: 'Mobile Invoices', href: '/admin/mobile-invoices', icon: FiDollarSign },
   { name: 'Employees', href: '/admin/employees', icon: FiUsers },
+  { 
+    name: 'Sales', 
+    href: '/admin/sales', 
+    icon: FiTrendingUp,
+    subItems: [
+      { name: 'Sales Team', href: '/admin/sales-employees' },
+      { name: 'Sales Dashboard', href: '/admin/sales/dashboard' },
+      { name: 'Sales Reports', href: '/admin/sales/reports' },
+    ]
+  },
   { name: 'Time Tracking', href: '/admin/time-tracking', icon: FiClock },
   { name: 'Employee Hours', href: '/admin/employee-hours', icon: FiClock },
   { name: 'Cost Calculator', href: '/admin/cost-calculator', icon: FiFileText },
