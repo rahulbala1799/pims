@@ -11,7 +11,8 @@ import {
   CurrencyEuroIcon,
   CheckCircleIcon,
   ClockIcon,
-  XMarkIcon
+  XMarkIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import Head from 'next/head';
 
@@ -60,6 +61,35 @@ interface ActivityFormInput {
   status: typeof STATUS_OPTIONS[number];
   notes: string;
   date: string;
+}
+
+// Product interface for quotation system
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  imageUrl?: string;
+}
+
+// QuotationItem interface
+interface QuotationItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+// Quotation interface
+interface Quotation {
+  id: string;
+  customerId?: string;
+  customerName: string;
+  items: QuotationItem[];
+  totalAmount: number;
+  createdAt: string;
+  validUntil: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected';
 }
 
 // Mock data - in a real implementation, this would come from an API
@@ -126,6 +156,45 @@ const mockActivities: SalesActivity[] = [
   }
 ];
 
+// Mock products data - in a real implementation, this would come from an API
+const mockProducts: Product[] = [
+  {
+    id: 'p1',
+    name: 'Business Cards - Premium',
+    description: 'Premium 350gsm business cards with spot UV finish',
+    category: 'Business Cards',
+    imageUrl: '/products/business-cards-premium.jpg'
+  },
+  {
+    id: 'p2',
+    name: 'Business Cards - Standard',
+    description: 'Standard 300gsm business cards with matte finish',
+    category: 'Business Cards',
+    imageUrl: '/products/business-cards-standard.jpg'
+  },
+  {
+    id: 'p3',
+    name: 'Flyers A5 - Glossy',
+    description: 'A5 flyers with glossy finish, 170gsm',
+    category: 'Flyers',
+    imageUrl: '/products/flyers-a5.jpg'
+  },
+  {
+    id: 'p4',
+    name: 'Brochures - Tri-fold',
+    description: 'A4 tri-fold brochures, 150gsm with glossy finish',
+    category: 'Brochures',
+    imageUrl: '/products/brochures-trifold.jpg'
+  },
+  {
+    id: 'p5',
+    name: 'Posters A2',
+    description: 'A2 posters with high-resolution printing on 200gsm paper',
+    category: 'Posters',
+    imageUrl: '/products/posters-a2.jpg'
+  }
+];
+
 export default function SalesCRMPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -149,6 +218,20 @@ export default function SalesCRMPage() {
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Quotation system state
+  const [showQuotationForm, setShowQuotationForm] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [quotationItems, setQuotationItems] = useState<QuotationItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [unitPrice, setUnitPrice] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [validDays, setValidDays] = useState(30);
+  const [quotationError, setQuotationError] = useState('');
+  const [productSearchFocused, setProductSearchFocused] = useState(false);
+  
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -234,6 +317,119 @@ export default function SalesCRMPage() {
       setLoading(false);
     }, 800);
   }, []);
+
+  // Load products
+  useEffect(() => {
+    // In a real implementation, this would be an API call
+    setProducts(mockProducts);
+    setFilteredProducts(mockProducts);
+  }, []);
+  
+  // Filter products based on search term
+  useEffect(() => {
+    if (productSearch) {
+      const filtered = products.filter(product => 
+        product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        product.description.toLowerCase().includes(productSearch.toLowerCase()) ||
+        product.category.toLowerCase().includes(productSearch.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    } else {
+      setFilteredProducts(products);
+    }
+  }, [productSearch, products]);
+  
+  // Calculate total amount
+  const totalAmount = quotationItems.reduce((total, item) => 
+    total + (item.quantity * item.unitPrice), 0
+  );
+  
+  // Handle adding item to quotation
+  const addItemToQuotation = () => {
+    if (!selectedProduct) {
+      setQuotationError('Please select a product');
+      return;
+    }
+    
+    if (quantity <= 0) {
+      setQuotationError('Quantity must be greater than 0');
+      return;
+    }
+    
+    const price = parseFloat(unitPrice);
+    if (isNaN(price) || price <= 0) {
+      setQuotationError('Please enter a valid price');
+      return;
+    }
+    
+    const newItem: QuotationItem = {
+      productId: selectedProduct.id,
+      productName: selectedProduct.name,
+      quantity,
+      unitPrice: price
+    };
+    
+    setQuotationItems([...quotationItems, newItem]);
+    
+    // Reset form
+    setSelectedProduct(null);
+    setProductSearch('');
+    setQuantity(1);
+    setUnitPrice('');
+    setQuotationError('');
+  };
+  
+  // Handle removing item from quotation
+  const removeItemFromQuotation = (index: number) => {
+    const newItems = [...quotationItems];
+    newItems.splice(index, 1);
+    setQuotationItems(newItems);
+  };
+  
+  // Handle creating quotation
+  const createQuotation = () => {
+    if (quotationItems.length === 0) {
+      setQuotationError('Please add at least one item to the quotation');
+      return;
+    }
+    
+    if (!customerName) {
+      setQuotationError('Please enter a customer name');
+      return;
+    }
+    
+    // In a real implementation, this would be an API call
+    const today = new Date();
+    const validUntil = new Date();
+    validUntil.setDate(today.getDate() + validDays);
+    
+    const quotation: Quotation = {
+      id: `Q-${Date.now()}`,
+      customerName,
+      items: quotationItems,
+      totalAmount,
+      createdAt: today.toISOString(),
+      validUntil: validUntil.toISOString(),
+      status: 'draft'
+    };
+    
+    console.log('Created quotation:', quotation);
+    alert(`Quotation #${quotation.id} created successfully for ${customerName}`);
+    
+    // Reset form
+    setQuotationItems([]);
+    setCustomerName('');
+    setValidDays(30);
+    setQuotationError('');
+    setShowQuotationForm(false);
+  };
+  
+  // Handle selecting a product from search results
+  const selectProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setProductSearch(product.name);
+    setProductSearchFocused(false);
+  };
 
   // Filter activities by status
   const filteredActivities = filterStatus === 'all' 
@@ -332,14 +528,25 @@ export default function SalesCRMPage() {
               Track your sales activities, visits, and follow-ups with potential customers.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAddActivity(true)}
-            className="w-full sm:w-auto mt-4 flex items-center justify-center py-3 px-4 rounded-md border border-transparent bg-indigo-600 text-white text-base font-medium shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" aria-hidden="true" />
-            New Activity
-          </button>
+          <div className="flex flex-wrap gap-4 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowAddActivity(true)}
+              className="w-full sm:w-auto flex items-center justify-center py-3 px-4 rounded-md border border-transparent bg-indigo-600 text-white text-base font-medium shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+              New Activity
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => setShowQuotationForm(true)}
+              className="w-full sm:w-auto flex items-center justify-center py-3 px-4 rounded-md border border-transparent bg-green-600 text-white text-base font-medium shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <DocumentTextIcon className="h-5 w-5 mr-2" aria-hidden="true" />
+              Create Quotation
+            </button>
+          </div>
         </div>
 
         {/* Status Filter */}
@@ -605,6 +812,253 @@ export default function SalesCRMPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Create Quotation Modal */}
+        {showQuotationForm && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+            <div className="relative bg-white rounded-lg w-full max-w-4xl mx-4 my-8">
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setShowQuotationForm(false)}
+                className="absolute top-3 right-3 text-gray-400 bg-white rounded-full p-1 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              
+              <div className="px-4 pt-5 pb-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Create Quotation
+                </h3>
+                
+                {quotationError && (
+                  <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <XMarkIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-700">
+                          {quotationError}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {/* Customer Information */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-base font-medium text-gray-700 mb-3">Customer Information</h4>
+                    <div>
+                      <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 mb-1">
+                        Customer Name*
+                      </label>
+                      <input
+                        type="text"
+                        name="customerName"
+                        id="customerName"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter customer name"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Add Product */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-base font-medium text-gray-700 mb-3">Add Products</h4>
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <label htmlFor="productSearch" className="block text-sm font-medium text-gray-700 mb-1">
+                          Product*
+                        </label>
+                        <input
+                          type="text"
+                          name="productSearch"
+                          id="productSearch"
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          onFocus={() => setProductSearchFocused(true)}
+                          className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                          placeholder="Search for a product"
+                        />
+                        
+                        {/* Product search results dropdown */}
+                        {productSearchFocused && filteredProducts.length > 0 && (
+                          <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md overflow-y-auto max-h-60 border border-gray-200">
+                            <ul className="divide-y divide-gray-200">
+                              {filteredProducts.map(product => (
+                                <li 
+                                  key={product.id} 
+                                  className="cursor-pointer hover:bg-gray-50 p-3"
+                                  onClick={() => selectProduct(product)}
+                                >
+                                  <div className="font-medium text-gray-900">{product.name}</div>
+                                  <div className="text-sm text-gray-500">{product.description}</div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity*
+                          </label>
+                          <input
+                            type="number"
+                            name="quantity"
+                            id="quantity"
+                            min="1"
+                            value={quantity}
+                            onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                            className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="unitPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                            Price Per Unit (€)*
+                          </label>
+                          <input
+                            type="text"
+                            name="unitPrice"
+                            id="unitPrice"
+                            value={unitPrice}
+                            onChange={(e) => setUnitPrice(e.target.value)}
+                            className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={addItemToQuotation}
+                          className="inline-flex items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-1" aria-hidden="true" />
+                          Add to Quotation
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Quotation Items */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-base font-medium text-gray-700 mb-3">Quotation Items</h4>
+                    
+                    {quotationItems.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">
+                        No items added to the quotation yet.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-100">
+                            <tr>
+                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Product
+                              </th>
+                              <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Quantity
+                              </th>
+                              <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Unit Price
+                              </th>
+                              <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Total
+                              </th>
+                              <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {quotationItems.map((item, index) => (
+                              <tr key={index}>
+                                <td className="px-3 py-3 text-sm text-gray-900">
+                                  {item.productName}
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-900 text-right">
+                                  {item.quantity}
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-900 text-right">
+                                  €{item.unitPrice.toFixed(2)}
+                                </td>
+                                <td className="px-3 py-3 text-sm text-gray-900 text-right">
+                                  €{(item.quantity * item.unitPrice).toFixed(2)}
+                                </td>
+                                <td className="px-3 py-3 text-sm text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => removeItemFromQuotation(index)}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    <XMarkIcon className="h-5 w-5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="bg-gray-50 font-medium">
+                              <td colSpan={3} className="px-3 py-3 text-sm text-gray-900 text-right">
+                                Total Amount:
+                              </td>
+                              <td className="px-3 py-3 text-sm text-gray-900 text-right">
+                                €{totalAmount.toFixed(2)}
+                              </td>
+                              <td></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Quotation Options */}
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <h4 className="text-base font-medium text-gray-700 mb-3">Quotation Options</h4>
+                    <div>
+                      <label htmlFor="validDays" className="block text-sm font-medium text-gray-700 mb-1">
+                        Valid for (days)
+                      </label>
+                      <input
+                        type="number"
+                        name="validDays"
+                        id="validDays"
+                        min="1"
+                        value={validDays}
+                        onChange={(e) => setValidDays(parseInt(e.target.value) || 30)}
+                        className="block w-full sm:w-1/4 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuotationForm(false)}
+                      className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center items-center py-3 px-4 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={createQuotation}
+                      className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-4 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      Generate Quotation
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
