@@ -10,8 +10,10 @@ import {
   DocumentIcon,
   CurrencyEuroIcon,
   CheckCircleIcon,
-  ClockIcon
+  ClockIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import Head from 'next/head';
 
 interface SalesData {
   totalSales: number;
@@ -318,117 +320,117 @@ export default function SalesCRMPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-xl font-semibold text-gray-900">Sales Pipeline</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Track your sales activities, visits, and follow-ups with potential customers.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      </Head>
+      <div className="px-4 py-6 bg-gray-50 min-h-screen">
+        <div className="mb-6">
+          <div className="mb-2">
+            <h1 className="text-2xl font-bold text-gray-900">Sales Pipeline</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Track your sales activities, visits, and follow-ups with potential customers.
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setShowAddActivity(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="w-full sm:w-auto mt-4 flex items-center justify-center py-3 px-4 rounded-md border border-transparent bg-indigo-600 text-white text-base font-medium shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+            <PlusIcon className="h-5 w-5 mr-2" aria-hidden="true" />
             New Activity
           </button>
         </div>
-      </div>
 
-      {/* Status Filter */}
-      <div className="mt-4">
-        <div className="sm:flex sm:items-center">
-          <div className="sm:flex-auto">
-            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
-              Filter by Status
-            </label>
-            <select
-              id="status-filter"
-              name="status-filter"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | typeof STATUS_OPTIONS[number])}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="all">All Activities</option>
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Status Filter */}
+        <div className="bg-white rounded-lg shadow mb-6 p-4">
+          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+            Filter by Status
+          </label>
+          <select
+            id="status-filter"
+            name="status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as 'all' | typeof STATUS_OPTIONS[number])}
+            className="block w-full py-3 px-4 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+          >
+            <option value="all">All Activities</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
 
-      {/* Sales Pipeline Summary */}
-      <div className="mt-6 grid grid-cols-5 gap-5">
-        {STATUS_OPTIONS.map((status) => {
-          const count = activities.filter(a => a.status === status).length;
-          return (
-            <div key={status} className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    {status === 'Leaflet/Booklet Dropped' && (
-                      <DocumentIcon className="h-6 w-6 text-gray-400" />
-                    )}
-                    {status === 'Spoke with Manager' && (
-                      <PhoneIcon className="h-6 w-6 text-blue-500" />
-                    )}
-                    {status === 'Sample Requested' && (
-                      <ClockIcon className="h-6 w-6 text-yellow-500" />
-                    )}
-                    {status === 'Order Placed' && (
-                      <CurrencyEuroIcon className="h-6 w-6 text-green-500" />
-                    )}
-                    {status === 'Converted' && (
-                      <CheckCircleIcon className="h-6 w-6 text-indigo-600" />
-                    )}
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">{status}</dt>
-                      <dd>
-                        <div className="text-lg font-medium text-gray-900">{count}</div>
-                      </dd>
-                    </dl>
+        {/* Sales Pipeline Summary - Mobile Friendly */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {STATUS_OPTIONS.map((status) => {
+              const count = activities.filter(a => a.status === status).length;
+              return (
+                <div key={status} className="bg-white overflow-hidden shadow rounded-lg">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        {status === 'Leaflet/Booklet Dropped' && (
+                          <DocumentIcon className="h-6 w-6 text-gray-400" />
+                        )}
+                        {status === 'Spoke with Manager' && (
+                          <PhoneIcon className="h-6 w-6 text-blue-500" />
+                        )}
+                        {status === 'Sample Requested' && (
+                          <ClockIcon className="h-6 w-6 text-yellow-500" />
+                        )}
+                        {status === 'Order Placed' && (
+                          <CurrencyEuroIcon className="h-6 w-6 text-green-500" />
+                        )}
+                        {status === 'Converted' && (
+                          <CheckCircleIcon className="h-6 w-6 text-indigo-600" />
+                        )}
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dt className="text-sm font-medium text-gray-500 truncate">{status}</dt>
+                        <dd>
+                          <div className="text-lg font-medium text-gray-900">{count}</div>
+                        </dd>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
 
-      {/* Activities List */}
-      <div className="mt-8 bg-white shadow overflow-hidden sm:rounded-md">
-        {loading ? (
-          <div className="py-12 flex justify-center">
-            <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          </div>
-        ) : filteredActivities.length === 0 ? (
-          <div className="py-12 text-center text-gray-500">
-            No activities matching the selected filter.
-          </div>
-        ) : (
-          <ul className="divide-y divide-gray-200">
-            {filteredActivities.map((activity) => (
-              <li key={activity.id}>
-                <div className="block hover:bg-gray-50 cursor-pointer" onClick={() => viewActivity(activity.id)}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
+        {/* Activities List */}
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          {loading ? (
+            <div className="py-12 flex justify-center">
+              <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          ) : filteredActivities.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">
+              No activities matching the selected filter.
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              {filteredActivities.map((activity) => (
+                <li key={activity.id}>
+                  <div 
+                    className="block hover:bg-gray-50 active:bg-gray-100 cursor-pointer p-4" 
+                    onClick={() => viewActivity(activity.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center">
                         <BuildingStorefrontIcon className="flex-shrink-0 h-5 w-5 text-gray-400" />
-                        <p className="ml-2 text-sm font-medium text-indigo-600 truncate">{activity.shopName}</p>
+                        <p className="ml-2 text-base font-medium text-indigo-600 truncate">{activity.shopName}</p>
                       </div>
                       <div className="ml-2 flex-shrink-0 flex">
-                        <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        <p className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                           ${activity.status === 'Converted' ? 'bg-green-100 text-green-800' : 
                           activity.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' : 
                           activity.status === 'Sample Requested' ? 'bg-yellow-100 text-yellow-800' : 
@@ -439,13 +441,13 @@ export default function SalesCRMPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
+                    <div className="mt-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center mb-2">
+                        <p className="flex items-center text-sm text-gray-500 mb-1 sm:mb-0">
                           <PhoneIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
                           {activity.contactName}
                         </p>
-                        <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                        <p className="flex items-center text-sm text-gray-500 sm:ml-6">
                           <ClockIcon className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
                           {new Date(activity.date).toLocaleDateString()}
                         </p>
@@ -455,155 +457,159 @@ export default function SalesCRMPage() {
                       <p className="text-sm text-gray-500 line-clamp-2">{activity.notes}</p>
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-      {/* Add Activity Modal */}
-      {showAddActivity && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                      <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-headline">
-                        New Sales Activity
-                      </h3>
-                      <div className="mt-4 space-y-4">
-                        <div>
-                          <label htmlFor="shopName" className="block text-sm font-medium text-gray-700">
-                            Shop/Company Name*
-                          </label>
-                          <input
-                            type="text"
-                            name="shopName"
-                            id="shopName"
-                            required
-                            value={newActivity.shopName}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="contactName" className="block text-sm font-medium text-gray-700">
-                            Contact Person
-                          </label>
-                          <input
-                            type="text"
-                            name="contactName"
-                            id="contactName"
-                            value={newActivity.contactName}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div>
-                            <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700">
-                              Email
-                            </label>
-                            <input
-                              type="email"
-                              name="contactEmail"
-                              id="contactEmail"
-                              value={newActivity.contactEmail}
-                              onChange={handleInputChange}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700">
-                              Phone
-                            </label>
-                            <input
-                              type="text"
-                              name="contactPhone"
-                              id="contactPhone"
-                              value={newActivity.contactPhone}
-                              onChange={handleInputChange}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                            Status*
-                          </label>
-                          <select
-                            id="status"
-                            name="status"
-                            required
-                            value={newActivity.status}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                          >
-                            {STATUS_OPTIONS.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-                            Visit Date*
-                          </label>
-                          <input
-                            type="date"
-                            name="date"
-                            id="date"
-                            required
-                            value={newActivity.date}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-                            Notes
-                          </label>
-                          <textarea
-                            id="notes"
-                            name="notes"
-                            rows={3}
-                            value={newActivity.notes}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          />
-                        </div>
-                      </div>
+        {/* Add Activity Modal - Mobile Optimized */}
+        {showAddActivity && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 flex items-center justify-center">
+            <div className="relative bg-white rounded-lg w-full max-w-lg mx-4 my-8">
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setShowAddActivity(false)}
+                className="absolute top-3 right-3 text-gray-400 bg-white rounded-full p-1 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+              
+              <div className="px-4 pt-5 pb-4 sm:p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  New Sales Activity
+                </h3>
+                
+                <form onSubmit={handleSubmit}>
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="shopName" className="block text-sm font-medium text-gray-700 mb-1">
+                        Shop/Company Name*
+                      </label>
+                      <input
+                        type="text"
+                        name="shopName"
+                        id="shopName"
+                        required
+                        value={newActivity.shopName}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter shop name"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contactName" className="block text-sm font-medium text-gray-700 mb-1">
+                        Contact Person
+                      </label>
+                      <input
+                        type="text"
+                        name="contactName"
+                        id="contactName"
+                        value={newActivity.contactName}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter contact name"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        name="contactEmail"
+                        id="contactEmail"
+                        value={newActivity.contactEmail}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone
+                      </label>
+                      <input
+                        type="text"
+                        name="contactPhone"
+                        id="contactPhone"
+                        value={newActivity.contactPhone}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                        Status*
+                      </label>
+                      <select
+                        id="status"
+                        name="status"
+                        required
+                        value={newActivity.status}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      >
+                        {STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                        Visit Date*
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        id="date"
+                        required
+                        value={newActivity.date}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                        Notes
+                      </label>
+                      <textarea
+                        id="notes"
+                        name="notes"
+                        rows={4}
+                        value={newActivity.notes}
+                        onChange={handleInputChange}
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-3 px-4 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-base"
+                        placeholder="Enter notes about your visit"
+                      />
                     </div>
                   </div>
-                </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Save Activity
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddActivity(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                  
+                  <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddActivity(false)}
+                      className="mt-3 sm:mt-0 w-full sm:w-auto inline-flex justify-center items-center py-3 px-4 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="w-full sm:w-auto inline-flex justify-center items-center py-3 px-4 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Save Activity
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 } 
