@@ -480,12 +480,15 @@ export default function SalesCRMPage() {
   // Load activities (mock data for now)
   useEffect(() => {
     setLoading(true);
-    // Simulate API call
+    
+    // In a real implementation, this would be replaced with an API call
+    // that filters by status on the server side
     setTimeout(() => {
-      setActivities(mockActivities);
+      const data = [...mockActivities];
+      setActivities(data);
       setLoading(false);
-    }, 800);
-  }, []);
+    }, 500);
+  }, [filterStatus]); // Add filterStatus as a dependency
 
   // Fetch products for quotation
   useEffect(() => {
@@ -592,352 +595,510 @@ export default function SalesCRMPage() {
           </div>
         </div>
 
-        {/* Create Quotation Modal */}
-        {showQuotationForm && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-800">Create Quotation</h2>
-                  <button
-                    onClick={() => setShowQuotationForm(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
+        {/* Sales Pipeline View */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6 mb-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Sales Pipeline</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            {STATUS_OPTIONS.map(status => {
+              const count = activities.filter(a => a.status === status).length;
+              return (
+                <div key={status} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-800 mb-2">{status}</h4>
+                  <div className="text-2xl font-bold text-blue-600">{count}</div>
+                  <div className="text-sm text-gray-500 mt-1">leads</div>
                 </div>
+              );
+            })}
+          </div>
+          
+          <div className="flex justify-end">
+            <button 
+              onClick={() => setPeriod('week')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md mr-2 ${
+                period === 'week' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              This Week
+            </button>
+            <button 
+              onClick={() => setPeriod('month')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md mr-2 ${
+                period === 'month' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              This Month
+            </button>
+            <button 
+              onClick={() => setPeriod('year')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md mr-2 ${
+                period === 'year' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              This Year
+            </button>
+            <button 
+              onClick={() => setPeriod('all')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                period === 'all' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              All Time
+            </button>
+          </div>
+        </div>
 
-                {quotationError && (
-                  <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-                    {quotationError}
+        {/* Sales Activities List */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Sales Activities</h3>
+            
+            <div className="flex">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+                className="p-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 mr-3"
+              >
+                <option value="all">All Statuses</option>
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-10">
+              <svg className="animate-spin h-10 w-10 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          ) : filteredActivities.length === 0 ? (
+            <div className="text-center py-10">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No activities found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {filterStatus === 'all' 
+                  ? 'Get started by creating a new activity.' 
+                  : `No activities with status "${filterStatus}" found.`}
+              </p>
+              {filterStatus !== 'all' && (
+                <button
+                  onClick={() => setFilterStatus('all')}
+                  className="mt-4 text-sm text-blue-600 hover:text-blue-500"
+                >
+                  View all activities
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
+              {filteredActivities.map((activity) => (
+                <div 
+                  key={activity.id} 
+                  className="py-4 flex flex-col md:flex-row md:items-center md:justify-between hover:bg-gray-50 px-4 -mx-4 cursor-pointer"
+                  onClick={() => viewActivity(activity.id)}
+                >
+                  <div className="mb-2 md:mb-0">
+                    <div className="flex items-center">
+                      <BuildingStorefrontIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <h4 className="font-medium text-gray-900">{activity.shopName}</h4>
+                    </div>
+                    <div className="mt-1 flex items-center text-sm text-gray-500">
+                      <span className="truncate">
+                        <span className="font-medium text-gray-900">{activity.contactName}</span>
+                        {activity.contactPhone && (
+                          <span className="ml-2">
+                            <PhoneIcon className="inline-block h-4 w-4 text-gray-400 mr-1" />
+                            {activity.contactPhone}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500 line-clamp-1">
+                      {activity.notes || 'No notes provided'}
+                    </div>
                   </div>
-                )}
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Name
+                  <div className="flex flex-col md:items-end">
+                    <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium
+                      ${activity.status === 'Converted' ? 'bg-green-100 text-green-800' : 
+                      activity.status === 'Order Placed' ? 'bg-blue-100 text-blue-800' :
+                      activity.status === 'Sample Requested' ? 'bg-yellow-100 text-yellow-800' :
+                      activity.status === 'Spoke with Manager' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'}`}
+                    >
+                      {activity.status}
+                    </span>
+                    <span className="mt-2 text-sm text-gray-500">
+                      {activity.date}
+                    </span>
+                    <span className="mt-1 text-xs text-gray-400">
+                      Added {formatDistance(new Date(activity.createdAt), new Date(), { addSuffix: true })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Add Activity Modal */}
+      {showAddActivity && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">Log Sales Activity</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAddActivity(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Shop Name
                   </label>
                   <input
                     type="text"
+                    name="shopName"
+                    value={newActivity.shopName}
+                    onChange={handleInputChange}
+                    required
                     className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={selectedCustomerName}
-                    onChange={(e) => setSelectedCustomerName(e.target.value)}
                   />
                 </div>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Valid Until
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Name
+                  </label>
+                  <input
+                    type="text"
+                    name="contactName"
+                    value={newActivity.contactName}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    name="contactEmail"
+                    value={newActivity.contactEmail}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    name="contactPhone"
+                    value={newActivity.contactPhone}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={newActivity.status}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
                   </label>
                   <input
                     type="date"
+                    name="date"
+                    value={newActivity.date}
+                    onChange={handleInputChange}
+                    required
                     className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-
-                <div className="mb-6 border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-medium text-gray-800 mb-4">Add Product</h3>
-                  
-                  {loadingProducts ? (
-                    <div className="text-center py-4">Loading products...</div>
-                  ) : productsError ? (
-                    <div className="text-center py-4 text-red-600">{productsError}</div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Product
-                        </label>
-                        <select
-                          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                          value={selectedProduct}
-                          onChange={handleProductChange}
-                        >
-                          <option value="">Select a product</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} - {product.sku}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                          value={quantity}
-                          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-                          min="1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Unit Price (€)
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                          value={unitPrice}
-                          onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                      
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={addItemToQuotation}
-                          className="w-full p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                          Add Item
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={newActivity.notes}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
                 </div>
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddActivity(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Activity'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-                {quotationItems.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-medium text-gray-800 mb-4">Quotation Items</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Product
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Quantity
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Unit Price
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Total
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {quotationItems.map((item, index) => (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {item.productName}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {item.quantity}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                €{item.unitPrice.toFixed(2)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                €{item.totalPrice.toFixed(2)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button
-                                  onClick={() => removeItemFromQuotation(index)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                          <tr className="bg-gray-50">
-                            <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                              Total Amount:
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              €{calculateTotalAmount().toFixed(2)}
-                            </td>
-                            <td></td>
-                          </tr>
-                        </tbody>
-                      </table>
+      {/* Create Quotation Modal */}
+      {showQuotationForm && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-800">Create Quotation</h2>
+                <button
+                  onClick={() => setShowQuotationForm(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+
+              {quotationError && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                  {quotationError}
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedCustomerName}
+                  onChange={(e) => setSelectedCustomerName(e.target.value)}
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valid Until
+                </label>
+                <input
+                  type="date"
+                  className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={validUntil}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div className="mb-6 border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">Add Product</h3>
+                
+                {loadingProducts ? (
+                  <div className="text-center py-4">Loading products...</div>
+                ) : productsError ? (
+                  <div className="text-center py-4 text-red-600">{productsError}</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Product
+                      </label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        value={selectedProduct}
+                        onChange={handleProductChange}
+                      >
+                        <option value="">Select a product</option>
+                        {products.map((product) => (
+                          <option key={product.id} value={product.id}>
+                            {product.name} - {product.sku}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Unit Price (€)
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        value={unitPrice}
+                        onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={addItemToQuotation}
+                        className="w-full p-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        Add Item
+                      </button>
                     </div>
                   </div>
                 )}
+              </div>
 
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowQuotationForm(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={createQuotation}
-                    disabled={isCreatingQuote || quotationItems.length === 0}
-                    className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      isCreatingQuote || quotationItems.length === 0
-                        ? 'bg-blue-400 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                  >
-                    {isCreatingQuote ? 'Creating...' : 'Create Quotation'}
-                  </button>
+              {quotationItems.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-800 mb-4">Quotation Items</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Product
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unit Price
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {quotationItems.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.productName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              €{item.unitPrice.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              €{item.totalPrice.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <button
+                                onClick={() => removeItemFromQuotation(index)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-gray-50">
+                          <td colSpan={3} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                            Total Amount:
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            €{calculateTotalAmount().toFixed(2)}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+              )}
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowQuotationForm(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={createQuotation}
+                  disabled={isCreatingQuote || quotationItems.length === 0}
+                  className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    isCreatingQuote || quotationItems.length === 0
+                      ? 'bg-blue-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {isCreatingQuote ? 'Creating...' : 'Create Quotation'}
+                </button>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Add Activity Modal */}
-        {showAddActivity && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <form onSubmit={handleSubmit} className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-gray-800">Log Sales Activity</h2>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddActivity(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Shop Name
-                    </label>
-                    <input
-                      type="text"
-                      name="shopName"
-                      value={newActivity.shopName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Name
-                    </label>
-                    <input
-                      type="text"
-                      name="contactName"
-                      value={newActivity.contactName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      name="contactEmail"
-                      value={newActivity.contactEmail}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact Phone
-                    </label>
-                    <input
-                      type="tel"
-                      name="contactPhone"
-                      value={newActivity.contactPhone}
-                      onChange={handleInputChange}
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
-                    <select
-                      name="status"
-                      value={newActivity.status}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={newActivity.date}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={newActivity.notes}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-                
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddActivity(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                  >
-                    {isSubmitting ? 'Saving...' : 'Save Activity'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Rest of the existing code... */}
-      </div>
+        </div>
+      )}
     </div>
   );
 } 
