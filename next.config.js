@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Remove standalone output for now to fix deployment
-  // output: 'standalone',
+  // Enable standalone output for Railway deployment
+  output: 'standalone',
   reactStrictMode: true,
   eslint: {
     // Warning: This allows production builds to successfully complete even if
@@ -17,8 +17,6 @@ const nextConfig = {
   experimental: {
     // External packages that should be bundled with server components
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'jsonwebtoken'],
-    // Force Server Components to be treated as Client Components during static generation
-    appDir: true,
   },
   // Configure image optimization
   images: {
