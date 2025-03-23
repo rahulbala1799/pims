@@ -14,6 +14,8 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
   const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
+  const [isSalesEmployee, setIsSalesEmployee] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Simplified auth check for employee section
@@ -43,7 +45,25 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
         
         // Authentication successful
         setUserName(user.name || 'Employee');
-        setIsLoading(false);
+        setUserId(user.id);
+        
+        // Check if user is a sales employee
+        const checkSalesStatus = async () => {
+          try {
+            const response = await fetch(`/api/employees/${user.id}/sales-status/check`);
+            
+            if (response.ok) {
+              const data = await response.json();
+              setIsSalesEmployee(data.isSalesEmployee || false);
+            }
+          } catch (error) {
+            console.error('Error checking sales status:', error);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        checkSalesStatus();
       } catch (error) {
         console.error('Auth check error:', error);
         // If any error occurs, redirect to login
@@ -78,7 +98,9 @@ export default function EmployeeLayout({ children }: EmployeeLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <EmployeeHeader 
-        userName={userName} 
+        userName={userName}
+        userId={userId}
+        isSalesEmployee={isSalesEmployee}
         isMenuOpen={isMenuOpen} 
         toggleMenu={toggleMenu}
         isActivePath={isActivePath}

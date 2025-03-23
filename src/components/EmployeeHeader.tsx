@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { HomeIcon, BriefcaseIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, BriefcaseIcon, ClockIcon, UserIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 interface EmployeeHeaderProps {
   userName: string;
+  userId: string;
+  isSalesEmployee: boolean;
   isMenuOpen: boolean;
   toggleMenu: () => void;
   isActivePath: (path: string) => boolean;
@@ -10,16 +12,27 @@ interface EmployeeHeaderProps {
 
 export default function EmployeeHeader({
   userName,
+  userId,
+  isSalesEmployee,
   isMenuOpen,
   toggleMenu,
   isActivePath
 }: EmployeeHeaderProps) {
-  const navigation = [
+  // Base navigation items
+  const baseNavigation = [
     { name: 'Dashboard', href: '/employee/dashboard', icon: HomeIcon },
     { name: 'Jobs', href: '/employee/jobs', icon: BriefcaseIcon },
     { name: 'Hours', href: '/employee/hours', icon: ClockIcon },
     { name: 'My Profile', href: '/employee/profile', icon: UserIcon },
   ];
+  
+  // Sales navigation item - only shown to sales employees
+  const salesNavItem = { name: 'Sales', href: '/employee/sales', icon: ChartBarIcon };
+  
+  // Combine navigation items based on permissions
+  const navigation = isSalesEmployee 
+    ? [...baseNavigation, salesNavItem]
+    : baseNavigation;
 
   const handleLogout = () => {
     window.location.href = '/logout';
