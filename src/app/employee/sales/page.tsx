@@ -202,6 +202,205 @@ export default function SalesCRMPage() {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
 
+  // Update the createQuotation function to use manual customer entry instead of customer ID
+  const createQuotation = async () => {
+    if (!selectedCustomerName) {
+      setQuotationError('Please enter a customer name');
+      return;
+    }
+    
+    if (quotationItems.length === 0) {
+      setQuotationError('Please add at least one item to the quotation');
+      return;
+    }
+    
+    if (!validUntil) {
+      setQuotationError('Please set a validity date for the quotation');
+      return;
+    }
+    
+    setIsCreatingQuote(true);
+    setQuotationError(null);
+    
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerName: selectedCustomerName,
+          expiresAt: validUntil,
+          totalAmount: calculateTotalAmount(),
+          items: quotationItems
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create quotation');
+      }
+      
+      const data = await response.json();
+      
+      // Reset form and close modal
+      setQuotationItems([]);
+      setSelectedCustomerId('');
+      setSelectedCustomerName('');
+      setValidUntil('');
+      setShowQuotationForm(false);
+      
+      // Show success message or update UI
+      alert(`Quotation created successfully with reference number: ${data.quoteNumber}`);
+      
+    } catch (error) {
+      console.error('Error creating quotation:', error);
+      setQuotationError('Failed to create quotation. Please try again.');
+    } finally {
+      setIsCreatingQuote(false);
+    }
+  };
+
+  // Update the handleSubmit function to fix activity logging
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      // For now, we'll just use the mock implementation
+      // In production, this would be replaced with an API call
+      const createdAt = new Date().toISOString();
+      const newActivityWithId: SalesActivity = {
+        ...newActivity,
+        id: `temp-${Date.now()}`,
+        createdAt,
+        updatedAt: createdAt
+      };
+      
+      // Add to activities list
+      setActivities([newActivityWithId, ...activities]);
+      
+      // Reset form and close modal
+      setNewActivity({
+        shopName: '',
+        contactName: '',
+        contactEmail: '',
+        contactPhone: '',
+        status: STATUS_OPTIONS[0],
+        notes: '',
+        date: new Date().toISOString().split('T')[0]
+      });
+      setShowAddActivity(false);
+      
+    } catch (error) {
+      console.error('Error saving activity:', error);
+      setError('Failed to save activity. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle product selection change
+  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const productId = e.target.value;
+    setSelectedProduct(productId);
+    
+    if (productId) {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+        setUnitPrice(Number(product.basePrice));
+      }
+    } else {
+      setUnitPrice(0);
+    }
+  };
+
+  // Add item to quotation
+  const addItemToQuotation = () => {
+    if (!selectedProduct) {
+      setQuotationError('Please select a product');
+      return;
+    }
+    
+    if (quantity <= 0) {
+      setQuotationError('Quantity must be greater than 0');
+      return;
+    }
+    
+    if (unitPrice <= 0) {
+      setQuotationError('Unit price must be greater than 0');
+      return;
+    }
+    
+    const product = products.find(p => p.id === selectedProduct);
+    if (!product) {
+      setQuotationError('Selected product not found');
+      return;
+    }
+    
+    const newItem: QuotationItem = {
+      productId: selectedProduct,
+      productName: product.name,
+      quantity,
+      unitPrice,
+      totalPrice: quantity * unitPrice
+    };
+    
+    setQuotationItems([...quotationItems, newItem]);
+    setQuotationError(null);
+    
+    // Reset form
+    setSelectedProduct('');
+    setQuantity(1);
+    setUnitPrice(0);
+  };
+
+  // Remove item from quotation
+  const removeItemFromQuotation = (index: number) => {
+    const updatedItems = [...quotationItems];
+    updatedItems.splice(index, 1);
+    setQuotationItems(updatedItems);
+  };
+
+  // Calculate total amount
+  const calculateTotalAmount = () => {
+    return quotationItems.reduce((total, item) => total + item.totalPrice, 0);
+  };
+
+  // Filter activities by status
+  const filteredActivities = filterStatus === 'all' 
+    ? activities 
+    : activities.filter(activity => activity.status === filterStatus);
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewActivity({
+      ...newActivity,
+      [name]: value
+    });
+  };
+
+  // Navigate to activity detail page
+  const viewActivity = (id: string) => {
+    router.push(`/employee/sales/activities/${id}`);
+  };
+
+  // Function to handle period change
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod);
+    // In a real implementation, you would fetch new data based on the period
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  };
+
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -333,193 +532,6 @@ export default function SalesCRMPage() {
     fetchCustomers();
   }, [showQuotationForm]);
 
-  // Handle product selection change
-  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const productId = e.target.value;
-    setSelectedProduct(productId);
-    
-    if (productId) {
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        setUnitPrice(Number(product.basePrice));
-      }
-    } else {
-      setUnitPrice(0);
-    }
-  };
-
-  // Add item to quotation
-  const addItemToQuotation = () => {
-    if (!selectedProduct) {
-      setQuotationError('Please select a product');
-      return;
-    }
-    
-    if (quantity <= 0) {
-      setQuotationError('Quantity must be greater than 0');
-      return;
-    }
-    
-    if (unitPrice <= 0) {
-      setQuotationError('Unit price must be greater than 0');
-      return;
-    }
-    
-    const product = products.find(p => p.id === selectedProduct);
-    if (!product) {
-      setQuotationError('Selected product not found');
-      return;
-    }
-    
-    const newItem: QuotationItem = {
-      productId: selectedProduct,
-      productName: product.name,
-      quantity,
-      unitPrice,
-      totalPrice: quantity * unitPrice
-    };
-    
-    setQuotationItems([...quotationItems, newItem]);
-    setQuotationError(null);
-    
-    // Reset form
-    setSelectedProduct('');
-    setQuantity(1);
-    setUnitPrice(0);
-  };
-
-  // Remove item from quotation
-  const removeItemFromQuotation = (index: number) => {
-    const updatedItems = [...quotationItems];
-    updatedItems.splice(index, 1);
-    setQuotationItems(updatedItems);
-  };
-
-  // Calculate total amount
-  const calculateTotalAmount = () => {
-    return quotationItems.reduce((total, item) => total + item.totalPrice, 0);
-  };
-
-  // Create quotation
-  const createQuotation = async () => {
-    if (!selectedCustomerId) {
-      setQuotationError('Please select a customer');
-      return;
-    }
-    
-    if (quotationItems.length === 0) {
-      setQuotationError('Please add at least one item to the quotation');
-      return;
-    }
-    
-    if (!validUntil) {
-      setQuotationError('Please set a validity date for the quotation');
-      return;
-    }
-    
-    setIsCreatingQuote(true);
-    setQuotationError(null);
-    
-    try {
-      const response = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerId: selectedCustomerId,
-          expiresAt: validUntil,
-          totalAmount: calculateTotalAmount(),
-          items: quotationItems
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create quotation');
-      }
-      
-      const data = await response.json();
-      
-      // Reset form and close modal
-      setQuotationItems([]);
-      setSelectedCustomerId('');
-      setSelectedCustomerName('');
-      setValidUntil('');
-      setShowQuotationForm(false);
-      
-      // Show success message or update UI
-      alert(`Quotation created successfully with reference number: ${data.quoteNumber}`);
-      
-    } catch (error) {
-      console.error('Error creating quotation:', error);
-      setQuotationError('Failed to create quotation. Please try again.');
-    } finally {
-      setIsCreatingQuote(false);
-    }
-  };
-
-  // Filter activities by status
-  const filteredActivities = filterStatus === 'all' 
-    ? activities 
-    : activities.filter(activity => activity.status === filterStatus);
-
-  // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewActivity({
-      ...newActivity,
-      [name]: value
-    });
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Create new activity with ID and timestamps
-    const createdAt = new Date().toISOString();
-    const newActivityWithId: SalesActivity = {
-      ...newActivity,
-      id: `temp-${Date.now()}`,
-      createdAt,
-      updatedAt: createdAt
-    };
-    
-    // Add to activities list (in production, this would be an API call)
-    setActivities([newActivityWithId, ...activities]);
-    
-    // Reset form and close modal
-    setNewActivity({
-      shopName: '',
-      contactName: '',
-      contactEmail: '',
-      contactPhone: '',
-      status: STATUS_OPTIONS[0],
-      notes: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    setShowAddActivity(false);
-  };
-
-  // Navigate to activity detail page
-  const viewActivity = (id: string) => {
-    router.push(`/employee/sales/activities/${id}`);
-  };
-
-  // Function to handle period change
-  const handlePeriodChange = (newPeriod: string) => {
-    setPeriod(newPeriod);
-    // In a real implementation, you would fetch new data based on the period
-  };
-
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 py-6">
@@ -603,24 +615,14 @@ export default function SalesCRMPage() {
 
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer
+                    Customer Name
                   </label>
-                  <select 
+                  <input
+                    type="text"
                     className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    value={selectedCustomerId}
-                    onChange={(e) => {
-                      setSelectedCustomerId(e.target.value);
-                      const customer = customers.find(c => c.id === e.target.value);
-                      setSelectedCustomerName(customer ? customer.name : '');
-                    }}
-                  >
-                    <option value="">Select a customer</option>
-                    {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
+                    value={selectedCustomerName}
+                    onChange={(e) => setSelectedCustomerName(e.target.value)}
+                  />
                 </div>
 
                 <div className="mb-6">
@@ -789,6 +791,147 @@ export default function SalesCRMPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Activity Modal */}
+        {showAddActivity && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <form onSubmit={handleSubmit} className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800">Log Sales Activity</h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddActivity(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Shop Name
+                    </label>
+                    <input
+                      type="text"
+                      name="shopName"
+                      value={newActivity.shopName}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      name="contactName"
+                      value={newActivity.contactName}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      name="contactEmail"
+                      value={newActivity.contactEmail}
+                      onChange={handleInputChange}
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      name="contactPhone"
+                      value={newActivity.contactPhone}
+                      onChange={handleInputChange}
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Status
+                    </label>
+                    <select
+                      name="status"
+                      value={newActivity.status}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      name="date"
+                      value={newActivity.date}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Notes
+                    </label>
+                    <textarea
+                      name="notes"
+                      value={newActivity.notes}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddActivity(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      isSubmitting ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save Activity'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
